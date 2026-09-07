@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">NANoDB favicon</title>
+  <desc id="desc">NANoDB ring and owner dot symbol.</desc>
+  <rect width="512" height="512" rx="112" fill="#4f46e5"/>
+  <g fill="none" stroke="#ffffff" stroke-linecap="round">
+    <path d="M423 256 A167 167 0 1 1 89 256 A167 167 0 1 1 423 256 Z M389 256 A133 133 0 1 1 123 256 A133 133 0 1 1 389 256 Z M400 150 A37 37 0 1 1 326 150 A37 37 0 1 1 400 150 Z" fill="#ffffff" fill-rule="evenodd" stroke="none"/>
+    <circle cx="256" cy="256" r="85" stroke-width="28"/>
+    <circle cx="256" cy="256" r="22" fill="#ffffff" stroke="none"/>
+    <circle cx="363" cy="150" r="27" fill="#ffffff" stroke="none"/>
+  </g>
+</svg>

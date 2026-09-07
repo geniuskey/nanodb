@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NANoDB — 홈 탭 시안 (requirements/home-tab)</title>
+<!--
+  홈 탭 정적 시안. requirements/home-tab-requirements.md 의 HOM-001~028 을 그대로 따른다.
+  - KPI 는 /api/summary 응답으로만 채운다 (예시값 금지, HOM-024). 이 파일은 fetch 실패 시 빈 상태(0 / n=0 / 측정 없음)를 보여준다.
+  - ?state=demo  : 데모 후 상태 예시 (스크린샷용, 값은 "예시 화면" 라벨과 함께만 표시)
+  - ?state=empty : 빈 DB 상태
+  - 로고는 저장소 자산 assets/logo/nanodb_logo_horizontal.png 를 상대경로로 사용한다.
+-->
+<style>
+  :root{
+    --blue:#4f46e5; --blue-rgb:79,70,229; --blue-d:#3730a3;
+    --bg:#ffffff; --surface:#f5f5f6; --border:#dcdce0; --divider:#e8e8ea;
+    --text:#2a2a2e; --bright:#000000; --muted:#6b6b70; --ok:#1e7d32; --warn:#a67c00;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:'Pretendard Variable',Pretendard,'Segoe UI','Noto Sans KR','Malgun Gothic',sans-serif;
+    font-size:15px;line-height:1.55;font-variant-numeric:tabular-nums}
+  a{color:inherit;text-decoration:none}
+  /* ---- header (HOM-001~003, 006) ---- */
+  .hdr{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border);background:#fff}
+  .hdr .logo img{height:28px;display:block}
+  .hdr .sub{font-size:.78rem;color:var(--muted)}
+  .hdr .right{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:.74rem;color:var(--muted)}
+  .status{border:1px solid var(--border);border-radius:999px;padding:3px 11px;background:var(--surface);white-space:nowrap}
+  /* ---- nav (HOM-004, 005) ---- */
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 10px;background:#fff;overflow-x:auto}
+  .tab{padding:8px 20px 7px;font-size:.92rem;border-bottom:2px solid transparent;color:var(--text);white-space:nowrap;display:flex;flex-direction:column;align-items:center;line-height:1.25}
+  .tab small{font-size:.62rem;color:var(--muted)}
+  .tab.on{border-bottom-color:var(--blue);color:var(--bright);font-weight:700}
+  .tab.core{font-weight:700}
+  .roadmap{display:flex;gap:6px;align-items:center;margin-left:auto;padding:6px 4px;font-size:.7rem;color:var(--muted)}
+  .chip{border:1px dashed var(--border);border-radius:999px;padding:1px 9px;color:#9a9aa0;cursor:default;user-select:none}
+  .chip b{font-weight:700;color:#b0b0b6;margin-left:3px;font-size:.62rem}
+  /* ---- home body ---- */
+  .home{width:100%;max-width:980px;margin:0 auto;padding:26px 20px 40px}
+  h1{font-size:1.7rem;line-height:1.3;margin:0 0 6px;color:var(--bright)}
+  .lead{max-width:780px;margin:0 0 14px}
+  .values{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+  .val{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fafaff}
+  .val b{display:block;color:var(--blue-d);margin-bottom:2px}
+  .val p{margin:0;font-size:.9rem}
+  .scope{max-width:780px;font-size:.95rem}
+  .scope .p2{font-size:.82rem;color:var(--muted)}
+  .btns{display:flex;gap:10px;align-items:center;margin:16px 0 22px;flex-wrap:wrap}
+  .btn{border-radius:8px;padding:9px 18px;font-weight:600;font-size:.95rem;border:1px solid var(--border);background:#fff;color:var(--text)}
+  .btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .btn .hint{display:block;font-weight:400;font-size:.72rem;color:var(--muted)}
+  h2{font-size:1.05rem;margin:22px 0 8px;color:var(--bright)}
+  h2 small{font-weight:400;color:var(--muted);font-size:.74rem;margin-left:8px}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .card{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff}
+  .card:hover{border-color:var(--blue)}
+  .card .t{font-size:.74rem;color:var(--muted)}
+  .card .v{font-size:1.45rem;font-weight:800;color:var(--bright);line-height:1.2;margin:2px 0}
+  .card .s{font-size:.74rem;color:var(--muted);line-height:1.35}
+  .card .src{font-size:.7rem;color:var(--muted);margin-top:4px}
+  .card .src a{text-decoration:underline dotted}
+  .card.hl{border-color:var(--blue)} .card.hl .v{color:var(--blue)}
+  .bar{height:6px;background:#ecebfb;border-radius:3px;margin:4px 0 2px}
+  .bar i{display:block;height:6px;border-radius:3px;background:var(--blue)}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .stp{border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:.88rem}
+  .stp b{display:block;color:var(--blue);font-weight:800;font-size:1.05rem}
+  .policy{font-size:.76rem;color:var(--muted);margin-top:22px;padding-top:10px;border-top:1px solid var(--divider)}
+  .empty{color:var(--muted);font-weight:400;font-size:1rem}
+  .badge{display:inline-block;font-size:.66rem;padding:0 6px;border-radius:8px;background:#f3f4f6;color:#555;margin-left:6px;vertical-align:middle}
+  @media (max-width:900px){.cards,.steps,.values{grid-template-columns:1fr 1fr}}
+  @media (max-width:768px){
+    .hdr{padding:8px 12px}.hdr .sub,.hdr .right span:not(.status){display:none}
+    .tab{font-size:.78rem;padding:9px 10px}.tab small{display:none}.roadmap{display:none}
+    .cards,.steps,.values{grid-template-columns:1fr}h1{font-size:1.3rem}.lead{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- 헤더: 로고(홈), 확장명/부제, 상태 요약. 로그인·역할 없음 -->
+<header class="hdr">
+  <a class="logo" href="/" aria-label="NANoDB 홈"><img src="../../assets/logo/nanodb_logo_horizontal.png" alt="NANoDB — Nano Assets, Never orphaned Database"></a>
+  <span class="sub">나노 자산은 고아가 되지 않는다 · 데이터는 쌓이고, 툴은 이어진다.</span>
+  <div class="right">
+    <span class="status" id="hdr-status">이미지 — · 측정 — · 기준 —</span>
+  </div>
+</header>
+
+<!-- 내비게이션: 구현된 3개만 탭. 로드맵은 비활성 칩 (클릭 없음) -->
+<nav class="tabs" aria-label="주 내비게이션">
+  <a class="tab on" href="/" aria-current="page"><span>홈</span><small>대의</small></a>
+  <a class="tab core" href="/images"><span>이미지DB</span><small>찾기</small></a>
+  <a class="tab core" href="/images/new"><span>이미지 등록</span><small>올리기</small></a>
+  <div class="roadmap" aria-label="로드맵(미구현)">
+    로드맵
+    <span class="chip" aria-disabled="true">라벨DB<b>P2</b></span>
+    <span class="chip" aria-disabled="true">피처<b>P2</b></span>
+    <span class="chip" aria-disabled="true">툴<b>P2</b></span>
+    <span class="chip" aria-disabled="true">계보<b>P2</b></span>
+    <span class="chip" aria-disabled="true">리포트<b>P2</b></span>
+    <span class="chip" aria-disabled="true">API<b>P2</b></span>
+  </div>
+</nav>
+
+<main class="home">
+  <!-- 1. 대의와 제품 한 문장 (HOM-008) -->
+  <h1>만드는 사람은 바뀌어도, 데이터와 도구는 회사에 남게</h1>
+  <p class="lead">NANoDB는 SEM·TEM 이미지를 제조 정보와 함께 등록하고, 이미지 위 두 점을 골라 실제 길이를 측정·저장하는 나노 자산 데이터베이스입니다. 담당자가 바뀌어도 이미지와 측정값은 같은 자리에 남습니다.</p>
+
+  <!-- 2. 세 가지 가치 (HOM-009) -->
+  <div class="values">
+    <div class="val"><b>누구나 만든다</b><p>비개발자도 자동화 툴을 만드는 시대. 이미지와 측정은 만든 사람이 아니라 회사 자산으로 등록됩니다.</p></div>
+    <div class="val"><b>누구나 꺼내 쓴다</b><p>등록된 이미지는 목록에서 찾고, 저장된 측정은 새로고침 후에도 같은 위치에 복원됩니다.</p></div>
+    <div class="val"><b>떠나도 남는다</b><p>원본은 read-only, 측정은 파생 데이터. 담당자 변경 후에도 이어집니다.</p></div>
+  </div>
+
+  <!-- 3. 처리 대상과 MVP 범위 (HOM-010, 011) -->
+  <p class="scope">SEM plane·TEM cross 이미지(PNG/JPEG)를 한곳에 모읍니다. 이번 MVP는 <b>이미지 등록·검색</b>과 <b>두 점 계측(CD·Depth·Thickness)·저장·복원</b>에 집중합니다.<br>
+  <span class="p2">로드맵(P2): SEM Hole 윤곽 라벨링, CDx·CDy·EPE·곡률·링 두께 자동 산출, 툴 등록·생존율, Image→Label→Feature→Tool→Owner 계보, API·에이전트 스킬.</span></p>
+
+  <!-- 4. CTA (HOM-012~015) -->
+  <div class="btns">
+    <a class="btn primary" href="/images">이미지 둘러보기 →</a>
+    <a class="btn" href="/images/new">이미지 등록</a>
+    <a class="btn" href="/images">측정 시작<span class="hint">목록에서 이미지를 고르면 측정 화면으로</span></a>
+  </div>
+
+  <!-- 5. 왜 지금인가 — 공개 통계, 정적 콘텐츠, 출처·연도 필수 (HOM-016~020) -->
+  <h2>왜 지금인가 <small>외부 공개 조사 · 출처와 발표 연도 병기 · NANoDB 실측값 아님</small></h2>
+  <div class="cards">
+    <div class="card"><div class="t">시민 개발자 : 전문 개발자 전망</div><div class="v">4 : 1</div><div class="s">비개발자가 만드는 툴이 개발자보다 많아진다</div><div class="src">Gartner 전망, 2021 · <a href="https://kissflow.com/citizen-development/gartner-on-citizen-development/" target="_blank" rel="noopener">출처</a></div></div>
+    <div class="card"><div class="t">조직 데이터 중 다크 데이터</div><div class="v">55%</div><div class="bar"><i style="width:55%"></i></div><div class="s">모아두지만 찾지도 쓰지도 못하는 데이터</div><div class="src">Splunk, 2019 · <a href="https://www.splunk.com/en_us/form/the-state-of-dark-data.html" target="_blank" rel="noopener">출처</a></div></div>
+    <div class="card"><div class="t">개인에게만 있는 조직 지식</div><div class="v">42%</div><div class="bar"><i style="width:42%"></i></div><div class="s">그 사람이 떠나면 동료가 그 일을 못 한다</div><div class="src">Panopto, 2018 · <a href="https://www.panopto.com/resource/ebook/valuing-workplace-knowledge/" target="_blank" rel="noopener">출처</a></div></div>
+    <div class="card"><div class="t">데이터 준비에 쓰는 시간</div><div class="v">38~45%</div><div class="bar"><i style="width:45%"></i></div><div class="s">정제·로딩이 모델링보다 크다</div><div class="src">Anaconda, 2020–2022 · <a href="https://www.bigdatawire.com/2020/07/06/data-prep-still-dominates-data-scientists-time-survey-finds/" target="_blank" rel="noopener">출처</a></div></div>
+  </div>
+
+  <!-- 6. 실제 KPI — /api/summary 만 사용 (HOM-021~025) -->
+  <h2>지금 쌓인 데이터 <small id="kpi-asof">집계 기준 —</small><span class="badge" id="kpi-note" hidden>예시 화면</span></h2>
+  <div class="cards" id="kpi">
+    <div class="card hl"><div class="t">전체 이미지</div><div class="v" id="k-images">0</div><div class="s" id="k-images-s">등록된 원본 · 종류별 —</div></div>
+    <div class="card hl"><div class="t">전체 측정</div><div class="v" id="k-meas">0</div><div class="s" id="k-meas-s">두 점 측정 · 저장된 파생 데이터</div></div>
+    <div class="card"><div class="t">CD 평균</div><div class="v" id="k-cd"><span class="empty">측정 없음</span></div><div class="s" id="k-cd-s">n=0</div></div>
+    <div class="card"><div class="t">Depth · Thickness 평균</div><div class="v" id="k-dt"><span class="empty">측정 없음</span></div><div class="s" id="k-dt-s">n=0 · n=0</div></div>
+  </div>
+
+  <!-- 7. 사용 흐름 (HOM-026) -->
+  <h2>이렇게 쓰세요</h2>
+  <div class="steps">
+    <div class="stp"><b>1</b>이미지 등록 — 종류·Product·Lot·Wafer·nm/pixel 입력</div>
+    <div class="stp"><b>2</b>이미지 선택 — 목록·검색에서 다시 열기</div>
+    <div class="stp"><b>3</b>두 점 측정 — CD·Depth·Thickness, nm/pixel로 실제 길이 계산</div>
+    <div class="stp"><b>4</b>저장·재확인 — 새로고침 후 같은 위치에 복원</div>
+  </div>
+
+  <!-- 8. 데이터 정책 (HOM-027) -->
+  <div class="policy">원본 read-only · 측정은 파생 데이터 · 실제 수치에는 n과 기준 시각 · 데모 이미지는 synthetic 또는 사용 권한이 확인된 자료</div>
+</main>
+
+<script>
+/* /api/summary 계약 (home-tab-requirements.md §7.2):
+   { "image_count": int, "measurement_count": int,
+     "images_by_type": {"SEM": int, "TEM": int},
+     "by_parameter": [ {"parameter": "CD"|"Depth"|"Thickness", "mean_nm": number|null, "n": int} ],
+     "as_of": ISO8601 }
+   실패·빈 데이터 → 0 / n=0 / 측정 없음. 예시값 대입 금지. */
+(function () {
+  const q = new URLSearchParams(location.search);
+  const fmt = (n) => (n == null ? "—" : Number(n).toLocaleString("ko-KR"));
+  const nm = (v) => (v == null ? '<span class="empty">측정 없음</span>' : v.toFixed(1) + " nm");
+  const asof = (iso) => { try { const d = new Date(iso); return d.toLocaleString("ko-KR", {hour12:false}); } catch (e) { return "—"; } };
+  function render(s, note) {
+    const byp = {}; (s.by_parameter || []).forEach(p => byp[p.parameter] = p);
+    const t = s.images_by_type || {};
+    document.getElementById("k-images").textContent = fmt(s.image_count || 0);
+    document.getElementById("k-images-s").textContent = "등록된 원본 · SEM " + fmt(t.SEM || 0) + " · TEM " + fmt(t.TEM || 0);
+    document.getElementById("k-meas").textContent = fmt(s.measurement_count || 0);
+    const cd = byp.CD || {}, dp = byp.Depth || {}, th = byp.Thickness || {};
+    document.getElementById("k-cd").innerHTML = nm(cd.n ? cd.mean_nm : null);
+    document.getElementById("k-cd-s").textContent = "n=" + (cd.n || 0);
+    document.getElementById("k-dt").innerHTML = (dp.n || th.n) ? (dp.n ? dp.mean_nm.toFixed(1) : "—") + " / " + (th.n ? th.mean_nm.toFixed(1) : "—") + " nm" : '<span class="empty">측정 없음</span>';
+    document.getElementById("k-dt-s").textContent = "Depth n=" + (dp.n || 0) + " · Thickness n=" + (th.n || 0);
+    document.getElementById("kpi-asof").textContent = "집계 기준 " + asof(s.as_of);
+    document.getElementById("hdr-status").textContent = "이미지 " + fmt(s.image_count || 0) + " · 측정 " + fmt(s.measurement_count || 0) + " · 기준 " + asof(s.as_of);
+    const n = document.getElementById("kpi-note"); n.hidden = !note; if (note) n.textContent = note;
+  }
+  const empty = { image_count: 0, measurement_count: 0, images_by_type: {SEM:0, TEM:0}, by_parameter: [], as_of: new Date().toISOString() };
+  if (q.get("state") === "demo") {
+    /* 스크린샷용 데모 상태. 실제 앱에서는 이 분기가 없다. 값은 data/samples/tem (12장) 등록 + 측정 5건 가정. */
+    render({ image_count: 12, measurement_count: 5, images_by_type: {SEM:0, TEM:12},
+      by_parameter: [{parameter:"CD", mean_nm: 27.4, n: 3}, {parameter:"Depth", mean_nm: 148.9, n: 2}, {parameter:"Thickness", mean_nm: null, n: 0}],
+      as_of: "2026-09-07T16:20:00+09:00" }, "예시 화면 · 실제 앱은 /api/summary 값만 표시");
+    return;
+  }
+  if (q.get("state") === "empty") { render(empty); return; }
+  fetch("/api/summary").then(r => r.ok ? r.json() : Promise.reject(r.status)).then(render).catch(() => render(empty));
+})();
+</script>
+</body>
+</html>

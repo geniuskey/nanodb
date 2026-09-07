@@ -1,6 +1,6 @@
 # NANoDB 홈 탭 요구사항
 
-> 기준 자료: `references/NanoDB_홈탭_구성.pdf`  
+> 기준 자료: `references/NanoDB_홈탭_구성.pdf` · 시안: [`home-tab/home-tab-mockup.html`](home-tab/home-tab-mockup.html) (§7)  
 > 적용 원칙: 심사용 메시지와 발표 흐름은 반영하되, 8시간 MVP에서 구현하지 않는 기능을 동작하는 것처럼 표현하지 않는다.
 
 ## 1. 목적과 범위
@@ -110,3 +110,77 @@ PDF가 제시한 전체 제품 온톨로지 `Image → Label → Feature → Too
 | Image → Label → Feature → Tool → Owner 계보 | 제품 방향 설명만 유지, 구현은 Image → Measurement |
 | API · 에이전트 스킬 | P2 로드맵, 내부 MVP API만 사용 |
 | 1,240 · 812 · 38.2 nm 등 | 예시값이므로 실제 KPI에 사용 금지 |
+
+## 7. 홈 탭 시안 (2026-09-07 추가)
+
+> 시안 파일: [`home-tab/home-tab-mockup.html`](home-tab/home-tab-mockup.html) — 정적 HTML 한 장, 외부 의존 없음. 브라우저에서 열면 그대로 홈 레이아웃이며, `/api/summary`가 있으면 실제 KPI를 채우고 없으면 빈 상태(`0`, `n=0`, `측정 없음`)를 보여준다.
+> 캡처 재생성: `python home-tab/shots.py` (Playwright). 아래 이미지는 이 시안의 캡처이며 데이터 값은 요구사항 HOM-024에 따라 예시가 아닌 **빈 상태** 또는 **"예시 화면" 라벨이 붙은 상태**만 담았다.
+
+### 7.1 캡처
+
+| 상태 | 이미지 | 설명 |
+| --- | --- | --- |
+| 데스크톱 1280, 데모 후 상태 | ![홈 데스크톱](home-tab/home-desktop.png) | `?state=demo`. KPI 영역에 `예시 화면` 배지가 붙는다. 실제 앱에는 이 분기가 없다 |
+| 데스크톱 1280, 빈 DB | ![홈 빈 상태](home-tab/home-empty.png) | 첫 실행·초기화 직후. `0`, `n=0`, `측정 없음` |
+| 첫 화면(스크롤 없음) | ![첫 화면](home-tab/home-first-viewport.png) | 수용 기준 1: 제목과 `이미지 둘러보기` CTA가 1280×800 안에 보인다 |
+| 모바일 390 | ![홈 모바일](home-tab/home-mobile.png) | HOM-028: 슬로건·보조 설명 숨김, 로고·주 CTA·KPI 유지 |
+
+### 7.2 `/api/summary` 응답 계약 (홈이 요구하는 최소 필드)
+
+홈은 아래 필드만 사용한다. `nanodb-mvp-requirements.md` §6의 `GET /api/summary`가 이 형태를 만족해야 한다.
+
+```json
+{
+  "image_count": 12,
+  "measurement_count": 5,
+  "images_by_type": { "SEM": 0, "TEM": 12 },
+  "by_parameter": [
+    { "parameter": "CD",        "mean_nm": 27.4,  "n": 3 },
+    { "parameter": "Depth",     "mean_nm": 148.9, "n": 2 },
+    { "parameter": "Thickness", "mean_nm": null,  "n": 0 }
+  ],
+  "as_of": "2026-09-07T16:20:00+09:00"
+}
+```
+
+- `n = 0`이면 `mean_nm`은 `null`이고 홈은 `측정 없음`을 표시한다 (HOM-024).
+- `as_of`는 서버가 집계한 시각(ISO 8601)이며 헤더 상태와 KPI 제목 옆에 같은 값을 쓴다 (HOM-003, HOM-023).
+- 요청 실패 시 홈은 빈 상태를 표시하고 오류 텍스트를 KPI 제목 옆에 적는다. 예시값을 대신 넣지 않는다.
+
+### 7.3 시안 ↔ 요구사항 대응
+
+| 시안 영역 | 요구사항 | 구현 메모 |
+| --- | --- | --- |
+| 헤더 로고 → `/` | HOM-001 | `assets/logo/nanodb_logo_horizontal.png` 사용, 높이 28px |
+| 헤더 슬로건 `나노 자산은 고아가 되지 않는다 · 데이터는 쌓이고, 툴은 이어진다.` | HOM-002 | 768px 이하 숨김 |
+| 헤더 상태 pill `이미지 N · 측정 N · 기준 시각` | HOM-003 | `/api/summary`만 사용 |
+| 탭 `홈 · 이미지DB · 이미지 등록` + 힌트 | HOM-004 | 밑줄형 활성 표시, `aria-current="page"` |
+| 로드맵 칩 `라벨DB · 피처 · 툴 · 계보 · 리포트 · API` (P2) | HOM-005 | 점선 테두리 `span`, `aria-disabled`, href 없음. 탭 줄 오른쪽에 두어 탭과 구분 |
+| 로그인·역할 없음 | HOM-006 | 헤더 우측에는 상태 pill만 |
+| 본문 8순서 | HOM-007 | 대의 → 세 가치 → 범위 → CTA → 공개 통계 → KPI → 사용 흐름 → 정책 |
+| h1 `만드는 사람은 바뀌어도, 데이터와 도구는 회사에 남게` | HOM-008 | |
+| 세 가치 카드 | HOM-009 | 문구를 MVP 기능(등록·복원·파생 데이터)으로 서술 |
+| 범위 문단 + 로드맵 한 줄 | HOM-010, 011 | Hole 피처·라벨링은 `로드맵(P2)` 접두어로만 언급 |
+| CTA 3개 → `/images`, `/images/new`, `/images`(측정은 이미지 선택 후) | HOM-012~015 | 라우트 이름은 구현 시 확정. 미구현 CTA 없음 |
+| 공개 통계 4카드: 수치 · 뜻 · 출처 · 연도 · 링크 | HOM-016~020 | 정적 콘텐츠. 카드 순서: Gartner 2021, Splunk 2019, Panopto 2018, Anaconda 2020–2022 |
+| KPI 4카드: 전체 이미지(종류별) · 전체 측정 · CD 평균(n) · Depth/Thickness 평균(n) | HOM-021~025 | 생존율·완료율·검수 없음 |
+| 사용 흐름 4단계 | HOM-026 | 등록 → 선택 → 두 점 측정 → 저장·재확인 |
+| 정책 줄 | HOM-027 | 4항목 그대로 |
+
+### 7.4 스타일 토큰
+
+| 토큰 | 값 | 용도 |
+| --- | --- | --- |
+| `--blue` | `#4f46e5` | 활성 탭 밑줄, primary CTA, KPI 강조, 통계 막대 |
+| `--bright` / `--text` / `--muted` | `#000` / `#2a2a2e` / `#6b6b70` | 제목 / 본문 / 보조 |
+| `--border` / `--surface` | `#dcdce0` / `#f5f5f6` | 카드 테두리 / 상태 pill 배경 |
+| 폰트 | Pretendard → Segoe UI → Noto Sans KR → Malgun Gothic, `tabular-nums` | 숫자 자리폭 고정 |
+| 폭 | 본문 `max-width: 980px`, 문단 `780px` | 1280 시연 화면 기준 |
+| 카드 | `border 1px`, `radius 10px`, hover 시 테두리 `--blue` | 그림자 없음 |
+
+### 7.5 구현 시 주의
+
+- 홈 HTML에는 h1·세 가치·정책 문구가 JS 없이도 존재해야 한다(정적 골격). KPI만 JS로 채운다.
+- 로드맵 칩은 `<a>`나 `<button>`으로 만들지 않는다. 클릭 가능한 것처럼 보이면 HOM-005 위반.
+- 공개 통계 카드의 링크는 `target="_blank" rel="noopener"`.
+- 시안의 `?state=demo` 분기는 캡처 전용이며 앱 코드에 옮기지 않는다.

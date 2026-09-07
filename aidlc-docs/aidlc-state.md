@@ -51,3 +51,11 @@
 - **Complexity**: Simple
 - **Requirements Depth**: Minimal
 - **Clarification Status**: Complete. The user accepted the recommended extension choices B/B/C.
+
+## Pending Requirement Amendments
+
+- **Brand Name**: NANoDB
+- **Expansion**: Nano Assets, Never orphaned Database
+- **Korean Meaning**: 나노 자산은 고아가 되지 않는다
+- **Subtitle**: 데이터는 쌓이고, 툴은 이어진다.
+- **Status**: Applied to README and requirements; requirements review remains pending.

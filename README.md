@@ -1,17 +1,19 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/nanodb_logo_horizontal_dark.png">
-    <img src="assets/logo/nanodb_logo_horizontal.png" alt="NANoDB — Nano assets, never orphaned" width="720">
+    <img src="assets/logo/nanodb_logo_horizontal.png" alt="NANoDB — Nano Assets, Never orphaned Database" width="720">
   </picture>
 </p>
 
 <p align="center">
-  SEM/TEM 이미지와 제조 메타데이터, 측정 근거를 함께 보존하는 8시간 해커톤 MVP
+  <strong>NANoDB: Nano Assets, Never orphaned Database.</strong><br>
+  나노 자산은 고아가 되지 않는다<br>
+  <sub>데이터는 쌓이고, 툴은 이어진다.</sub>
 </p>
 
-# NanoDB
+# NANoDB
 
-NanoDB는 SEM/TEM 이미지를 Product, Lot, Wafer 등의 제조 식별정보와 함께 등록하고, 이미지 위 두 점을 선택해 실제 길이를 측정·저장하는 경량 웹 애플리케이션입니다.
+NANoDB는 SEM/TEM 이미지를 Product, Lot, Wafer 등의 제조 식별정보와 함께 등록하고, 이미지 위 두 점을 선택해 실제 길이를 측정·저장하는 경량 웹 애플리케이션입니다. 이름은 `Nano Assets, Never orphaned Database`에서 왔으며, 나노 자산이 담당자나 도구의 변화 속에서도 고아가 되지 않게 하는 것을 지향합니다.
 
 > 현재 저장소에는 MVP 요구사항, AI-DLC 워크플로우, 로고와 검증된 샘플 데이터가 준비되어 있습니다. 웹 애플리케이션 구현은 다음 단계입니다.
 
@@ -83,7 +85,7 @@ nanodb_mvp/
 
 ## 요구사항 문서
 
-- [NanoDB 8시간 MVP 요구사항](requirements/nanodb-mvp-requirements.md)
+- [NANoDB 8시간 MVP 요구사항](requirements/nanodb-mvp-requirements.md)
 - [홈 탭 요구사항](requirements/home-tab-requirements.md)
 - [의도적 제외사항](requirements/constraints.md)
 - [AI-DLC 통합 요구사항](aidlc-docs/inception/requirements/requirements.md)

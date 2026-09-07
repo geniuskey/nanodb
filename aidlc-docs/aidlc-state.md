@@ -45,11 +45,11 @@
 
 ## Current Request Assessment
 
-- **Request**: Merge the supplied Project Vision and Problem Statement into `aidlc-docs/inception/requirements/requirements.md`
+- **Request**: Review and strengthen the requirements, data, constraints, and other foundations before immediate hackathon inception
 - **Request Type**: Requirements enhancement
-- **Scope**: Product vision, problem framing, long-term outcomes, and reconciliation with the existing 8-hour MVP boundary
-- **Complexity**: Simple
-- **Requirements Depth**: Minimal
+- **Scope**: Product vision, P0/P1 scope, data readiness, measurable acceptance criteria, timebox gates, and cross-document consistency
+- **Complexity**: Moderate
+- **Requirements Depth**: Standard
 - **Clarification Status**: Complete. The user accepted the recommended extension choices B/B/C.
 
 ## Pending Requirement Amendments
@@ -61,3 +61,4 @@
 - **Project Vision**: Development-stage SEM/TEM/Layout traceability and flexible structure-parameter management
 - **Scope Reconciliation**: Long-term capabilities are separated from the current image-to-measurement MVP
 - **Status**: Applied to requirements; requirements review remains pending.
+- **Foundation Review**: Applied P0/P1 prioritization, TIFF-to-demo-data preparation rules, measurable coordinate restoration criteria, reset/persistence checks, and 5/6/7-hour timebox gates. Requirements review remains pending.

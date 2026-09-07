@@ -4,7 +4,7 @@
 
 ## 구조
 
-- `images/`: 로컬 TIFF 샘플. 재배포 권한 확인 전까지 `.gitignore`로 제외한다.
+- `images/`: 프로젝트 소유자가 저장소 사용을 승인한 TIFF 샘플. 현재 Git에서 추적한다.
 - `metadata.csv`: 이미지 파일명, 정규화된 메타데이터, 원래 파일명, SHA-256, 출처 상태를 기록한 manifest다.
 - `scripts/tem_metadata.py`: TIFF private tag `65000`~`65004`를 읽고 파생 복사본을 만드는 도구다.
 

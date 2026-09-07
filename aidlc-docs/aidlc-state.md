@@ -45,9 +45,9 @@
 
 ## Current Request Assessment
 
-- **Request**: Review and strengthen the requirements, data, constraints, and other foundations before immediate hackathon inception
-- **Request Type**: Requirements enhancement
-- **Scope**: Product vision, P0/P1 scope, data readiness, measurable acceptance criteria, timebox gates, and cross-document consistency
+- **Request**: Reconcile review findings for a five-person team with one implementation/demo owner and a minimal post-hackathon evaluation site
+- **Request Type**: Documentation feature and deployment automation
+- **Scope**: Single-writer collaboration, independent data/docs/QA handoffs, consistent time gates and measurement criteria, two-page VitePress introduction/evidence, AI judging rubric and peer evaluation
 - **Complexity**: Moderate
 - **Requirements Depth**: Standard
 - **Clarification Status**: Complete. The user accepted the recommended extension choices B/B/C.
@@ -62,3 +62,15 @@
 - **Scope Reconciliation**: Long-term capabilities are separated from the current image-to-measurement MVP
 - **Status**: Applied to requirements; requirements review remains pending.
 - **Foundation Review**: Applied P0/P1 prioritization, TIFF-to-demo-data preparation rules, measurable coordinate restoration criteria, reset/persistence checks, and 5/6/7-hour timebox gates. Requirements review remains pending.
+- **Team Documentation Amendment**: Added five-role ownership and handoff requirements plus VitePress/GitHub Pages build and deployment requirements. Review remains pending before Workflow Planning.
+
+## Review Corrections Applied
+
+- [x] Separate the minimal evaluation site from application deployment exclusions.
+- [x] Align the schedule with first restoration at hour 4, P0 at hour 5 and feature freeze at hour 6.
+- [x] Define one code/Git/demo owner and four independent data, product-content, QA and evaluation-evidence owners.
+- [x] Unify two-decimal display rounding and home section order.
+- [x] Add independent coordinate-transform accuracy criteria at two display scales.
+- [x] Record AI judging weights (25/20/15/15/15/10), evidence mapping and peer evaluation boundaries.
+
+The user authorized these requirements corrections. They are applied; application implementation and site construction have not been performed in this amendment. Existing extension choices remain disabled. Official peer-evaluation scoring and submission mechanics have not been provided.

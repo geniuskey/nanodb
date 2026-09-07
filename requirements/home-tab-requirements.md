@@ -28,9 +28,9 @@ PDF가 제시한 전체 제품 온톨로지 `Image → Label → Feature → Too
 ### 3.1 헤더와 내비게이션
 
 - **HOM-001:** NANoDB 로고를 선택하면 홈(`/`)으로 이동해야 한다.
-- **HOM-002:** 브랜드 확장명 `Nano Assets, Never orphaned Database`, 한국어 의미 `나노 자산은 고아가 되지 않는다`, 부제 `데이터는 쌓이고, 툴은 이어진다.`를 데스크톱 헤더 또는 히어로 영역에 표시해야 한다.
+- **HOM-002 (2026-09-07 개정):** 브랜드 줄 `NANoDB : Nano Assets, Never orphaned Database.`와 부제 `데이터는 쌓이고, 툴은 이어진다`를 데스크톱 헤더 또는 히어로 영역에 표시해야 한다. 한국어 직역(`나노 자산은 고아가 되지 않는다`)은 화면에 표시하지 않는다(구두 설명 전용).
 - **HOM-003:** 헤더 상태 영역에는 실제 이미지 수, 실제 측정 수, 집계 기준 시각을 표시해야 한다.
-- **HOM-004:** 주 내비게이션은 최소 `홈`, `이미지DB`, `이미지 등록`을 제공하고 현재 위치를 표시해야 한다.
+- **HOM-004:** 주 내비게이션은 최소 `홈`, `이미지DB`, `이미지 등록`을 제공하고 현재 위치를 표시해야 한다. 헤더·내비의 모양은 기존 nanodb 앱의 chrome(56px topbar, 로고+부제, pill 내비, `app.css` 토큰)을 그대로 따르고, 홈 탭은 첫 항목으로 추가한다 — 헤더를 새로 디자인하지 않는다.
 - **HOM-005:** LabelDB, Feature, Tool, Owner/Lineage, Report, API를 전체 제품 방향으로 노출할 경우, 미구현 항목은 `준비 중` 또는 `P2`로 표시하고 클릭 동작을 제공하지 않아야 한다.
 - **HOM-006:** 로그인, 역할 배지와 권한별 메뉴는 표시하지 않아야 한다. 정적인 발표용 역할 문구도 실제 로그인 상태로 오인되지 않게 해야 한다.
 
@@ -111,12 +111,20 @@ PDF가 제시한 전체 제품 온톨로지 `Image → Label → Feature → Too
 | API · 에이전트 스킬 | P2 로드맵, 내부 MVP API만 사용 |
 | 1,240 · 812 · 38.2 nm 등 | 예시값이므로 실제 KPI에 사용 금지 |
 
-## 7. 홈 탭 시안 (2026-09-07 추가)
+## 7. 홈 탭 시안 (2026-09-07 추가 · 같은 날 개정: 기존 nanodb chrome 유지)
 
 > 시안 파일: [`home-tab/home-tab-mockup.html`](home-tab/home-tab-mockup.html) — 정적 HTML 한 장, 외부 의존 없음. 브라우저에서 열면 그대로 홈 레이아웃이며, `/api/summary`가 있으면 실제 KPI를 채우고 없으면 빈 상태(`0`, `n=0`, `측정 없음`)를 보여준다.
 > 캡처 재생성: `python home-tab/shots.py` (Playwright). 아래 이미지는 이 시안의 캡처이며 데이터 값은 요구사항 HOM-024에 따라 예시가 아닌 **빈 상태** 또는 **"예시 화면" 라벨이 붙은 상태**만 담았다.
 
 ### 7.1 캡처
+
+**실제 실행 화면 (기존 nanodb 앱에 Home 탭을 추가한 결과, `home.reference.js`)**
+
+![홈 실행 화면](home-tab/home-live.png)
+
+참고 구현: [`home-tab/home.reference.js`](home-tab/home.reference.js) — 기존 `el/panel/stat/grid` 프리미티브만 사용, 헤더 변경은 로고 이미지·부제·Home 항목 추가뿐. KPI는 `/dashboard`·`/images`·`/analysis`(approved만) 호출.
+
+**정적 시안 (MVP용, 같은 chrome 토큰)**
 
 | 상태 | 이미지 | 설명 |
 | --- | --- | --- |
@@ -151,10 +159,10 @@ PDF가 제시한 전체 제품 온톨로지 `Image → Label → Feature → Too
 
 | 시안 영역 | 요구사항 | 구현 메모 |
 | --- | --- | --- |
-| 헤더 로고 → `/` | HOM-001 | 헤더는 태그라인 없는 `assets/logo/nanodb_logo_horizontal_notag.svg`(높이 28px). 태그라인 포함 PNG는 28px에서 글자가 뭉개져 표지·README 전용. 파비콘 `assets/logo/nanodb_favicon.svg` |
-| 헤더 슬로건 `나노 자산은 고아가 되지 않는다 · 데이터는 쌓이고, 툴은 이어진다.` | HOM-002 | 768px 이하 숨김 |
+| 헤더 로고 → `/` | HOM-001 | `assets/logo/nanodb_logo_horizontal.png` 그대로, 높이 36px (기존 topbar 56px 안). 파비콘 `assets/logo/nanodb_favicon.svg` |
+| 헤더 부제 `데이터는 쌓이고, 툴은 이어진다` · 히어로 브랜드 줄 `NANoDB : Nano Assets, Never orphaned Database.` | HOM-002 | 한국어 직역 없음. 768px 이하 부제 숨김 |
 | 헤더 상태 pill `이미지 N · 측정 N · 기준 시각` | HOM-003 | `/api/summary`만 사용 |
-| 탭 `홈 · 이미지DB · 이미지 등록` + 힌트 | HOM-004 | 밑줄형 활성 표시, `aria-current="page"` |
+| 탭 `홈 · 이미지DB · 이미지 등록` + 힌트 | HOM-004 | 기존 nanodb pill 내비(활성 = 연한 파랑 배경), `aria-current="page"` |
 | 로드맵 칩 `라벨DB · 피처 · 툴 · 계보 · 리포트 · API` (P2) | HOM-005 | 점선 테두리 `span`, `aria-disabled`, href 없음. 탭 줄 오른쪽에 두어 탭과 구분 |
 | 로그인·역할 없음 | HOM-006 | 헤더 우측에는 상태 pill만 |
 | 본문 8순서 | HOM-007 | 대의 → 세 가치 → 범위 → CTA → 공개 통계 → KPI → 사용 흐름 → 정책 |
@@ -171,9 +179,9 @@ PDF가 제시한 전체 제품 온톨로지 `Image → Label → Feature → Too
 
 | 토큰 | 값 | 용도 |
 | --- | --- | --- |
-| `--blue` | `#4f46e5` | 활성 탭 밑줄, primary CTA, KPI 강조, 통계 막대 |
-| `--bright` / `--text` / `--muted` | `#000` / `#2a2a2e` / `#6b6b70` | 제목 / 본문 / 보조 |
-| `--border` / `--surface` | `#dcdce0` / `#f5f5f6` | 카드 테두리 / 상태 pill 배경 |
+| `--accent` | `#1d5fb4` (기존 `app.css`) | 활성 탭 배경, primary CTA, KPI 강조, 통계 막대 |
+| `--ink` / `--ink-soft` / `--ink-faint` | `#16202c` / `#5a6b7d` / `#8a99a8` (기존 `app.css`) | 제목·본문 / 보조 / 힌트 |
+| `--line` / `--panel-2` / `--bg` | `#dde3ea` / `#fafbfc` / `#f4f6f9` (기존 `app.css`) | 카드 테두리 / 칩 배경 / 페이지 배경 |
 | 폰트 | Pretendard → Segoe UI → Noto Sans KR → Malgun Gothic, `tabular-nums` | 숫자 자리폭 고정 |
 | 폭 | 본문 `max-width: 980px`, 문단 `780px` | 1280 시연 화면 기준 |
 | 카드 | `border 1px`, `radius 10px`, hover 시 테두리 `--blue` | 그림자 없음 |

@@ -10,13 +10,14 @@
   - KPI 는 /api/summary 응답으로만 채운다 (예시값 금지, HOM-024). 이 파일은 fetch 실패 시 빈 상태(0 / n=0 / 측정 없음)를 보여준다.
   - ?state=demo  : 데모 후 상태 예시 (스크린샷용, 값은 "예시 화면" 라벨과 함께만 표시)
   - ?state=empty : 빈 DB 상태
-  - 헤더 로고는 태그라인 없는 assets/logo/nanodb_logo_horizontal_notag.svg (28px 높이에서 태그라인이 뭉개지므로). 태그라인 포함 PNG는 표지·README용.
+  - 헤더는 기존 nanodb 앱 chrome(56px topbar, 로고+부제, pill 내비, 파란 #1d5fb4)을 따른다. 로고는 assets/logo/nanodb_logo_horizontal.png 그대로.
+  - 한국어 직역(고아…)은 표시하지 않는다. 브랜드 줄은 'NANoDB : Nano Assets, Never orphaned Database.' + 부제만.
 -->
 <style>
   :root{
-    --blue:#4f46e5; --blue-rgb:79,70,229; --blue-d:#3730a3;
-    --bg:#ffffff; --surface:#f5f5f6; --border:#dcdce0; --divider:#e8e8ea;
-    --text:#2a2a2e; --bright:#000000; --muted:#6b6b70; --ok:#1e7d32; --warn:#a67c00;
+    --blue:#1d5fb4; --blue-rgb:29,95,180; --blue-d:#17509c; --accent-soft:#e8f0fb;
+    --bg:#f4f6f9; --surface:#fafbfc; --border:#dde3ea; --divider:#e8edf2;
+    --text:#16202c; --bright:#16202c; --muted:#5a6b7d; --ok:#1e7d32; --warn:#a67c00;
   }
   *{box-sizing:border-box}
   [hidden]{display:none!important}
@@ -25,22 +26,23 @@
     font-size:15px;line-height:1.55;font-variant-numeric:tabular-nums}
   a{color:inherit;text-decoration:none}
   /* ---- header (HOM-001~003, 006) ---- */
-  .hdr{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border);background:#fff}
-  .hdr .logo img{height:28px;display:block}
+  .hdr{display:flex;align-items:center;gap:24px;padding:0 20px;height:56px;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0}
+  .hdr .logo{display:flex;flex-direction:column;line-height:1.15}.hdr .logo img{height:36px;display:block}.hdr .logo small{font-size:11px;color:#8a99a8}
   .hdr .sub{font-size:.78rem;color:var(--muted)}
   .hdr .right{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:.74rem;color:var(--muted)}
   .status{border:1px solid var(--border);border-radius:999px;padding:3px 11px;background:var(--surface);white-space:nowrap}
   /* ---- nav (HOM-004, 005) ---- */
-  .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 10px;background:#fff;overflow-x:auto}
-  .tab{padding:8px 20px 7px;font-size:.92rem;border-bottom:2px solid transparent;color:var(--text);white-space:nowrap;display:flex;flex-direction:column;align-items:center;line-height:1.25}
+  .tabs{display:flex;gap:2px;flex:1;background:#fff;padding:0}
+  .tab{padding:7px 12px;font-size:14px;border-radius:8px;color:#5a6b7d;white-space:nowrap;display:flex;flex-direction:column;align-items:center;line-height:1.2}
   .tab small{font-size:.62rem;color:var(--muted)}
-  .tab.on{border-bottom-color:var(--blue);color:var(--bright);font-weight:700}
-  .tab.core{font-weight:700}
+  .tab.on{background:var(--accent-soft);color:var(--blue);font-weight:600}
+  .tab.core{font-weight:500}
   .roadmap{display:flex;gap:6px;align-items:center;margin-left:auto;padding:6px 4px;font-size:.7rem;color:var(--muted)}
   .chip{border:1px dashed var(--border);border-radius:999px;padding:1px 9px;color:#9a9aa0;cursor:default;user-select:none}
   .chip b{font-weight:700;color:#b0b0b6;margin-left:3px;font-size:.62rem}
   /* ---- home body ---- */
   .home{width:100%;max-width:980px;margin:0 auto;padding:26px 20px 40px}
+  .brandline{font-size:.9rem;color:var(--muted);margin-bottom:6px}.brandline b{color:var(--text)}
   h1{font-size:1.7rem;line-height:1.3;margin:0 0 6px;color:var(--bright)}
   .lead{max-width:780px;margin:0 0 14px}
   .values{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
@@ -74,7 +76,7 @@
   .badge{display:inline-block;font-size:.66rem;padding:0 6px;border-radius:8px;background:#f3f4f6;color:#555;margin-left:6px;vertical-align:middle}
   @media (max-width:900px){.cards,.steps,.values{grid-template-columns:1fr 1fr}}
   @media (max-width:768px){
-    .hdr{padding:8px 12px}.hdr .sub,.hdr .right span:not(.status){display:none}
+    .hdr{padding:8px 12px}.hdr .logo small,.hdr .right span:not(.status){display:none}
     .tab{font-size:.78rem;padding:9px 10px}.tab small{display:none}.roadmap{display:none}
     .cards,.steps,.values{grid-template-columns:1fr}h1{font-size:1.3rem}.lead{display:none}
   }
@@ -84,15 +86,8 @@
 
 <!-- 헤더: 로고(홈), 확장명/부제, 상태 요약. 로그인·역할 없음 -->
 <header class="hdr">
-  <a class="logo" href="/" aria-label="NANoDB 홈"><img src="../../assets/logo/nanodb_logo_horizontal_notag.svg" alt="NANoDB — Nano Assets, Never orphaned Database"></a>
-  <span class="sub">나노 자산은 고아가 되지 않는다 · 데이터는 쌓이고, 툴은 이어진다.</span>
-  <div class="right">
-    <span class="status" id="hdr-status">이미지 — · 측정 — · 기준 —</span>
-  </div>
-</header>
-
-<!-- 내비게이션: 구현된 3개만 탭. 로드맵은 비활성 칩 (클릭 없음) -->
-<nav class="tabs" aria-label="주 내비게이션">
+  <a class="logo" href="/" aria-label="NANoDB 홈"><img src="../../assets/logo/nanodb_logo_horizontal.png" alt="NANoDB — Nano Assets, Never orphaned Database"><small>데이터는 쌓이고, 툴은 이어진다</small></a>
+  <nav class="tabs" aria-label="주 내비게이션">
   <a class="tab on" href="/" aria-current="page"><span>홈</span><small>대의</small></a>
   <a class="tab core" href="/images"><span>이미지DB</span><small>찾기</small></a>
   <a class="tab core" href="/images/new"><span>이미지 등록</span><small>올리기</small></a>
@@ -105,10 +100,13 @@
     <span class="chip" aria-disabled="true">리포트<b>P2</b></span>
     <span class="chip" aria-disabled="true">API<b>P2</b></span>
   </div>
-</nav>
+  </nav>
+  <div class="right"><span class="status" id="hdr-status">이미지 — · 측정 — · 기준 —</span></div>
+</header>
 
 <main class="home">
-  <!-- 1. 대의와 제품 한 문장 (HOM-008) -->
+  <!-- 1. 대의와 제품 한 문장 (HOM-002, 008) -->
+  <div class="brandline"><b>NANoDB : Nano Assets, Never orphaned Database.</b> <span>데이터는 쌓이고, 툴은 이어진다</span></div>
   <h1>만드는 사람은 바뀌어도, 데이터와 도구는 회사에 남게</h1>
   <p class="lead">NANoDB는 SEM·TEM 이미지를 제조 정보와 함께 등록하고, 이미지 위 두 점을 골라 실제 길이를 측정·저장하는 나노 자산 데이터베이스입니다. 담당자가 바뀌어도 이미지와 측정값은 같은 자리에 남습니다.</p>
 

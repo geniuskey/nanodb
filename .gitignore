@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Local runtime state
+*.db
+*.sqlite
+*.sqlite3
+var/
+storage/uploads/
+data/raw/
+data/generated/

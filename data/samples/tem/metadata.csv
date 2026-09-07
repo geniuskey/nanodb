@@ -1,0 +1,13 @@
+sample_id,filename,original_filename,device,scrap_step,length_nm_per_pixel,line_name,hole_name,sha256,source,license,is_synthetic
+tem_001,tem_001.tif,2022122919105857.tif,DRAM,63.4,0.6295,LINE-01,HOLE-01,a2a218e65098e55d70a919a9c96a0cfdd94b08b88bd11be4e65a73811bf3dece,project_owner_provided,PROJECT_AUTHORIZED,unknown
+tem_002,tem_002.tif,3.tif,Flash,40.3,0.4478,LINE-02,HOLE-02,a918fb888ad69407383bc9c246fd9672dd8dd6761515f13aaeaec712787bfc0e,project_owner_provided,PROJECT_AUTHORIZED,unknown
+tem_003,tem_003.tif,5187.ibmgaa.jpg-350x0.tif,Logic,62.6,0.7697,LINE-03,HOLE-03,7a6f41450e74ee1b1e1d6bca991f446cab46d49d0890814be8591561c2e4bbc6,project_owner_provided,PROJECT_AUTHORIZED,unknown
+tem_004,tem_004.tif,images (1).tif,Logic,6.2,0.4772,LINE-12,HOLE-12,aa555a0766e19fd56a57d980faa2245cad66459821f2edd50e5c7f7414f3284b,project_owner_provided,PROJECT_AUTHORIZED,unknown
+tem_005,tem_005.tif,images.tif,DRAM,2.1,0.7679,LINE-13,HOLE-13,d2f18388da51878ea39785ee143c6bb2d5856532974fd2430753636fe00535a8,project_owner_provided,PROJECT_AUTHORIZED,unknown
+tem_006,tem_006.tif,TEM10.tif,Logic,65.7,0.8709,LINE-05,HOLE-05,974218f5e4dd7204b9aa423ccd1dd5444f8a1187c52002c67e8fccf910752bcb,project_owner_provided,PROJECT_AUTHORIZED,unknown
+tem_007,tem_007.tif,TEM3.tif,Flash,STEP_ETCH_01,0.7793,LINE-06,HOLE-06,25faa569ea4c0be458b5722ed1bb2a23a7ec622a84c14215d220d7d33bdd624e,project_owner_provided,PROJECT_AUTHORIZED,unknown
+tem_008,tem_008.tif,TEM4.tif,Flash,30.0,0.7960,LINE-07,HOLE-07,e0c5adae4673f9a3f6333932b7dcd755139a75107fc54671348e7d33419dde74,project_owner_provided,PROJECT_AUTHORIZED,unknown
+tem_009,tem_009.tif,TEM5.tif,DRAM,5.8,0.7708,LINE-08,HOLE-08,7b55dc863d503ad918a3994300ac68196793b3c2b4b00ae23d5e6f8b4c2c9be5,project_owner_provided,PROJECT_AUTHORIZED,unknown
+tem_010,tem_010.tif,TEM7.tif,Flash,11.0,0.9855,LINE-09,HOLE-09,1ba94dfeca5089d331079745a0bb639ee128f86d367a455ca0f902a5dee4a86a,project_owner_provided,PROJECT_AUTHORIZED,unknown
+tem_011,tem_011.tif,TEM9.tif,Flash,18.4,0.4435,LINE-11,HOLE-11,6c24b66ef4ae2aeb73fac7f243bad75e58b2367cc065e05f66bf8b36ddcbbfb9,project_owner_provided,PROJECT_AUTHORIZED,unknown
+tem_012,tem_012.tif,transistor.tif,DRAM,63.2,0.6422,LINE-14,HOLE-14,aea67e07e2ed727c8eeee0dbf34d8ed303f8b8df16776d7b29a75911a3cd871b,project_owner_provided,PROJECT_AUTHORIZED,unknown

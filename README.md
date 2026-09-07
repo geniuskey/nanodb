@@ -13,7 +13,7 @@
 
 # NANoDB
 
-NANoDB는 SEM/TEM 이미지를 Product, Lot, Wafer 등의 제조 식별정보와 함께 등록하고, 이미지 위 두 점을 선택해 실제 길이를 측정·저장하는 경량 웹 애플리케이션입니다. 이름은 `Nano Assets, Never orphaned Database`에서 왔으며, 나노 자산이 담당자나 도구의 변화 속에서도 고아가 되지 않게 하는 것을 지향합니다.
+NANoDB는 반도체 SEM/TEM 이미지와 측정 근거를 축적하고, 이를 AI 기반 분석 소프트웨어 개발에 필요한 컨텍스트와 검증 데이터로 재사용하는 경량 웹 애플리케이션입니다. 이름은 `Nano Assets, Never orphaned Database`에서 왔으며, 나노 자산이 담당자나 도구의 변화 속에서도 고아가 되지 않게 하는 것을 지향합니다.
 
 > 현재 저장소에는 MVP 요구사항, AI-DLC 워크플로우, 로고와 검증된 샘플 데이터가 준비되어 있습니다. 웹 애플리케이션 구현은 다음 단계입니다.
 
@@ -25,10 +25,14 @@ NANoDB는 SEM/TEM 이미지를 Product, Lot, Wafer 등의 제조 식별정보와
 4. `nm/pixel` 보정값으로 실제 길이를 계산합니다.
 5. 저장된 좌표와 측정값을 새로고침 후에도 같은 위치에 복원합니다.
 6. 홈에서 실제 이미지 수와 측정 수를 확인합니다.
+7. 선택 이미지의 명세·측정 데이터·개발 요청·검증 기준을 담은 ZIP을 내보냅니다.
+8. 기존 AI 개발 도구에서 요약 CSV 생성 스크립트를 만들고 로컬에서 검증합니다. 이 단계는 앱 외부의 수동 개발 데모입니다.
+
+위 항목은 구현 목표입니다. 계측 기반을 먼저 검증한 후 개발 컨텍스트 기능을 구현하며, 두 게이트와 생성 코드 검증이 모두 통과해야 대회용 MVP 완료입니다. 수동 측정은 미검토 참고값이며 자동 계측의 정답으로 취급하지 않습니다.
 
 단일 키워드 검색, 측정 삭제와 항목별 표본 수·평균은 P0 전체 흐름이 안정된 뒤 구현하는 P1 항목입니다.
 
-윤곽 라벨링, 피처 자동 추출, Tool 등록, Lineage, Report는 이번 8시간 MVP의 후속 로드맵입니다.
+윤곽 라벨링, 피처 자동 추출, Tool 등록, Lineage, Report는 이번 3일 MVP의 후속 로드맵입니다.
 
 ## 샘플 데이터
 
@@ -78,7 +82,7 @@ nanodb_mvp/
 │   ├── tem/                     # TEM 이미지와 manifest
 │   └── layout/                  # 센서·DRAM layout과 manifest
 ├── scripts/                     # 메타데이터 읽기와 샘플 검증
-├── requirements/                # 8시간 MVP 요구사항
+├── requirements/                # 3일 MVP 요구사항
 ├── references/                  # 로고·홈 탭 기준 PDF
 ├── aidlc-docs/                  # AI-DLC 상태와 산출물
 ├── AGENTS.md                    # Codex용 AI-DLC 지침
@@ -87,7 +91,7 @@ nanodb_mvp/
 
 ## 요구사항 문서
 
-- [NANoDB 8시간 MVP 요구사항](requirements/nanodb-mvp-requirements.md)
+- [NANoDB 3일 MVP 요구사항](requirements/nanodb-mvp-requirements.md)
 - [홈 탭 요구사항](requirements/home-tab-requirements.md)
 - [의도적 제외사항](requirements/constraints.md)
 - [AI-DLC 통합 요구사항](aidlc-docs/inception/requirements/requirements.md)
@@ -100,6 +104,12 @@ nanodb_mvp/
 - 런타임 업로드, SQLite 파일, 생성 결과는 Git에 커밋하지 않습니다.
 - 공개 통계, 예시 KPI와 실제 데이터 집계값을 명확히 구분합니다.
 
+## 대회와 팀 목표
+
+5명이 3일 동안 각자 소속 팀에 필요한 도구를 독립 개발합니다. NANoDB는 그중 한 프로젝트이며 담당자가 앱·데이터·검증·사용법을 책임집니다. 공통 발표에는 현업 문제, AI 개발에서 돕는 작업, 실제 전후 비교, 대회 이후 활용 업무를 담습니다.
+
+NANoDB는 AI로 분석 코드를 만들 때 반복하는 데이터 형식·좌표계·단위 설명을 재사용 가능한 컨텍스트로 제공합니다. 자료 준비 시간, 추가 설명·수정 요청 수와 검증 통과 여부를 실제로 비교할 계획이며, 향상이나 토큰 절감을 미리 주장하지 않습니다. 앱·내보내기는 오프라인 동작을 목표로 하며 앱에 모델 호출·코드 실행 기능을 넣지 않습니다.
+
 ## 개발 워크플로우
 
 이 저장소에는 AWS Labs AI-DLC v1.0.1 워크플로우가 설치되어 있습니다.
@@ -110,12 +120,15 @@ nanodb_mvp/
 
 ## 프로젝트 상태
 
-- [x] 8시간 MVP 범위 정의
+- [x] 3일 MVP 범위 정의
 - [x] 홈 탭 요구사항 정리
 - [x] 라이트·다크 로고 준비
 - [x] TEM/Layout 샘플과 manifest 검증
 - [ ] 웹 애플리케이션 구현
-- [ ] 핵심 데모 시나리오 검증
+- [x] 대회 취지에 맞춘 개발 컨텍스트·AI 코드 검증 요구사항 반영
+- [ ] 개발 컨텍스트 ZIP 구현
+- [ ] 계측 기반 및 개발 지원 데모 검증
+- [ ] 설명 준비 시간·수정 요청·검증 결과 비교 기록
 
 ## License
 

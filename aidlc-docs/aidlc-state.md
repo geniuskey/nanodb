@@ -8,10 +8,10 @@
 
 ## Workspace State
 
-- **Existing Code**: No
-- **Programming Languages**: None detected
+- **Existing Code**: Python sample metadata/verification utilities only; no web application implementation
+- **Programming Languages**: Python (sample utilities)
 - **Build System**: None detected
-- **Project Structure**: Documentation-only greenfield workspace
+- **Project Structure**: Greenfield web application with requirements and prepared sample utilities
 - **Reverse Engineering Needed**: No
 - **Workspace Root**: `D:\git\geniuskey\nanodb_mvp`
 
@@ -36,6 +36,7 @@
 - [x] Workspace Detection
 - [x] Reverse Engineering (skipped: no source code)
 - [x] Requirements Analysis (review required)
+- [ ] User Stories (needed for the added developer journey; not started)
 - [ ] Workflow Planning
 
 ### CONSTRUCTION PHASE
@@ -45,32 +46,29 @@
 
 ## Current Request Assessment
 
-- **Request**: Reconcile review findings for a five-person team with one implementation/demo owner and a minimal post-hackathon evaluation site
-- **Request Type**: Documentation feature and deployment automation
-- **Scope**: Single-writer collaboration, independent data/docs/QA handoffs, consistent time gates and measurement criteria, two-page VitePress introduction/evidence, AI judging rubric and peer evaluation
+- **Request**: User approved the contest-alignment proposal and requested requirements updates.
+- **Request Type**: Requirements amendment only; no implementation or deployment requested.
+- **Scope**: Semiconductor measurement assets reused as AI development context; local ZIP export; external AI-generated code validation; five independent projects over three days.
 - **Complexity**: Moderate
 - **Requirements Depth**: Standard
-- **Clarification Status**: Complete. The user accepted the recommended extension choices B/B/C.
+- **Authorization**: Direction and documentation amendment approved by user on 2026-09-08. Updated requirements are available for review; no further stage initiated.
+- **Unknowns**: Other four project topics and whether the contest requires one integrated service. Do not invent integration requirements.
 
-## Pending Requirement Amendments
+## Current Requirements Decisions
 
-- **Brand Name**: NANoDB
-- **Expansion**: Nano Assets, Never orphaned Database
-- **Korean Meaning**: 나노 자산은 고아가 되지 않는다
-- **Subtitle**: 데이터는 쌓이고, 툴은 이어진다.
-- **Project Vision**: Development-stage SEM/TEM/Layout traceability and flexible structure-parameter management
-- **Scope Reconciliation**: Long-term capabilities are separated from the current image-to-measurement MVP
-- **Status**: Applied to requirements; requirements review remains pending.
-- **Foundation Review**: Applied P0/P1 prioritization, TIFF-to-demo-data preparation rules, measurable coordinate restoration criteria, reset/persistence checks, and 5/6/7-hour timebox gates. Requirements review remains pending.
-- **Team Documentation Amendment**: Added five-role ownership and handoff requirements plus VitePress/GitHub Pages build and deployment requirements. Review remains pending before Workflow Planning.
+- Preserve NANoDB brand, image registration, manual two-point measurement, coordinate restoration and original data protection.
+- P0 has two gates: measurement foundation, then CTX-001 through CTX-012 plus actual external AI code generation and validation.
+- Export one image's metadata and all saved measurements in a ZIP containing context.md, data.json, task.md and checks.json; no image binary or automatic external transmission.
+- Manual measurements are unreviewed references, not certified ground truth. Synthetic arithmetic cases are separate.
+- Compare manual explanation preparation with exported context using preparation time, follow-up requests and validation results; no promised improvement or token savings.
+- Five people build independent tools over three days. The former eight-hour schedule and Role 1 through Role 5 support allocation are superseded.
+- Keep the minimal VitePress evidence site and existing judging weights; separate product completion from external AI demo and publishing status.
+- All three extension choices remain disabled (B/B/C), N/A; full rules were not loaded.
 
-## Review Corrections Applied
+## Amendment Plan Progress
 
-- [x] Separate the minimal evaluation site from application deployment exclusions.
-- [x] Align the schedule with first restoration at hour 4, P0 at hour 5 and feature freeze at hour 6.
-- [x] Define one code/Git/demo owner and four independent data, product-content, QA and evaluation-evidence owners.
-- [x] Unify two-decimal display rounding and home section order.
-- [x] Add independent coordinate-transform accuracy criteria at two display scales.
-- [x] Record AI judging weights (25/20/15/15/15/10), evidence mapping and peer evaluation boundaries.
+See [contest-alignment-plan.md](inception/requirements/contest-alignment-plan.md) for completed requirements edit and validation steps.
 
-The user authorized these requirements corrections. They are applied; application implementation and site construction have not been performed in this amendment. Existing extension choices remain disabled. Official peer-evaluation scoring and submission mechanics have not been provided.
+## Next Stage Assessment
+
+The new developer user journey warrants User Stories before Workflow Planning when lifecycle work resumes. This request only updates requirements; neither stage has started. Application code generation, app tests and deployment remain unperformed.

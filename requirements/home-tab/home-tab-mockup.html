@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="../../assets/logo/nanodb_favicon.svg">
 <title>NANoDB — 홈 탭 시안 (requirements/home-tab)</title>
 <!--
   홈 탭 정적 시안. requirements/home-tab-requirements.md 의 HOM-001~028 을 그대로 따른다.
   - KPI 는 /api/summary 응답으로만 채운다 (예시값 금지, HOM-024). 이 파일은 fetch 실패 시 빈 상태(0 / n=0 / 측정 없음)를 보여준다.
   - ?state=demo  : 데모 후 상태 예시 (스크린샷용, 값은 "예시 화면" 라벨과 함께만 표시)
   - ?state=empty : 빈 DB 상태
-  - 로고는 저장소 자산 assets/logo/nanodb_logo_horizontal.png 를 상대경로로 사용한다.
+  - 헤더 로고는 태그라인 없는 assets/logo/nanodb_logo_horizontal_notag.svg (28px 높이에서 태그라인이 뭉개지므로). 태그라인 포함 PNG는 표지·README용.
 -->
 <style>
   :root{
@@ -83,7 +84,7 @@
 
 <!-- 헤더: 로고(홈), 확장명/부제, 상태 요약. 로그인·역할 없음 -->
 <header class="hdr">
-  <a class="logo" href="/" aria-label="NANoDB 홈"><img src="../../assets/logo/nanodb_logo_horizontal.png" alt="NANoDB — Nano Assets, Never orphaned Database"></a>
+  <a class="logo" href="/" aria-label="NANoDB 홈"><img src="../../assets/logo/nanodb_logo_horizontal_notag.svg" alt="NANoDB — Nano Assets, Never orphaned Database"></a>
   <span class="sub">나노 자산은 고아가 되지 않는다 · 데이터는 쌓이고, 툴은 이어진다.</span>
   <div class="right">
     <span class="status" id="hdr-status">이미지 — · 측정 — · 기준 —</span>

@@ -151,7 +151,7 @@ PDF가 제시한 전체 제품 온톨로지 `Image → Label → Feature → Too
 
 | 시안 영역 | 요구사항 | 구현 메모 |
 | --- | --- | --- |
-| 헤더 로고 → `/` | HOM-001 | `assets/logo/nanodb_logo_horizontal.png` 사용, 높이 28px |
+| 헤더 로고 → `/` | HOM-001 | 헤더는 태그라인 없는 `assets/logo/nanodb_logo_horizontal_notag.svg`(높이 28px). 태그라인 포함 PNG는 28px에서 글자가 뭉개져 표지·README 전용. 파비콘 `assets/logo/nanodb_favicon.svg` |
 | 헤더 슬로건 `나노 자산은 고아가 되지 않는다 · 데이터는 쌓이고, 툴은 이어진다.` | HOM-002 | 768px 이하 숨김 |
 | 헤더 상태 pill `이미지 N · 측정 N · 기준 시각` | HOM-003 | `/api/summary`만 사용 |
 | 탭 `홈 · 이미지DB · 이미지 등록` + 힌트 | HOM-004 | 밑줄형 활성 표시, `aria-current="page"` |

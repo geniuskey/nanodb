@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 120" width="520" height="120">
+<text x="28" y="96" font-family="'Segoe UI','Pretendard Variable',Pretendard,'Malgun Gothic',Arial,sans-serif" font-size="100" font-weight="800" letter-spacing="-3" fill="#111827" textLength="222" lengthAdjust="spacingAndGlyphs">NAN</text>
+<g transform="translate(294,69) scale(1.0)">
+  <circle r="30" fill="none" stroke="#4f46e5" stroke-width="7"/>
+  <circle r="17" fill="none" stroke="#4f46e5" stroke-width="5.5"/>
+  <circle r="4.5" fill="#4f46e5"/>
+  <circle cx="21.2" cy="-21.2" r="7" fill="#4f46e5" stroke="#ffffff" stroke-width="3"/>
+</g>
+<text x="338" y="96" font-family="'Segoe UI','Pretendard Variable',Pretendard,'Malgun Gothic',Arial,sans-serif" font-size="100" font-weight="800" letter-spacing="-3" fill="#4f46e5" textLength="150" lengthAdjust="spacingAndGlyphs">DB</text>
+</svg>

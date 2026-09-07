@@ -45,9 +45,9 @@
 
 ## Current Request Assessment
 
-- **Request**: Update requirements using `references/NanoDB_홈탭_구성.pdf`
+- **Request**: Merge the supplied Project Vision and Problem Statement into `aidlc-docs/inception/requirements/requirements.md`
 - **Request Type**: Requirements enhancement
-- **Scope**: Documentation across the MVP, home tab, and exclusions
+- **Scope**: Product vision, problem framing, long-term outcomes, and reconciliation with the existing 8-hour MVP boundary
 - **Complexity**: Simple
 - **Requirements Depth**: Minimal
 - **Clarification Status**: Complete. The user accepted the recommended extension choices B/B/C.
@@ -58,4 +58,6 @@
 - **Expansion**: Nano Assets, Never orphaned Database
 - **Korean Meaning**: 나노 자산은 고아가 되지 않는다
 - **Subtitle**: 데이터는 쌓이고, 툴은 이어진다.
-- **Status**: Applied to README and requirements; requirements review remains pending.
+- **Project Vision**: Development-stage SEM/TEM/Layout traceability and flexible structure-parameter management
+- **Scope Reconciliation**: Long-term capabilities are separated from the current image-to-measurement MVP
+- **Status**: Applied to requirements; requirements review remains pending.

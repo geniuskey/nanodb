@@ -9,6 +9,222 @@
 
 ---
 
+## Product Vision Requirements Merge
+
+**Timestamp**: 2026-09-07T13:12:48Z
+**User Input**: "aidlc-docs\inception\requirements\requirements.md 파일에 # Project Vision and Problem Statement
+
+## 1. Business Context
+
+반도체 양산 단계의 SEM 계측은 측정 대상 구조와 구조 파라미터가 이미 정의되어 있고, 동일한 형태의 제품을 반복적으로 측정한다.
+
+측정 위치, CD 정의, 측정 방법, 장비 recipe 및 판정 기준이 비교적 안정적이기 때문에 자동 길이 측정과 데이터베이스 관리가 가능하다. 측정 결과도 Product, Lot, Wafer 및 공정 정보와 연결되어 체계적으로 축적된다.
+
+반면 반도체 개발 단계에서 생성되는 SEM, TEM 및 Layout 이미지는 성격이 다르다.
+
+개발 과정에서는 구조, 형상, 재질, 공정 조건과 관찰 목적이 실험마다 달라진다. 아직 설계가 확정되지 않았기 때문에 같은 이름의 구조도 형태나 측정 기준이 달라질 수 있으며, 새로운 구조 파라미터가 실험 도중 정의되기도 한다.
+
+특히 TEM 분석은 시편 제작, 관심 구조 식별, 경계 판정 및 측정 과정에 전문가의 해석이 필요하다. 완전 자동화가 어렵고 분석자가 이미지 위에서 직접 길이와 형상을 확인하는 경우가 많다.
+
+## 2. Problem Statement
+
+개발 단계의 SEM/TEM 분석 데이터는 다음과 같은 문제를 가진다.
+
+### 2.1 데이터의 비정형성
+
+개발 중인 구조는 반복 생산을 전제로 한 고정 schema를 갖지 않는다.
+
+* 실험마다 구조와 재질이 달라진다.
+* 관찰 대상과 측정 위치가 달라진다.
+* 기존에 없던 파라미터가 새로 정의된다.
+* 동일 파라미터 이름도 개발 시점이나 담당자에 따라 의미가 다를 수 있다.
+* 구조 파라미터의 정의가 설계 변경과 함께 바뀔 수 있다.
+
+따라서 양산 계측 시스템처럼 미리 고정된 측정 항목과 database schema를 적용하기 어렵다.
+
+### 2.2 이미지와 측정값의 분리
+
+개발 단계의 측정은 이미지 위에서 수동으로 이루어지지만, 결과는 주로 PowerPoint나 Excel에 기록된다.
+
+이 과정에서 다음 정보가 분리되거나 유실된다.
+
+* 측정값이 산출된 원본 이미지
+* 이미지상의 실제 측정 위치
+* 측정에 사용한 선분, 경계 또는 관심 영역
+* Scale bar 및 calibration 조건
+* 구조와 파라미터의 당시 정의
+* 측정자와 측정 시점
+* Product, Lot, Wafer, Die 및 시편 정보
+* 측정값의 수정과 검토 이력
+
+숫자만 남고 측정 근거가 사라지기 때문에 결과를 다시 검증하거나 재사용하기 어렵다.
+
+### 2.3 분석 결과의 고립
+
+PowerPoint와 Excel 중심의 데이터는 개별 분석 업무를 완료하는 데는 유용하지만, 조직 단위의 데이터 자산으로 축적되기 어렵다.
+
+* 이전에 측정한 유사 구조를 찾기 어렵다.
+* 동일 Product 또는 구조 파라미터의 산포를 즉시 계산할 수 없다.
+* 서로 다른 실험과 시편의 결과를 일관된 기준으로 비교하기 어렵다.
+* 이상값에서 원본 이미지와 측정 위치로 역추적하기 어렵다.
+* 분석자의 개인 자료가 후속 개발에 재사용되지 못한다.
+* 자동 측정 알고리즘을 개발할 검증 데이터가 축적되지 않는다.
+
+### 2.4 개발 데이터의 불확실성
+
+개발 단계의 이미지는 전체 Product, Lot 또는 Wafer를 대표하지 않을 수 있다.
+
+특히 TEM은 제한된 위치에서 제작한 소수 시편을 관찰하므로, 하나의 시편에서 얻은 여러 측정값을 여러 독립 표본처럼 해석하면 잘못된 결론에 이를 수 있다.
+
+플랫폼은 단순히 측정값을 저장하는 것을 넘어 다음 정보를 함께 보존해야 한다.
+
+* 어느 Wafer와 Die에서 가져온 시편인지
+* 어떤 위치와 방향을 관찰했는지
+* 하나의 시편에서 몇 개의 측정값을 얻었는지
+* 측정 대상의 경계가 얼마나 명확했는지
+* 수동 측정인지 자동 측정인지
+* 결과가 검토되고 승인되었는지
+
+## 3. Product Purpose
+
+이 프로젝트의 목적은 개발 단계에서 생성되는 SEM, TEM 및 Layout 이미지와 구조 파라미터를 하나의 추적 가능한 데이터 모델로 통합하는 것이다.
+
+플랫폼은 구조가 계속 변경되는 개발 환경을 수용할 수 있도록, 고정된 측정 schema를 강제하기보다 다음 요소를 유연하게 정의하고 버전 관리한다.
+
+* 구조
+* 재질과 Layer
+* 구조 파라미터
+* 측정 방법
+* 측정 단위
+* 이미지상의 측정 geometry
+* 파라미터 정의와 적용 범위
+
+사용자는 SEM/TEM/Layout 이미지를 등록하고, 이미지 위에서 구조와 관심 영역을 지정하며, CD, Depth, Thickness, Pitch, Curvature 및 Roughness 등의 파라미터를 측정할 수 있어야 한다.
+
+수동 측정 결과와 영상처리 기반 자동 측정 결과는 모두 원본 이미지 및 측정 geometry와 연결되어야 한다.
+
+## 4. Core Product Concept
+
+플랫폼의 핵심 데이터 연결은 다음과 같다.
+
+`개발 대상 → 제조 추적성 → Layout 구조 → SEM/TEM 관찰 이미지 → 구조 정의 → Annotation → 측정값`
+
+각 측정값은 다음 질문에 답할 수 있어야 한다.
+
+* 무엇을 측정했는가?
+* 구조 파라미터는 당시 어떻게 정의되어 있었는가?
+* 어느 Product, Lot, Wafer, Die 및 시편에서 나온 결과인가?
+* 어떤 이미지의 어느 위치에서 측정했는가?
+* 어떤 calibration과 측정 방법을 사용했는가?
+* 수동 측정인가, 영상처리 결과인가?
+* 누가 측정하고 누가 검토했는가?
+* 이후 파라미터 정의나 측정값이 어떻게 변경되었는가?
+
+## 5. Layout, SEM and TEM Integration
+
+Layout 이미지는 설계 의도를 나타내고, SEM/TEM 이미지는 실제 제작된 구조의 관찰 결과를 나타낸다.
+
+플랫폼은 이 세 종류의 이미지를 독립된 파일로만 저장하지 않고 서로 연결할 수 있어야 한다.
+
+* Layout 영역과 SEM/TEM 관찰 위치 연결
+* 설계 구조와 실제 관찰 구조 비교
+* 동일 구조의 서로 다른 공정 조건 및 시편 비교
+* Layout에서 정의한 nominal dimension과 측정값 비교
+* 저배율 이미지와 고배율 이미지 연결
+* 동일 시편에서 생성된 여러 TEM 이미지 연결
+
+초기 MVP에서는 정확한 image registration이나 좌표 자동 정합을 필수로 하지 않는다. 사용자가 관련 이미지와 구조 영역을 수동으로 연결할 수 있는 수준을 우선 구현한다.
+
+## 6. Flexible Structure Parameter Model
+
+개발 단계에서는 구조 파라미터가 사전에 완전히 결정되지 않는다.
+
+따라서 플랫폼은 관리자만 고정 schema를 수정하는 방식이 아니라, 측정자가 새로운 파라미터 후보를 제안하고 분석가가 검토한 후 공식 정의로 승격할 수 있어야 한다.
+
+구조 파라미터는 최소 다음 상태를 가진다.
+
+* `proposed`: 특정 실험을 위해 임시로 제안된 정의
+* `active`: 검토 후 재사용 가능한 공식 정의
+* `deprecated`: 새로운 정의로 대체된 과거 정의
+
+각 파라미터 정의에는 다음 정보를 저장한다.
+
+* Parameter code와 이름
+* 설명
+* 대상 구조와 재질
+* 측정 기준점과 방향
+* Annotation geometry
+* 단위
+* 계산 방식
+* 적용 가능한 Product 또는 실험 범위
+* 정의 version
+* 작성자와 승인자
+* 변경 사유
+
+정의가 변경되더라도 과거 측정값은 당시 사용된 파라미터 version과 연결되어야 한다.
+
+## 7. Target Users
+
+### 측정자
+
+SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위에서 수동 또는 반자동 측정을 수행한다. 기존에 PowerPoint와 Excel에서 수행하던 측정 기록을 플랫폼에 직접 축적한다.
+
+### 분석가
+
+측정 결과와 구조 파라미터 정의를 검토하고, Product, Lot, Wafer, 시편 및 실험 조건별 산포를 분석한다. 이상값에서 원본 이미지와 측정 위치까지 역추적한다.
+
+### 시스템 관리자
+
+사용자와 권한, 표준 단위, 장비, Product 및 구조 파라미터 정의를 관리한다. 데이터 품질과 보존 정책, API 접근 및 감사 이력을 관리한다.
+
+## 8. Expected Outcomes
+
+플랫폼 도입을 통해 다음 상태를 달성한다.
+
+1. 개발 SEM/TEM 측정 결과가 개인 PowerPoint와 Excel에 고립되지 않는다.
+2. 모든 측정값을 원본 이미지와 측정 위치까지 역추적할 수 있다.
+3. 아직 확정되지 않은 구조 파라미터도 임시 정의와 version을 통해 관리할 수 있다.
+4. SEM, TEM 및 Layout 이미지를 동일한 개발 구조와 연결할 수 있다.
+5. 같은 Product와 구조 파라미터의 측정값을 모아 산포를 분석할 수 있다.
+6. 측정 방법과 파라미터 정의가 변경되어도 과거 데이터의 의미가 보존된다.
+7. 반복적인 길이 측정은 간단한 영상처리로 보조하고 사용자가 결과를 검증할 수 있다.
+8. 장기적으로 자동 측정 및 이미지 분석 기술을 개발할 수 있는 검증 데이터를 확보한다.
+
+## 9. Product Positioning
+
+이 플랫폼은 양산 SEM 계측 시스템을 대체하기 위한 제품이 아니다.
+
+양산 시스템이 확정된 구조의 반복 측정과 공정 관리를 담당한다면, 이 플랫폼은 구조와 측정 기준이 계속 변하는 개발 단계의 이미지 및 측정 데이터를 체계화하는 역할을 담당한다.
+
+즉, 이 플랫폼의 핵심 가치는 완전 자동화가 아니라 다음에 있다.
+
+> 아직 표준화되지 않은 개발 데이터를 측정 근거와 함께 축적하여, 이후 검색·비교·재현·분석 및 자동화가 가능한 데이터로 전환하는 것.
+
+## 10. Success Indicators
+
+* PowerPoint와 Excel 외부에서 재사용 가능한 측정값의 비율
+* 원본 이미지와 측정 annotation까지 완전히 추적 가능한 측정값의 비율
+* 기존 자료 검색 대비 유사 구조 및 측정 결과 검색 시간 감소
+* 구조 파라미터별 Product/Lot/Wafer 산포 분석 준비 시간 감소
+* 재측정 없이 기존 결과를 재사용한 횟수
+* Proposed 파라미터가 검토 후 재사용 가능한 정의로 전환된 비율
+* 반자동 측정을 통한 평균 측정 시간 감소
+* 자동 측정 결과의 사용자 수정률과 승인률
+ 의 내용을 적절히 머지해줘"
+**AI Response**: "Merged the supplied product vision and problem statement into the requirements artifact. Separated long-term product capabilities from the current 8-hour MVP, reconciled scope conflicts, and validated the resulting Markdown structure."
+**Context**: INCEPTION - Requirements Analysis amendment; review remains required
+
+---
+
+## Requirements Review Gate
+
+**Timestamp**: 2026-09-07T13:12:48Z
+**User Input**: "N/A — approval prompt generated from the complete raw user input recorded immediately above."
+**AI Response**: "Requirements analysis amendment completed. Awaiting explicit approval before Workflow Planning, as required by AI-DLC v1.0.1."
+**Context**: INCEPTION - Requirements Analysis review required
+
+---
+
 ## Workspace Detection
 
 **Timestamp**: 2026-09-07T11:50:01Z  
@@ -69,5 +285,23 @@
 **User Input**: "계속해줘"
 **AI Response**: "Continued validation, commit preparation, and remote synchronization for the brand copy and Claude settings correction."
 **Context**: Requirements amendment and repository maintenance
+
+---
+
+## Extension Compliance Check
+
+**Timestamp**: 2026-09-07T13:12:48Z
+**User Input**: "N/A — validation action for the current requirements amendment."
+**AI Response**: "Skipped Resiliency Baseline, Security Baseline, and Property-Based Testing extension rules because all three are disabled in aidlc-state.md. No enabled extension rules apply to this documentation amendment."
+**Context**: INCEPTION - Requirements Analysis content validation
+
+---
+
+## Git Commit and Push Requested
+
+**Timestamp**: 2026-09-07T13:19:07Z
+**User Input**: "git commit and push"
+**AI Response**: "Reviewed the workspace against origin/main, confirmed ignored local settings and absence of common secret patterns, preserved the remote history, and prepared the scoped documentation and reference-file changes for commit and push."
+**Context**: Repository synchronization requested during INCEPTION - Requirements Analysis review
 
 ---

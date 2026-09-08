@@ -40,14 +40,18 @@ NANoDB는 반도체 SEM/TEM 이미지와 측정 근거를 축적하고, 이를 A
 
 아래 화면은 로컬 PostgreSQL 16과 native uvicorn으로 앱을 실행한 뒤 승인된 demo 데이터로
 Playwright가 자동 캡처한 실제 동작 화면입니다(캡처 시각 2026-09-08, working tree
-`19b2af6`, 캡처 스크립트 [`scripts/capture_screenshots.mjs`](scripts/capture_screenshots.mjs)).
+`7a387cb`, 캡처 스크립트 [`scripts/capture_screenshots.mjs`](scripts/capture_screenshots.mjs)).
 공개 배포된 서비스가 아니라 로컬 실행 결과이며, 비밀정보나 비공개 자료는 포함하지 않습니다.
+캡처 환경은 외부 네트워크가 차단돼 있어 홈 최상단의 소개 영상 자리가 비어 있습니다.
+영상은 보조 자료이며 앱 기능 근거가 아닙니다(HOM-040).
+캡처 스크립트는 `screenshots/`와 사이트용 사본 `docs/public/screenshots/`를 함께 갱신하므로
+두 곳이 어긋나지 않습니다.
 
 | 화면 | 대응 기능 |
 | --- | --- |
-| ![홈: 실제 이미지·측정 집계와 시작 CTA](screenshots/01-home.png) | 홈에서 실제 이미지 수·측정 수 집계와 등록·목록 시작 동선 (MVP 6) |
+| ![홈: 실제 이미지·측정 집계와 사용 흐름](screenshots/01-home.png) | 홈에서 실제 이미지 수·측정 수·파라미터 집계와 사용 흐름 끝의 등록·목록 CTA (MVP 6) |
 | ![이미지 목록: 최신순 카드와 측정 수](screenshots/02-catalog.png) | 등록된 이미지를 목록에서 최신순으로 찾아 다시 열기 (MVP 2) |
-| ![이미지 등록: 미리보기와 제조 메타데이터 폼](screenshots/03-register.png) | PNG/JPEG를 제조 메타데이터·보정값과 함께 등록 (MVP 1, 4) |
+| ![이미지 등록: 미리보기와 제조 메타데이터 폼](screenshots/03-register.png) | PNG/JPEG/TIFF를 제조 메타데이터·보정값과 함께 등록 (MVP 1, 4) |
 | ![측정 뷰어: 두 점 선택 draft와 실시간 preview](screenshots/04-measurement-draft.png) | 이미지 위 두 점 선택으로 CD/Depth/Thickness 측정과 preview (MVP 3, 4) |
 | ![저장 후: overlay 복원·저장 항목·context export 활성](screenshots/05-measurement-saved.png) | 저장 좌표·값의 overlay 복원과 측정이 있을 때 활성화되는 컨텍스트 ZIP 내보내기 (MVP 5, 7) |
 
@@ -129,7 +133,7 @@ skip됩니다.
 이미지 상세에서 `GET /api/images/{id}/context-export`로 고정 네 파일 ZIP을 내려받습니다.
 
 - `context.md` — 좌표계·계산 규칙·데이터 주의사항
-- `data.json` — 선택 이미지와 저장된 모든 측정 (`schema_version` `1.0`)
+- `data.json` — 선택 이미지와 저장된 모든 측정, 저장된 도형과 도형 라벨 (`schema_version` `1.1`)
 - `task.md` — 수행할 개발 과제
 - `checks.json` — 검증용 정답(ground truth)
 

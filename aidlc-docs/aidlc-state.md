@@ -4,7 +4,7 @@
 
 - **Project Type**: Greenfield
 - **Start Date**: 2026-09-07T11:50:01Z
-- **Current Stage**: CONSTRUCTION - the whole 2026-09-08 UI/UX amendment is implemented except UIX-003 and UIX-009, which stay declared P2. Every gate is green including browser e2e. The 2026-09-08 UI/UX requirements amendment was approved on the same day. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
+- **Current Stage**: CONSTRUCTION - the 2026-09-08 UI/UX amendment is implemented except UIX-003 and UIX-009, and every runnable path (make demo, quality gates, browser e2e, evidence site build and preview) has been executed end to end. Only the container stack and the actual Pages deploy remain unverified, both blocked by this environment rather than by the project. The 2026-09-08 UI/UX requirements amendment was approved on the same day. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
 
 ## Workspace State
 
@@ -82,6 +82,9 @@
 - [x] HOM-040 (intro video caption, reduced-motion play button, offline path in README)
 - [x] P2: UIX-006 (error boundary + catch-all route), UIX-004 (document titles), UIX-005 (skip link), UIX-007 (retry), IMG-009~010 (required marks and per-field errors) — see [p2-polish-plan.md](construction/plans/p2-polish-plan.md)
 - [ ] UIX-003 (numeric coordinate entry) and UIX-009 (loading placeholders) — deliberately left; not a demo gate
+- [x] Verify the demo path, container definitions and publishing path — see [demo-and-deploy-verification-plan.md](construction/plans/demo-and-deploy-verification-plan.md)
+- [ ] Run `make up` once where Docker image layers are reachable
+- [ ] Set the repository's Pages Source to GitHub Actions and push to main (DOC-012)
 
 ### Applied requirement changes (2026-09-08)
 
@@ -198,11 +201,22 @@ See [contest-alignment-plan.md](inception/requirements/contest-alignment-plan.md
 - Two defects were found while building this and fixed here: `/images/new` lit both the catalog and the register tab as the current location (a HOM-004 violation, now written into the requirement), and the skip link was positioned against the wrong ancestor.
 - Verified: ruff clean, mypy clean, pytest 104 passed, vitest 62 passed, vite build, Playwright e2e 7 passed, plus browser screenshots of the form errors, the not-found screen and the skip link.
 
+## Demo and Publishing Verification (2026-09-08)
+
+- Plan and results: [demo-and-deploy-verification-plan.md](construction/plans/demo-and-deploy-verification-plan.md).
+- Executed successfully: `uv sync --frozen`, `make preflight`, `make migrate`, `make seed-demo`, `make reset` (source samples untouched), `make lint`, `mypy`, `make test-backend` (104 passed, no skips), `make test-frontend` (63), `make build-frontend`, `make test-e2e` (7), `docs:build` with dead-link checking, and `docs:preview` serving under `/nanodb_mvp/`.
+- Seven defects removed. The serious one: `.python-version` pinned 3.12.12, which uv cannot install on Linux (its newest build is 3.12.11), so `uv sync --frozen` failed on any machine without that exact system interpreter — `make install` was the first thing a new contributor would hit. `pyproject.toml` already allows any 3.12, so the pin is now `3.12`.
+- The second notable one: HOM-034a, written into the requirements during this same amendment, had never been implemented. Regenerating the screenshots is what exposed it.
+- The evidence screenshots were four commits stale, and the site's own copies could drift from the repository's; the capture script now writes both.
+- Blocked by the environment and reported rather than worked around: the container stack (Docker Hub's layer host is denied by egress policy — compose config and all four image tags were validated instead) and the actual Pages deploy (needs the repository Pages Source set to GitHub Actions plus a push to main).
+
 ## Next Stage Assessment
 
 The UI/UX amendment is finished apart from UIX-003 (numeric coordinate entry, the remaining accessibility gap) and UIX-009 (loading placeholders). Both are recorded as unimplemented in the requirements and in the README's known limitations, and neither is a demo gate.
 
-What is genuinely unverified is no longer UI work: the repository's own `make demo` path, the container stack, and the GitHub Pages deploy have never been exercised in a fresh environment. The evidence site's published state and the external AI development demo (US-07, EVL-006~008) also remain separate from app completeness, as the requirements require them to be.
+Two things remain, and neither can be closed from here. Someone with Docker image access should run `make up` once to prove the container stack; an administrator must set the repository's Pages Source to GitHub Actions and push to main for DOC-012. Both are recorded as `미검증` in the requirements and on the evidence site.
+
+Separately, and by design, the external AI development demo (US-07, EVL-006~008) stays independent of app completeness: the prompts, generated code, run commands and pass/fail results still have to be produced and recorded by hand.
 
 ## Execution Plan Summary
 

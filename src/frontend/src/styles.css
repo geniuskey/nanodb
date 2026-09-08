@@ -223,6 +223,8 @@ h2 { letter-spacing: -0.02em; font-size: 1.5rem; margin: 0 0 6px; }
 .step-card h3 { margin: 12px 0 6px; font-size: 1rem; }
 .step-card p { margin: 0; line-height: 1.5; color: var(--ink); }
 
+.flow-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+
 .policy { text-align: center; color: var(--ink-muted); font-size: 0.85rem; }
 
 /* ---------- Summary panel (legacy, used where needed) ---------- */
@@ -271,7 +273,7 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 
 /* Skip link: off-screen until focused (UIX-005). */
 .skip-link {
-  position: fixed;
+  position: absolute;
   left: 12px;
   top: -60px;
   z-index: 30;

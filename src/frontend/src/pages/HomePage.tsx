@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import logo from "../../../../assets/logo/nanodb_logo_horizontal.png";
 import { api } from "../api/client";
@@ -555,6 +556,16 @@ export function HomePage() {
             </li>
           ))}
         </ol>
+        {/* The only in-body links on the home page (HOM-005, HOM-034a): a
+            reader who just went through the four steps can start here. */}
+        <div className="flow-cta">
+          <Link className="button primary" to="/images/new" data-testid="home-register-image">
+            이미지 등록
+          </Link>
+          <Link className="button" to="/images" data-testid="home-browse-images">
+            이미지 둘러보기
+          </Link>
+        </div>
       </section>
 
       <p className="policy">

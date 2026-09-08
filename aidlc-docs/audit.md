@@ -1719,3 +1719,24 @@ IMG-009/010: 등록 폼을 필드별 오류 상태로 재작성. 별표 + aria-r
 **Context**: CONSTRUCTION - HOM-040 and the P2 group complete except UIX-003/UIX-009
 
 ---
+
+## Demo, Container and Publishing Path Verification
+**Timestamp**: 2026-09-08T14:40:00Z
+**User Input**: "해줘. 발견된 모든 리스크 다 제거해줘"
+**AI Response**: "한 번도 실행된 적 없던 세 경로(make demo, 컨테이너 스택, VitePress/Pages)를 실제로 돌렸다. 계획과 상세 결과: construction/plans/demo-and-deploy-verification-plan.md.
+
+실행 통과: uv sync --frozen, make preflight, make migrate, make seed-demo(원천 샘플 불변 확인), make reset, make lint, mypy, make test-backend(104 passed, 로컬 PostgreSQL 16으로 skip 없음), make test-frontend(63), make build-frontend, make test-e2e(7), docs:build(dead-link 검사 on), docs:preview의 /nanodb_mvp/ base 라우팅과 자산 로딩.
+
+제거한 결함 7건.
+(1) 치명: .python-version이 3.12.12로 고정돼 있는데 uv가 받을 수 있는 리눅스 최신 빌드는 3.12.11이라, 시스템에 3.12.12가 없는 새 머신에서 uv sync --frozen이 'No interpreter found'로 실패했다. make install부터 막히므로 '명령 1~2개로 실행' 요구사항이 성립하지 않았다. pyproject의 requires-python이 이미 ==3.12.*이므로 .python-version을 3.12로 완화하고, 비기능 요구사항에 '인터프리터 고정은 실제 설치 가능한 범위여야 한다'를 명문화했다. Dockerfile의 python:3.12.12-slim-bookworm은 실재하는 태그라 유지.
+(2) 요구사항만 있고 구현이 없던 HOM-034a(홈 사용 흐름 끝의 CTA 2개). 스크린샷 재캡처 과정에서 드러났다. 직전 개정에서 내가 요구사항을 쓰고 구현하지 않은 항목이다. 구현하고 '홈 본문 이동 링크는 이 둘뿐'을 테스트로 고정했다.
+(3) 평가용 스크린샷 5장이 working tree 19b2af6 시점(홈 v2·TIFF·라벨링·확대 이전) — 심사자가 존재하지 않는 화면을 보고 있었다. 현재 앱으로 재캡처.
+(4) 사이트는 docs/public/screenshots/를, README는 screenshots/를 참조하는데 동기화 장치가 없어 구조적으로 어긋날 수 있었다. 캡처 스크립트가 두 곳을 함께 쓰도록 바꿔 재발 방지.
+(5) 캡처 스크립트가 Playwright 전용 브라우저 다운로드에만 의존해 제한된 네트워크에서 실행 불가였다. CHROMIUM_PATH 선택적 지원 추가.
+(6) 건너뛰기 링크의 position: fixed가 full-page 캡처에서 스크롤 위치에 그려져 평가 스크린샷에 노출됐다. 표준 패턴인 absolute로 환원.
+(7) 문서 낡은 사실 — README(schema_version 1.0→1.1, 캡처 커밋, PNG/JPEG→TIFF 포함), docs/index.md('검색·삭제·평균은 P0 범위 밖' → 구현 완료), docs/evidence.md(schema_version, 테스트 수 57/23 → 104/63/7, 통합 테스트·e2e 미검증 표기 해제).
+
+환경 제약으로 실행 불가 2건(우회하지 않고 보고): 컨테이너 스택 기동은 Docker 이미지 레이어 호스트 production.cloudfront.docker.com이 조직 egress 정책 403으로 차단이다. 대신 docker compose config 유효성과 네 이미지 태그의 실재를 레지스트리 API로 확인했다. GitHub Pages 실제 배포는 저장소 Settings의 Pages Source를 GitHub Actions로 바꾸는 관리자 설정과 main push가 필요하다(DOC-012). workflow 자체는 DOC-006~011 충족을 확인했다. 두 항목은 요구사항과 평가 자료에 미검증으로 남겼다."
+**Context**: CONSTRUCTION - runnable paths verified end to end; two items blocked by environment, reported not worked around
+
+---

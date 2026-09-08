@@ -105,6 +105,23 @@ describe("HomePage", () => {
     expect(document.querySelector('iframe[title="NANoDB 소개 영상"]')).not.toBeNull();
   });
 
+  it("puts the only in-body links at the end of the usage flow", () => {
+    stubApi({
+      image_count: 0,
+      measurement_count: 0,
+      calculated_at: "2026-09-08T04:00:00Z",
+      parameters: [],
+    });
+
+    renderWithRouter(<HomePage />);
+
+    expect(screen.getByTestId("home-register-image")).toHaveAttribute("href", "/images/new");
+    expect(screen.getByTestId("home-browse-images")).toHaveAttribute("href", "/images");
+    // HOM-005: those two are the whole set. Nothing else in the body navigates.
+    const links = [...document.querySelectorAll("main a[href^='/']")];
+    expect(links).toHaveLength(2);
+  });
+
   it("names the screen in the document title", () => {
     stubApi({
       image_count: 0,

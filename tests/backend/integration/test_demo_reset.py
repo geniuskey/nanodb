@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
-from nanodb.persistence.models import ImageModel, MeasurementModel
+from nanodb.persistence.models import (
+    AnnotationModel,
+    ImageModel,
+    MeasurementModel,
+)
 from nanodb.persistence.repositories import ImageRepository, MeasurementRepository
-from sqlalchemy import Engine
+from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from scripts import reset_demo
 
 
-def _seed_image_with_measurement(session: Session) -> None:
+def _seed_image_with_measurement_and_annotation(session: Session) -> None:
     image = ImageModel(
         original_filename="demo.png",
         stored_filename="demo-stored.png",
@@ -38,6 +42,21 @@ def _seed_image_with_measurement(session: Session) -> None:
             note=None,
         )
     )
+    # An annotation is what makes the image undeletable in bulk: its foreign
+    # key to images is ON DELETE RESTRICT, same as a measurement's.
+    session.add(
+        AnnotationModel(
+            image_id=image.id,
+            kind="arrow",
+            start_x=10,
+            start_y=10,
+            end_x=200,
+            end_y=220,
+            product="DRAM",
+            step="STEP-1",
+            measurement_name="CD",
+        )
+    )
     session.commit()
 
 
@@ -47,11 +66,12 @@ def test_clear_database_removes_all_runtime_rows(
     db_session: Session,
 ) -> None:
     _, factory = database_engine
-    _seed_image_with_measurement(db_session)
+    _seed_image_with_measurement_and_annotation(db_session)
 
     with factory() as session:
         assert ImageRepository(session).count() == 1
         assert MeasurementRepository(session).count() == 1
+        assert session.scalar(select(func.count(AnnotationModel.id))) == 1
 
     image_count, measurement_count = reset_demo._clear_database(
         test_database_url,
@@ -65,3 +85,4 @@ def test_clear_database_removes_all_runtime_rows(
     with factory() as session:
         assert ImageRepository(session).count() == 0
         assert MeasurementRepository(session).count() == 0
+        assert session.scalar(select(func.count(AnnotationModel.id))) == 0

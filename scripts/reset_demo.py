@@ -1,8 +1,8 @@
 """Reset the NANoDB demo database and runtime upload root to an empty state.
 
-This tool clears runtime Image and Measurement rows and the runtime upload
-directory so a demo can start from a known-empty baseline. It is guarded to
-avoid destroying anything unintended:
+This tool clears runtime Image, Measurement and Annotation rows and the
+runtime upload directory so a demo can start from a known-empty baseline. It
+is guarded to avoid destroying anything unintended:
 
 - ``NANODB_PROFILE`` must be ``demo``.
 - an explicit ``--yes`` confirmation is required (the resolved target database
@@ -80,7 +80,11 @@ def _clear_database(
     pool_timeout: float,
 ) -> tuple[int, int]:
     from nanodb.persistence.database import create_session_factory, session_scope
-    from nanodb.persistence.models import ImageModel, MeasurementModel
+    from nanodb.persistence.models import (
+        AnnotationModel,
+        ImageModel,
+        MeasurementModel,
+    )
     from sqlalchemy import delete, func, select
 
     _, session_factory = create_session_factory(
@@ -90,8 +94,10 @@ def _clear_database(
         pool_timeout=pool_timeout,
     )
     with session_scope(session_factory) as session:
-        # Measurements first: the foreign key uses ON DELETE RESTRICT.
+        # Measurements and annotations first: both foreign keys to images use
+        # ON DELETE RESTRICT, so images cannot go until their rows are gone.
         session.execute(delete(MeasurementModel))
+        session.execute(delete(AnnotationModel))
         session.execute(delete(ImageModel))
         session.flush()
         image_count = session.scalar(select(func.count(ImageModel.id))) or 0

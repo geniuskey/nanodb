@@ -1577,3 +1577,43 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: Post-CONSTRUCTION home-tab visual redesign per PDF 시안; awaiting commit decision
 
 ---
+
+## Home Tab v2 — Requirements Update + Home Re-implementation (Real Data Only)
+**Timestamp**: 2026-09-08T11:40:00Z
+**User Input**: "pr 생성 및 머지했어. ui/ux 요구사항 v2 줄테니 네가 알아서 머지해줘." (이후 전체 v2 요구사항 마크다운 HOM-001~081 + "그리고 관련 pdf 는 @references/NANoDB_홈탭_v2.pdf". 이후 AskUserQuestion 답변: "문서+홈 재구현(실데이터만)")
+**AI Response**: "v2 시안과 이 MVP 백엔드(이미지·측정 두 테이블) 사이의 간극을 백엔드 감사 + PDF 확인으로 먼저 규명한 뒤, 사용자가 고른 범위('문서+홈 재구현, 단 실데이터만')대로 구현했다. 없는 백엔드(승인 워크플로·분석 엔진·파라미터 마스터·인증)는 신설하지 않고 정직한 빈 상태/로드맵으로 처리, 가짜 수치·박스플롯 금지.
+
+(A) 백엔드 실데이터 확장 — 파라미터별 평균을 정직하게 제공하도록 /api/summary 확장(기존 SUM-002 P1 구현). repositories.py MeasurementRepository.aggregate_by_parameter() 추가(GROUP BY parameter_type, count/sum → mean, 계약 순서 CD·Depth·Thickness, n=0 항목 제외, N+1 아님). summary_service.py Summary 데이터클래스에 parameters 필드(field default_factory) + get()에서 집계 주입. schemas.py ParameterSummaryView(from_attributes) + SummaryView.parameters. routes.py summary()에서 model_validate 매핑. types.ts에 ParameterSummary 인터페이스 + SummaryView.parameters. 통합 테스트 test_summary_aggregates_per_parameter_mean_in_contract_order 추가. 백엔드: 57 passed / 7 Postgres-skipped, ruff·mypy clean.
+
+(B) 문서 — requirements/home-tab-requirements.md를 v2(최종 구현 기준)로 전면 재작성. 기준 자료 references/NANoDB_홈탭_v2.pdf. §1.1에 v2-현실 간극 명시(실데이터로 채우는 것/빈 상태·로드맵/하지 않는 것), 본문 순서 v2(대의→실측 KPI→최근 이미지→왜 지금인가→Phase 1~4→AI-DLC→사용 흐름→정책), HOM-001~039 재정의, §4 데이터 계약 표(v2 전제 엔드포인트 → 이 MVP 실제 엔드포인트 매핑), §6 v1↔v2 차이(히어로 CTA 제거 포함).
+
+(C) 홈 재구현 — src/frontend/src/pages/HomePage.tsx를 v2 레이아웃으로 재작성, 실데이터만 사용. 히어로(로고+브랜드+대의 h1 '만드는 사람은 바뀌어도, 데이터와 도구는 회사에 남게', HOM-005대로 CTA 제거) + 세 가치 카드 → 실측 KPI(이미지 수+SEM/TEM, 저장 측정 수, summary.parameters 상위 2종 평균 nm·n, 없으면 —/n=0) + 구성/추이 막대(이미지 SEM/TEM 구성, 측정 CD/Depth/Thickness 구성, 최근 14일 등록 추이 — 모두 /api/summary·/api/images 실집계) → 최근 등록 이미지 6건(원본 file_url 썸네일, 본문 링크 없음) → 왜 지금인가 공개 통계 4카드(출처·연도·새 탭 링크) → NANoDB가 가는 길 Phase 1~4(Phase 1 = 이 MVP 실기능만 '지금 동작', v2가 Phase1에 넣은 승인/분석/API는 미구현이라 후속 Phase로 재배치, 비링크) → AI-DLC 3카드(실제 aidlc-docs 산출물 근거) → 이렇게 쓰세요 4단계 → 정책 줄. 분석 차트·승인 KPI·Lot 박스플롯은 데이터가 없어 미표시(가짜 미생성). /api/summary 중복 fetch 방지용 summary-context는 유지, 이미지 목록은 useImages 훅으로 조회하며 Array.isArray 방어. styles.css에 v2 홈 클래스(hero-card/hero-grid/comp-grid/comp-bar/trend/recent-grid/phase-grid/phase-card/code-box 등) 추가 및 반응형 갱신.
+
+테스트 — HomePage.test.tsx를 v2로 갱신(CTA 단언 제거, mockImplementation로 /api/summary·/api/images 분기 응답: 로딩→실측 KPI(15.50/CD 평균), 실패→alert+home-summary 미표시+정적 섹션 유지, Phase 섹션 비링크·'로드맵' 확인). App.test.tsx의 단일 Response mock을 URL 분기 mockImplementation으로 교체(홈이 이미지도 fetch하므로 body 소비 경합 방지). 검증: vitest 23 passed, tsc -b + vite build 성공. 아직 commit/push 안 함(사용자 명시 확인 대기)."
+**Context**: Post-CONSTRUCTION home-tab v2 merge (docs + real-data re-implementation); awaiting commit decision
+
+---
+
+## Phase 2 Unit 1 — Image Search & Filter
+**Timestamp**: 2026-09-08T12:20:00Z
+**User Input**: "아냐 계속 구현하자. 다음 구현 시작. 아직 미완성부분이 너무 많아" / (AskUserQuestion 답변) "다 필요한 것이야. 순차적으로 구현해줘"
+**AI Response**: "Phase 2를 위험도·의존성 순으로 4개 유닛(검색·필터 → 파라미터 평균 확장 → 측정 삭제 → 이미지 삭제)으로 나눠 순차 구현하기로 하고, 유닛 1(이미지 검색·필터)을 완결했다. 서버사이드 필터로 구현. 백엔드: ImageRepository.list_with_measurement_count(query, image_type) — 파일명·Product·Lot·Wafer ilike 부분 일치(or_) + SEM/TEM where, 공백 query는 전체 반환. ImageService.list_images(query, image_type) 위임. routes.py GET /api/images에 q(max_length=200)·image_type 쿼리 파라미터 추가. 프런트: client.listImages(filter?) URLSearchParams로 q·image_type 구성(공백 트림, 빈 값 생략). ImageListPage에 검색 input(250ms 디바운스: queryInput→activeQuery)과 SEM/TEM/전체 chip 필터, 필터 적용 시 빈 결과는 '조건에 맞는 이미지가 없습니다'로 구분(무조건 empty와 분리). styles.css .catalog-toolbar/.catalog-search/.type-filter/.chip 추가. 테스트: test_routes에 필터 forwarding 2건(FakeImageService.list_images가 kwargs 기록) + 통합 test에 부분일치·타입·공백·교집합 필터 1건(Postgres skip). 프런트 ImageListPage.test에 q 파라미터·image_type 파라미터·필터드 빈 상태 3건. 검증: 백엔드 59 passed/9 Postgres-skipped, ruff·mypy clean; 프런트 vitest 26 passed; build 성공."
+**Context**: CONSTRUCTION Phase 2 - Unit 1 (search/filter) complete; committing per-unit
+
+## Phase 2 Unit 2 — Parameter Average Card Expansion (mean/min/max/n)
+**Timestamp**: 2026-09-08T12:45:00Z
+**User Input**: (순차 구현 진행 중, 유닛 2)
+**AI Response**: "유닛 2(파라미터 평균 확장)를 완결했다. /api/summary의 파라미터 통계를 count·mean에서 min·max까지 확장. export 스냅샷 계약(ExpectedSummaryEntry, build_expected_summary 검증)에 영향을 주지 않도록 별도 도메인 값 ParameterStat(parameter_type,count,mean_nm,min_nm,max_nm)을 신설하고 aggregate_by_parameter가 이를 반환(func.min/func.max 추가, CD·Depth·Thickness 순서·n=0 제외 유지). summary_service.Summary.parameters 타입 교체, schemas.ParameterSummaryView에 min_nm·max_nm 추가(routes는 from_attributes model_validate 그대로 동작). types.ts ParameterSummary에 min_nm·max_nm. HomePage에 ParameterBreakdown 표(param-breakdown, 측정된 파라미터만 항목·n·평균·최소·최대 nm, n=0이면 미표시) 추가, styles.css .param-table. 테스트: 통합 test_services 집계 단언을 min/max 포함으로 확장(CD 15/10/20, Depth 30/30/30), HomePage.test 데이터에 min/max 추가 + breakdown 표 단언(최소·10.00·21.00). 검증: 백엔드 59 passed/9 skipped, ruff·mypy clean; 프런트 26 passed; build 성공."
+**Context**: CONSTRUCTION Phase 2 - Unit 2 (parameter stats) complete; committing per-unit
+
+## Phase 2 Unit 3 — Measurement Delete
+**Timestamp**: 2026-09-08T13:05:00Z
+**User Input**: (순차 구현 진행 중, 유닛 3)
+**AI Response**: "유닛 3(측정 삭제)을 완결했다. 원본 이미지는 read-only로 그대로 두고 파생 데이터인 측정만 삭제. 백엔드: MeasurementRepository.delete(image_id, measurement_id)->bool — 이미지에 스코프(다른 이미지의 measurement_id는 not found 처리, id 추측으로 교차 삭제 불가). MeasurementService.delete(image_id, measurement_id) — 이미지 없으면 IMAGE_NOT_FOUND, 측정 없으면 MEASUREMENT_NOT_FOUND(둘 다 errors.py에서 404 매핑), 성공 시 commit. routes.py DELETE /api/images/{image_id}/measurements/{measurement_id} → 204 No Content. 프런트: client.deleteMeasurement — 204 본문 파싱 안 하는 requestVoid 헬퍼 신설(에러 시 안전한 envelope). MeasurementPage에 저장 측정 행별 삭제 버튼(delete-measurement) 추가, window.confirm 확인 후 삭제, 성공 시 detail.measurements에서 제거·선택 해제, 실패 시 alert. 저장 측정 li를 measurement-row(선택 버튼+삭제 버튼 형제)로 재구성해 버튼 중첩 회피, styles.css .measurement-row/.delete-measurement. 테스트: test_routes 2건(204+ids forwarding, 없는 측정 404 envelope, FakeMeasurementService.delete 기록), 통합 test_services 2건(이미지 스코프 삭제·교차 삭제 거부, 없는 이미지 IMAGE_NOT_FOUND). 프런트 MeasurementPage.test 3건(확인 후 삭제+export 비활성, 취소 시 유지·fetch 미호출, 실패 시 alert+측정 유지). 검증: 백엔드 61 passed + 로컬 Postgres로 통합 11 passed(TEST_DATABASE_URL 지정 시), ruff·mypy clean; 프런트 vitest 29 passed; build 성공."
+**Context**: CONSTRUCTION Phase 2 - Unit 3 (measurement delete) complete; committing per-unit
+
+## Phase 2 Unit 4 — Image Delete
+**Timestamp**: 2026-09-08T13:35:00Z
+**User Input**: (순차 구현 진행 중, 유닛 4 — 마지막, 가장 파괴적)
+**AI Response**: "유닛 4(이미지 삭제)를 완결해 Phase 2 순차 구현을 마쳤다. 이미지와 그에 딸린 파생 측정을 함께 삭제하고 저장 파일까지 정리. FK가 ondelete=RESTRICT(고아 방지 가드레일)라 측정을 먼저 지운 뒤 이미지 행을 삭제하고, 파일은 커밋 이후에만 삭제(실패 시 DB 행이 없는 파일을 가리키는 대신 복구 가능한 고아 파일만 남는 안전한 방향). 백엔드: MeasurementRepository.delete_by_image(image_id), ImageRepository.delete(image_id), ImageService.delete(image_id)(없으면 IMAGE_NOT_FOUND→404, 측정 삭제→행 삭제→commit→file_store.delete_if_exists). routes.py DELETE /api/images/{image_id} → 204. 프런트: client.deleteImage(requestVoid 재사용). ImageListPage 카드별 삭제 버튼(catalog-image-delete) — 측정 개수를 경고에 명시하고 window.confirm 후 삭제, 성공 시 목록에서 제거, 실패 시 alert(카드를 Link 안 버튼 중첩 회피 위해 article.image-card-wrap로 감싸고 삭제 버튼을 우상단 배치). MeasurementPage 상세 헤더에 '이미지 삭제' 버튼(detail-image-delete) — 삭제 후 useNavigate로 /images 복귀. styles.css .image-card-wrap/.delete-image/.heading-actions/.heading-delete. 테스트: test_routes 2건(204+id forwarding, 없는 이미지 404), 통합 test_services 2건(실제 Postgres+FileStore로 측정 cascade 삭제·파일 제거·행 제거 검증, 없는 이미지 IMAGE_NOT_FOUND). 프런트 ImageListPage.test 2건(확인 후 삭제+빈 상태 전환, 취소 시 유지·DELETE 미호출), MeasurementPage.test 1건(삭제 후 /images 네비게이션). 검증: 로컬 Postgres로 백엔드 76 passed(TEST_DATABASE_URL 지정), ruff·mypy clean; 프런트 vitest 32 passed; build 성공."
+**Context**: CONSTRUCTION Phase 2 - Unit 4 (image delete) complete; Phase 2 sequential build finished

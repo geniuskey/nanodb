@@ -53,3 +53,14 @@ class MeasurementService:
             if ImageRepository(session).find(image_id) is None:
                 raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
             return MeasurementRepository(session).list_by_image(image_id)
+
+    def delete(self, image_id: int, measurement_id: int) -> None:
+        """Remove one derived measurement; the original image is untouched."""
+        with self._session_factory() as session:
+            if ImageRepository(session).find(image_id) is None:
+                raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
+            if not MeasurementRepository(session).delete(image_id, measurement_id):
+                raise DomainError(
+                    "MEASUREMENT_NOT_FOUND", "Measurement was not found."
+                )
+            session.commit()

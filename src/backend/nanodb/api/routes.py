@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi import APIRouter, File, Form, Query, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 from sqlalchemy import text
 
@@ -15,6 +15,7 @@ from nanodb.api.schemas import (
     ImageView,
     MeasurementInputSchema,
     MeasurementView,
+    ParameterSummaryView,
     ReadinessView,
     SummaryView,
 )
@@ -45,6 +46,9 @@ def summary(request: Request) -> SummaryView:
         image_count=value.image_count,
         measurement_count=value.measurement_count,
         calculated_at=value.calculated_at,
+        parameters=[
+            ParameterSummaryView.model_validate(entry) for entry in value.parameters
+        ],
     )
 
 
@@ -73,13 +77,20 @@ def register_image(
 
 
 @router.get("/images", response_model=list[ImageListView])
-def list_images(request: Request) -> list[ImageListView]:
+def list_images(
+    request: Request,
+    q: Annotated[str | None, Query(max_length=200)] = None,
+    image_type: Annotated[ImageType | None, Query()] = None,
+) -> list[ImageListView]:
     return [
         ImageListView(
             **image_view(item.image).model_dump(),
             measurement_count=item.measurement_count,
         )
-        for item in request.app.state.image_service.list_images()
+        for item in request.app.state.image_service.list_images(
+            query=q,
+            image_type=image_type,
+        )
     ]
 
 
@@ -96,6 +107,12 @@ def image_detail(image_id: int, request: Request) -> ImageDetailView:
 @router.get("/images/{image_id}/file")
 def image_file(image_id: int, request: Request) -> FileResponse:
     return FileResponse(request.app.state.image_service.image_path(image_id))
+
+
+@router.delete("/images/{image_id}", status_code=204)
+def delete_image(image_id: int, request: Request) -> Response:
+    request.app.state.image_service.delete(image_id)
+    return Response(status_code=204)
 
 
 @router.post(
@@ -129,6 +146,19 @@ def list_measurements(image_id: int, request: Request) -> list[MeasurementView]:
         measurement_view(item)
         for item in request.app.state.measurement_service.list_for_image(image_id)
     ]
+
+
+@router.delete(
+    "/images/{image_id}/measurements/{measurement_id}",
+    status_code=204,
+)
+def delete_measurement(
+    image_id: int,
+    measurement_id: int,
+    request: Request,
+) -> Response:
+    request.app.state.measurement_service.delete(image_id, measurement_id)
+    return Response(status_code=204)
 
 
 @router.get("/images/{image_id}/context-export")

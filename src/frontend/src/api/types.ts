@@ -1,9 +1,18 @@
 export type ImageType = "SEM" | "TEM";
 
+export interface ParameterSummary {
+  parameter_type: ParameterType;
+  count: number;
+  mean_nm: number;
+  min_nm: number;
+  max_nm: number;
+}
+
 export interface SummaryView {
   image_count: number;
   measurement_count: number;
   calculated_at: string;
+  parameters: ParameterSummary[];
 }
 
 export interface ImageListView {

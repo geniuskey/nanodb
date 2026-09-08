@@ -37,13 +37,21 @@ def sample_image() -> Image:
 class FakeImageService:
     def __init__(self) -> None:
         self.registration = None
+        self.list_calls: list[tuple[str | None, ImageType | None]] = []
+        self.delete_calls: list[int] = []
 
     def register(self, stream: BytesIO, registration: object) -> Image:
         assert stream.read(1) == b"x"
         self.registration = registration
         return sample_image()
 
-    def list_images(self) -> tuple[ImageListItem, ...]:
+    def list_images(
+        self,
+        *,
+        query: str | None = None,
+        image_type: ImageType | None = None,
+    ) -> tuple[ImageListItem, ...]:
+        self.list_calls.append((query, image_type))
         return (ImageListItem(sample_image(), 0),)
 
     def get_image(self, image_id: int) -> Image:
@@ -51,8 +59,16 @@ class FakeImageService:
             raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
         return sample_image()
 
+    def delete(self, image_id: int) -> None:
+        self.delete_calls.append(image_id)
+        if image_id != 1:
+            raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
+
 
 class FakeMeasurementService:
+    def __init__(self) -> None:
+        self.delete_calls: list[tuple[int, int]] = []
+
     def create(self, image_id: int, value: object) -> Measurement:
         start = value.start
         end = value.end
@@ -81,6 +97,13 @@ class FakeMeasurementService:
             raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
         return ()
 
+    def delete(self, image_id: int, measurement_id: int) -> None:
+        self.delete_calls.append((image_id, measurement_id))
+        if image_id != 1:
+            raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
+        if measurement_id != 1:
+            raise DomainError("MEASUREMENT_NOT_FOUND", "Measurement was not found.")
+
 
 def build_client() -> TestClient:
     app = FastAPI()
@@ -106,6 +129,23 @@ def test_summary_and_catalog_do_not_expose_stored_filename() -> None:
     assert catalog.json()[0]["measurement_count"] == 0
     assert "stored_filename" not in catalog.text
     assert summary.headers["x-correlation-id"]
+
+
+def test_catalog_forwards_search_and_type_filters_to_service() -> None:
+    client = build_client()
+
+    response = client.get("/api/images", params={"q": "lot42", "image_type": "SEM"})
+
+    assert response.status_code == 200
+    assert client.app.state.image_service.list_calls == [("lot42", ImageType.SEM)]
+
+
+def test_catalog_without_filters_forwards_none() -> None:
+    client = build_client()
+
+    client.get("/api/images")
+
+    assert client.app.state.image_service.list_calls == [(None, None)]
 
 
 def test_multipart_registration_returns_safe_image_view() -> None:
@@ -161,6 +201,40 @@ def test_measurement_request_maps_original_points_and_server_result() -> None:
     assert response.status_code == 201
     assert response.json()["distance_px"] == 500
     assert response.json()["value_nm"] == 100
+
+
+def test_delete_image_returns_no_content_and_forwards_id() -> None:
+    client = build_client()
+
+    response = client.delete("/api/images/1")
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert client.app.state.image_service.delete_calls == [1]
+
+
+def test_delete_missing_image_uses_not_found_envelope() -> None:
+    response = build_client().delete("/api/images/999")
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "IMAGE_NOT_FOUND"
+
+
+def test_delete_measurement_returns_no_content_and_forwards_ids() -> None:
+    client = build_client()
+
+    response = client.delete("/api/images/1/measurements/1")
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert client.app.state.measurement_service.delete_calls == [(1, 1)]
+
+
+def test_delete_missing_measurement_uses_not_found_envelope() -> None:
+    response = build_client().delete("/api/images/1/measurements/999")
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "MEASUREMENT_NOT_FOUND"
 
 
 def test_invalid_non_finite_measurement_payload_is_not_accepted() -> None:

@@ -72,10 +72,21 @@ class ImageDetailView(ImageView):
     measurements: list[MeasurementView]
 
 
+class ParameterSummaryView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    parameter_type: ParameterType
+    count: int
+    mean_nm: float
+    min_nm: float
+    max_nm: float
+
+
 class SummaryView(BaseModel):
     image_count: int
     measurement_count: int
     calculated_at: datetime
+    parameters: list[ParameterSummaryView] = Field(default_factory=list)
 
 
 class ReadinessView(BaseModel):

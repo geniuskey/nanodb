@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
 from nanodb.domain.calculations import MeasurementCalculation
@@ -13,6 +13,7 @@ from nanodb.domain.entities import (
     Image,
     ImageType,
     Measurement,
+    ParameterStat,
     ParameterType,
     Point,
 )
@@ -96,13 +97,45 @@ class ImageRepository:
     def count(self) -> int:
         return self._session.scalar(select(func.count(ImageModel.id))) or 0
 
-    def list_with_measurement_count(self) -> tuple[ImageListItem, ...]:
+    def delete(self, image_id: int) -> bool:
+        """Delete an image row. Callers must remove its measurements first
+        because the foreign key uses RESTRICT."""
+        model = self._session.get(ImageModel, image_id)
+        if model is None:
+            return False
+        self._session.delete(model)
+        return True
+
+    def list_with_measurement_count(
+        self,
+        *,
+        query: str | None = None,
+        image_type: ImageType | None = None,
+    ) -> tuple[ImageListItem, ...]:
+        """List images newest-first, optionally filtered.
+
+        ``query`` is a case-insensitive partial match against original filename,
+        product, lot and wafer. ``image_type`` narrows to SEM or TEM. A blank
+        query matches everything so the catalog stays visible while typing.
+        """
         statement: Select[tuple[ImageModel, int]] = (
             select(ImageModel, func.count(MeasurementModel.id))
             .outerjoin(MeasurementModel, MeasurementModel.image_id == ImageModel.id)
             .group_by(ImageModel.id)
             .order_by(ImageModel.created_at.desc(), ImageModel.id.desc())
         )
+        if image_type is not None:
+            statement = statement.where(ImageModel.image_type == image_type.value)
+        if query and query.strip():
+            pattern = f"%{query.strip()}%"
+            statement = statement.where(
+                or_(
+                    ImageModel.original_filename.ilike(pattern),
+                    ImageModel.product_id.ilike(pattern),
+                    ImageModel.lot_id.ilike(pattern),
+                    ImageModel.wafer_id.ilike(pattern),
+                )
+            )
         return tuple(
             ImageListItem(_to_image(model), int(count))
             for model, count in self._session.execute(statement).all()
@@ -144,6 +177,38 @@ class MeasurementRepository:
     def count(self) -> int:
         return self._session.scalar(select(func.count(MeasurementModel.id))) or 0
 
+    def aggregate_by_parameter(self) -> tuple[ParameterStat, ...]:
+        """Per-parameter count, mean, min and max in the fixed CD, Depth,
+        Thickness order.
+
+        Only parameters with at least one stored measurement are returned, so an
+        empty database and never-measured parameters both stay absent (n=0).
+        """
+        statement = select(
+            MeasurementModel.parameter_type,
+            func.count(MeasurementModel.id),
+            func.sum(MeasurementModel.value_nm),
+            func.min(MeasurementModel.value_nm),
+            func.max(MeasurementModel.value_nm),
+        ).group_by(MeasurementModel.parameter_type)
+        rows = {
+            parameter_type: (int(count), float(total), float(low), float(high))
+            for parameter_type, count, total, low, high in self._session.execute(
+                statement
+            )
+        }
+        return tuple(
+            ParameterStat(
+                parameter_type=parameter_type,
+                count=rows[parameter_type.value][0],
+                mean_nm=rows[parameter_type.value][1] / rows[parameter_type.value][0],
+                min_nm=rows[parameter_type.value][2],
+                max_nm=rows[parameter_type.value][3],
+            )
+            for parameter_type in ParameterType
+            if rows.get(parameter_type.value, (0, 0.0, 0.0, 0.0))[0] > 0
+        )
+
     def list_by_image(
         self,
         image_id: int,
@@ -163,6 +228,30 @@ class MeasurementRepository:
         return tuple(
             _to_measurement(model) for model in self._session.scalars(statement)
         )
+
+    def delete(self, image_id: int, measurement_id: int) -> bool:
+        """Delete a single measurement scoped to its image.
+
+        Returns ``True`` when a matching measurement was removed. A measurement
+        that belongs to a different image is treated as not found so callers
+        cannot delete across images by guessing ids.
+        """
+        model = self._session.get(MeasurementModel, measurement_id)
+        if model is None or model.image_id != image_id:
+            return False
+        self._session.delete(model)
+        return True
+
+    def delete_by_image(self, image_id: int) -> int:
+        """Delete every measurement for an image; returns how many were removed."""
+        count = 0
+        statement = select(MeasurementModel).where(
+            MeasurementModel.image_id == image_id
+        )
+        for model in self._session.scalars(statement):
+            self._session.delete(model)
+            count += 1
+        return count
 
     def delete_all(self) -> None:
         for model in self._session.scalars(select(MeasurementModel)):

@@ -14,7 +14,11 @@ from nanodb.adapters.file_store import FileStore
 from nanodb.adapters.image_decoder import ImageDecoder
 from nanodb.domain.entities import Image, ImageType
 from nanodb.domain.errors import DomainError
-from nanodb.persistence.repositories import ImageListItem, ImageRepository
+from nanodb.persistence.repositories import (
+    ImageListItem,
+    ImageRepository,
+    MeasurementRepository,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,9 +98,17 @@ class ImageService:
         finally:
             session.close()
 
-    def list_images(self) -> tuple[ImageListItem, ...]:
+    def list_images(
+        self,
+        *,
+        query: str | None = None,
+        image_type: ImageType | None = None,
+    ) -> tuple[ImageListItem, ...]:
         with self._session_factory() as session:
-            return ImageRepository(session).list_with_measurement_count()
+            return ImageRepository(session).list_with_measurement_count(
+                query=query,
+                image_type=image_type,
+            )
 
     def get_image(self, image_id: int) -> Image:
         with self._session_factory() as session:
@@ -104,6 +116,24 @@ class ImageService:
         if image is None:
             raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
         return image
+
+    def delete(self, image_id: int) -> None:
+        """Delete an image with its derived measurements, then its stored file.
+
+        Measurements are removed first because the foreign key uses RESTRICT.
+        The file is deleted only after the rows are committed, so a failure
+        leaves an orphan file (recoverable) rather than a row pointing at a
+        missing file.
+        """
+        with self._session_factory() as session:
+            repository = ImageRepository(session)
+            image = repository.find(image_id)
+            if image is None:
+                raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
+            MeasurementRepository(session).delete_by_image(image_id)
+            repository.delete(image_id)
+            session.commit()
+        self._file_store.delete_if_exists(image.stored_filename)
 
     def image_path(self, image_id: int) -> Path:
         image = self.get_image(image_id)

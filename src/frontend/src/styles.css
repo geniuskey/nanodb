@@ -88,24 +88,18 @@ h2 { letter-spacing: -0.02em; font-size: 1.5rem; margin: 0 0 6px; }
 .section-note { color: var(--ink-muted); margin: 0 0 20px; }
 .eyebrow { color: var(--accent); font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.8rem; margin: 0; }
 
-/* ---------- Hero + values ---------- */
-.hero { max-width: 940px; }
-.hero-copy { max-width: 760px; font-size: 1.15rem; line-height: 1.7; color: var(--ink); }
-.hero-copy strong { color: var(--accent); }
-.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; align-items: center; }
-.actions .hint { color: var(--ink-muted); font-size: 0.9rem; }
-
-.button {
-  display: inline-block;
-  padding: 13px 20px;
-  border-radius: 10px;
-  text-decoration: none;
-  font-weight: 800;
-  border: 1px solid transparent;
+/* ---------- Hero (대의) + values ---------- */
+.hero-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 40px;
 }
-.button.primary { background: var(--accent); color: #fff; }
-.button.primary:hover { background: var(--accent-strong); }
-.button.secondary { background: var(--surface); color: var(--accent); border-color: var(--accent); }
+.hero-grid { display: grid; grid-template-columns: 300px 1fr; gap: 40px; align-items: center; margin-bottom: 32px; }
+.hero-logo { width: 100%; max-width: 300px; height: auto; }
+.brand-line { margin: 0; font-weight: 800; color: var(--accent); letter-spacing: -0.01em; }
+.brand-sub-line { margin: 4px 0 0; color: var(--ink-muted); font-weight: 700; }
+.lead { max-width: 760px; font-size: 1.12rem; line-height: 1.7; color: var(--ink); margin: 0; }
 
 .card-grid, .image-grid { display: grid; gap: 18px; }
 .card-grid.three { grid-template-columns: repeat(3, 1fr); }
@@ -118,32 +112,93 @@ h2 { letter-spacing: -0.02em; font-size: 1.5rem; margin: 0 0 6px; }
 .value-card h3 { margin: 0 0 8px; color: var(--accent); font-size: 1.05rem; }
 .value-card p { margin: 0; color: var(--ink); line-height: 1.6; }
 
+/* ---------- Real KPI (지금 쌓인 데이터) ---------- */
+.kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.kpi-grid.four { grid-template-columns: repeat(4, 1fr); }
+.kpi-card .kpi-label { color: var(--ink-muted); font-size: 0.9rem; }
+.kpi-card .kpi-value { font-size: 2.4rem; font-weight: 800; color: var(--accent); line-height: 1.1; margin: 6px 0 2px; }
+.kpi-card .kpi-value.muted { color: var(--p2); }
+.kpi-card .kpi-unit { font-size: 1.1rem; font-weight: 700; color: var(--ink-muted); }
+.kpi-card .kpi-sub { font-size: 0.8rem; color: var(--ink-muted); }
+
+/* ---------- Composition + trend bars (real data) ---------- */
+.comp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; }
+.comp-block { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
+.comp-heading { font-weight: 800; font-size: 0.9rem; margin-bottom: 12px; }
+.comp-bar { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--accent-track); }
+.comp-bar .seg { display: block; height: 100%; }
+.seg.sem, .dot.sem { background: var(--accent); }
+.seg.tem, .dot.tem { background: #8b84ff; }
+.seg.param-cd, .dot.param-cd { background: var(--accent); }
+.seg.param-depth, .dot.param-depth { background: #8b84ff; }
+.seg.param-thickness, .dot.param-thickness { background: #c0bcff; }
+.comp-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 0.78rem; color: var(--ink-muted); }
+.comp-legend.spread { justify-content: space-between; }
+.comp-legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: middle; }
+.comp-empty { color: var(--ink-muted); font-size: 0.85rem; margin: 0; }
+.trend { display: flex; align-items: flex-end; gap: 3px; height: 60px; }
+.trend-bar { flex: 1; min-width: 6px; min-height: 3px; background: var(--accent); border-radius: 3px 3px 0 0; }
+
+/* ---------- Parameter breakdown table ---------- */
+.param-table { width: 100%; border-collapse: collapse; margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.param-table caption { text-align: left; padding: 14px 16px 0; }
+.param-table th, .param-table td { padding: 10px 16px; text-align: right; font-variant-numeric: tabular-nums; border-top: 1px solid var(--line); }
+.param-table thead th { color: var(--ink-muted); font-size: 0.8rem; font-weight: 700; }
+.param-table th[scope="row"] { text-align: left; color: var(--accent); }
+.param-table thead th:first-child { text-align: left; }
+
+/* ---------- Recent images ---------- */
+.recent-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+.recent-card { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.recent-card img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #101718; }
+.recent-card figcaption { display: grid; gap: 3px; padding: 10px; }
+.recent-name { font-weight: 700; font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-meta { color: var(--ink-muted); font-size: 0.72rem; }
+
 /* ---------- Public stats (왜 지금인가, P1) ---------- */
 .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .stat-card { padding: 20px; }
-.stat-card .stat-label { color: var(--ink-muted); font-size: 0.85rem; }
-.stat-card .stat-value { font-size: 2rem; font-weight: 800; color: var(--ink); margin: 6px 0 10px; }
-.stat-bar { height: 8px; border-radius: 999px; background: var(--accent-track); overflow: hidden; }
-.stat-bar > span { display: block; height: 100%; background: var(--accent); }
-.stat-card .stat-meaning { font-size: 0.85rem; color: var(--ink); margin: 12px 0 4px; line-height: 1.5; }
+.stat-card .stat-value { font-size: 2.4rem; font-weight: 800; color: var(--accent); margin: 0 0 10px; }
+.stat-card .stat-title { font-weight: 700; font-size: 0.9rem; line-height: 1.4; }
+.stat-card .stat-meaning { font-size: 0.83rem; color: var(--ink); margin: 12px 0 8px; line-height: 1.5; }
 .stat-card .stat-source { font-size: 0.75rem; color: var(--ink-muted); }
+.section-foot { margin-top: 16px; color: var(--ink-muted); font-size: 0.85rem; }
 
-/* ---------- Real KPI ---------- */
-.kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.kpi-card .kpi-label { color: var(--ink-muted); font-size: 0.9rem; }
-.kpi-card .kpi-value { font-size: 2.6rem; font-weight: 800; color: var(--accent); line-height: 1.1; margin: 6px 0 2px; }
-.kpi-card .kpi-sub { font-size: 0.8rem; color: var(--ink-muted); }
+/* ---------- Phase roadmap (Phase 1~4) ---------- */
+.phase-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.phase-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 22px; border-top: 4px solid var(--p2); }
+.phase-card.phase-now { border-top-color: var(--accent); }
+.phase-card.phase-next { border-top-color: #8b84ff; }
+.phase-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.phase-name { font-weight: 800; font-size: 1.05rem; }
+.phase-badge { font-size: 0.72rem; font-weight: 800; color: var(--p2); }
+.phase-badge.phase-now { color: var(--accent); }
+.phase-badge.phase-next { color: #6b63e6; }
+.phase-body { margin: 0 0 12px; line-height: 1.55; color: var(--ink); font-size: 0.9rem; }
+.phase-basis { margin: 0; font-size: 0.78rem; color: var(--ink-muted); }
 
-/* ---------- Usage flow ---------- */
+/* ---------- AI-DLC ---------- */
+.aidlc-card h3 { margin: 0 0 8px; color: var(--accent); font-size: 1.05rem; }
+.aidlc-card p { margin: 0 0 14px; line-height: 1.55; }
+.code-box {
+  margin: 0;
+  padding: 14px;
+  background: #101728;
+  color: #cfd3ff;
+  border-radius: 12px;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+/* ---------- Usage flow (이렇게 쓰세요) ---------- */
 .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 0; margin: 0; list-style: none; }
 .step-card { background: var(--accent-tint); border-color: transparent; }
 .step-card .step-num { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 800; }
-.step-card p { margin: 12px 0 0; font-weight: 700; line-height: 1.5; }
-.flow-after { margin-top: 14px; color: var(--ink-muted); font-size: 0.9rem; }
+.step-card h3 { margin: 12px 0 6px; font-size: 1rem; }
+.step-card p { margin: 0; line-height: 1.5; color: var(--ink); }
 
-.roadmap { padding: 20px 24px; border-left: 4px solid var(--p2); background: #f1f1f4; border-radius: 8px; }
-.roadmap h2 { font-size: 1.15rem; }
-.roadmap p { margin: 6px 0 0; color: var(--ink-muted); }
 .policy { text-align: center; color: var(--ink-muted); font-size: 0.85rem; }
 
 /* ---------- Summary panel (legacy, used where needed) ---------- */
@@ -154,7 +209,20 @@ h2 { letter-spacing: -0.02em; font-size: 1.5rem; margin: 0 0 6px; }
 
 /* ---------- Image list / register / measurement ---------- */
 .page-heading { display: flex; justify-content: space-between; align-items: center; }
+.heading-actions { display: flex; align-items: center; gap: 16px; }
+.heading-delete { padding: 9px 16px; border: 1px solid var(--danger); border-radius: 999px; background: var(--surface); color: var(--danger); font-weight: 700; cursor: pointer; }
+.heading-delete:hover:not(:disabled) { background: var(--danger); color: #fff; }
+.heading-delete:disabled { opacity: .5; cursor: wait; }
+.catalog-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 24px; }
+.catalog-search { flex: 1; min-width: 220px; padding: 12px 14px; border: 1px solid #b7bdc8; border-radius: 10px; font: inherit; }
+.type-filter { display: inline-flex; gap: 6px; }
+.chip { padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-muted); font-weight: 700; cursor: pointer; }
+.chip.active { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
 .image-grid { grid-template-columns: repeat(2, 1fr); }
+.image-card-wrap { position: relative; }
+.delete-image { position: absolute; top: 14px; right: 14px; padding: 8px 14px; border: 1px solid var(--danger); border-radius: 999px; background: var(--surface); color: var(--danger); font-weight: 700; cursor: pointer; }
+.delete-image:hover:not(:disabled) { background: var(--danger); color: #fff; }
+.delete-image:disabled { opacity: .5; cursor: wait; }
 .image-card { display: grid; grid-template-columns: 180px 1fr; gap: 22px; text-decoration: none; }
 .image-card img { width: 180px; height: 150px; object-fit: contain; background: #101718; border-radius: 10px; }
 .image-card h2 { overflow-wrap: anywhere; }
@@ -194,12 +262,19 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .measurement-list button { width: 100%; display: grid; gap: 5px; text-align: left; margin-bottom: 8px; }
 .measurement-list button.selected { background: var(--accent-tint); border-color: var(--accent); }
 .measurement-list span { color: var(--ink-muted); }
+.measurement-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: stretch; }
+.measurement-row > button { margin-bottom: 0; }
+.delete-measurement { width: auto; display: inline-flex; align-items: center; padding: 0 14px; color: var(--danger); border-color: var(--danger); }
+.delete-measurement:disabled { opacity: .5; cursor: wait; }
 .export-panel { margin: 28px 0 0; padding-top: 24px; border-top: 1px solid var(--line); }
 .export-panel p { color: var(--ink-muted); line-height: 1.5; }
 .export-panel [role="alert"] { color: var(--danger); }
 
 @media (max-width: 800px) {
-  .card-grid.three, .flow, .image-grid, .stat-grid, .kpi-grid,
+  .card-grid.three, .flow, .image-grid, .stat-grid, .kpi-grid, .kpi-grid.four,
+  .comp-grid, .phase-grid, .hero-grid,
   .registration-layout, .measurement-layout { grid-template-columns: 1fr; }
+  .recent-grid { grid-template-columns: repeat(2, 1fr); }
+  .hero-card { padding: 24px; }
   .app-shell > .app-header { flex-direction: column; align-items: flex-start; gap: 12px; }
 }

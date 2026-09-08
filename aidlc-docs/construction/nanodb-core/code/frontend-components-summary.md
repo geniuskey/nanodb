@@ -44,6 +44,16 @@ An unknown address renders `NotFoundPage` through a catch-all route rather than 
 - A two-point preview reports pixel distance and calibrated nanometers to two decimal places. The backend recalculates and returns the saved values.
 - Unit tests verify exact restoration at 100% scale, restoration within one original pixel at 50% scale, and rejection of surrounding space.
 
+### Shape rendering (revised 2026-09-09 after the auto-feature visualisation review)
+
+- Every drawn shape carries `.measurement-shape`, which is what makes it an outline. A bare `.measurement-overlay circle` rule previously also matched the fitted curvature circle, and because CSS outranks the `fill="none"` presentation attribute it painted an opaque disc over the image and over every measurement drawn before it.
+- A curvature draws the arc between its three stored points (sampled in original pixels through `arcGeometry`, so it stays correct under any rendered scale), plus a dashed radius line to the fitted centre, clipped at the image edge, and a centre cross when the centre falls on the image. The full circle is never drawn: an auto-extracted trench-bottom radius is several times the width of the structure it belongs to.
+- An angle draws its two arms, a filled wedge and an arc whose radius follows the shorter arm rather than a fixed 18 px. The vertex is a solid point; the two arm ends are hollow "reference" points, because an auto sidewall angle derives one arm (the vertical) rather than measuring it.
+- Captions are laid out globally by `layoutLabels`: each starts at its preferred offset and is pushed away until it clears the captions already placed, staying inside the image, with a leader line when it travels far. Auto extraction anchors up to six captions on one region, which previously stacked them into an unreadable pile and pushed some off the image edge.
+- Auto geometry is dashed (shape and caption plate alike) and manual geometry is solid, so an unverified value never looks like a placed one. The viewer states this convention below the image whenever auto measurements are present.
+- Selection keeps the measurement's own colour — the tie to its row in the table — and is marked by a white under-stroke plus painting it last; the rest fade to 45%.
+- The viewer toolbar can hide the shapes, hide the captions, or draw only the selected measurement, which is what makes a single value legible on a region carrying six of them.
+
 ## Accessibility and automation contract
 
 - Navigation, links, form controls, buttons, headings, lists, and status text use native semantic elements.

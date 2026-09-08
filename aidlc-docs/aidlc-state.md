@@ -29,6 +29,21 @@
 | Security Baseline | No | Requirements Analysis |
 | Property-Based Testing | No | Requirements Analysis |
 
+## Auto-Feature Visualisation Fix (2026-09-09)
+
+The measurement overlay was reviewed against real auto-extracted features and
+corrected. The blocking defect was a CSS `circle` rule that outranked the
+`fill="none"` attribute on the fitted curvature circle and painted an opaque
+disc over the image, hiding every measurement drawn before it. Beyond that the
+overlay now draws a curvature as its measured arc plus a clipped radius line
+rather than a whole circle, lays captions out so six auto features on one region
+stay apart and on the image, sizes the angle mark to its arms, distinguishes a
+derived reference point from a placed one, keeps auto geometry dashed and manual
+solid, and can be stripped back to the selected measurement from the viewer
+toolbar. New modules: `measurement/arc.ts`, `measurement/labels.ts`. All gates
+green against a throwaway PostgreSQL and the running stack (pytest 212, vitest
+115, playwright 9, ruff/mypy/tsc clean). Backend untouched.
+
 ## Hackathon Demo — Auto Analysis Feature (2026-09-09)
 
 New requirement: automatic TEM/SEM analysis in the app (multi-Otsu brightness

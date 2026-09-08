@@ -146,6 +146,46 @@ describe("MeasurementPage", () => {
     expect(screen.getByTestId("saved-measurement-item")).toHaveClass("selected");
   });
 
+  it("can strip the overlay back while measuring a crowded region", async () => {
+    // Auto extraction puts up to six shapes on one structure; hiding them, their
+    // captions, or all but the selected one is how a single value stays legible.
+    renderPage();
+    await preparedImage();
+    expect(screen.getByTestId("measurement-label")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("toggle-labels"));
+    expect(screen.queryByTestId("measurement-label")).not.toBeInTheDocument();
+    expect(document.querySelectorAll("g[data-measurement-id]")).toHaveLength(1);
+
+    await userEvent.click(screen.getByTestId("toggle-shapes"));
+    expect(document.querySelectorAll("g[data-measurement-id]")).toHaveLength(0);
+    expect(screen.getByTestId("toggle-labels")).toBeDisabled();
+  });
+
+  it("offers 'selected only' just for a selected measurement", async () => {
+    renderPage();
+    await preparedImage();
+    expect(screen.getByTestId("toggle-only-selected")).toBeDisabled();
+
+    await userEvent.click(screen.getByTestId("saved-measurement-item"));
+    await userEvent.click(screen.getByTestId("toggle-only-selected"));
+
+    expect(document.querySelectorAll("g[data-measurement-id]")).toHaveLength(1);
+  });
+
+  it("explains the overlay conventions only once auto values are on the image", async () => {
+    renderPage();
+    await preparedImage();
+    expect(screen.queryByTestId("viewer-legend")).not.toBeInTheDocument();
+
+    renderPage([jsonResponse({
+      ...detail,
+      measurements: [{ ...detail.measurements[0], source: "auto", confidence: 0.8 }],
+    })]);
+    const legends = await screen.findAllByTestId("viewer-legend");
+    expect(legends[0]).toHaveTextContent("점선 = 자동 추출");
+  });
+
   it("removes a saved measurement after confirmation and disables export", async () => {
     const fetchMock = renderPage([jsonResponse(detail), new Response(null, { status: 204 })]);
     await preparedImage();
@@ -383,7 +423,10 @@ describe("MeasurementPage", () => {
 
     const caption = screen.getByTestId("measurement-label");
     expect(caption).toHaveTextContent("Gate CD");
-    expect(caption.closest("g")).toHaveAttribute("data-measurement-id", "1");
+    expect(caption.closest("g[data-measurement-id]")).toHaveAttribute(
+      "data-measurement-id",
+      "1",
+    );
   });
 
   it("leaves an unlabelled measurement without a caption", async () => {

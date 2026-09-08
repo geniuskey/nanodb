@@ -120,3 +120,16 @@ export function circleCenter(points: Point[]): Point | null {
 export function formatValue(value: number, unit: string): string {
   return `${value.toFixed(2)}${unit === "deg" ? "°" : unit}`;
 }
+
+/**
+ * Shorter form of {@link formatValue} for captions drawn on the image.
+ *
+ * A caption competes with the structure underneath it for space, and two
+ * decimals on a radius of several thousand nanometres are noise rather than
+ * precision. The tables keep the full value; this only shortens what is drawn.
+ */
+export function formatOverlayValue(value: number, unit: string): string {
+  const magnitude = Math.abs(value);
+  const digits = magnitude >= 1000 ? 0 : magnitude >= 100 ? 1 : 2;
+  return `${value.toFixed(digits)}${unit === "deg" ? "°" : unit}`;
+}

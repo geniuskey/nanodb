@@ -371,6 +371,12 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .image-stage > img { display: block; max-width: 100%; max-height: 72vh; object-fit: contain; cursor: crosshair; }
 .image-viewport .image-stage > img { max-width: none; max-height: none; height: auto; }
 .viewer-scale { margin: 0; align-self: stretch; color: var(--line); font-size: 0.8rem; line-height: 1.5; }
+/* Reads the overlay's own conventions back to the operator, so a dashed shape
+   is understood as unverified rather than as a rendering artefact. */
+.viewer-legend { margin: 0; align-self: stretch; color: var(--line); font-size: 0.78rem; }
+.overlay-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; color: var(--ink); font-size: 0.82rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.overlay-toggle:has(input:disabled) { opacity: .45; cursor: not-allowed; }
+.overlay-toggle input { accent-color: var(--accent); cursor: inherit; }
 .toolbar-gap { flex: 1; }
 .zoom-value { min-width: 52px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
 .viewer-toolbar .tool-button:disabled { opacity: .4; cursor: not-allowed; }
@@ -430,23 +436,43 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .measurement-overlay { position: absolute; inset: 0; pointer-events: none; }
 .measurement-overlay line { vector-effect: non-scaling-stroke; }
 .saved-line { stroke: #8b84ff; stroke-width: 2; }
-.saved-line.selected { stroke: #ffc24b; stroke-width: 4; }
-.measurement-overlay circle { fill: #8b84ff; stroke: #101718; stroke-width: 2; }
-/* The caption of a saved measurement. Dark halo painted first, so the text
-   stays readable over both bright and dark regions of a SEM/TEM image. */
+.saved-line.selected { stroke-width: 3; }
+/* Every drawn shape is an outline. Scoped to `.measurement-shape` rather than
+   to the element: a bare `circle` rule also matched the fitted curvature
+   circle and, since CSS beats the `fill="none"` presentation attribute, filled
+   the whole image with an opaque disc that hid every other measurement. */
+.measurement-shape { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+/* Auto-extracted geometry is dashed wherever it is drawn, so a value nobody has
+   verified never looks like one an operator placed by hand. */
+.measurement-shape.auto { stroke-dasharray: 9 5; }
+.measurement-shape.radius-line { stroke-dasharray: 4 5; stroke-width: 1.5; opacity: .85; }
+/* Placed points are solid; a construction point the extractor derived rather
+   than measured (the vertical arm of a sidewall angle) stays hollow. */
+.measurement-point { fill: #8b84ff; stroke: #101718; stroke-width: 2; }
+.measurement-point.reference { fill: #101718; stroke-width: 2; }
+.measurement-centre line { stroke: #8b84ff; stroke-width: 2; }
+.measurement-wedge { fill: #8b84ff; fill-opacity: .22; stroke: none; }
+/* The selection is a white under-stroke, so the selected measurement keeps the
+   colour that ties it to its row in the table instead of changing identity. */
+.selection-halo * { stroke: #ffffff !important; stroke-width: 6 !important; stroke-opacity: .4; fill: none !important; }
+/* The radius line is a construction line, not the measured arc; haloing it too
+   would make the strongest mark on the image the one nobody is looking at. */
+.selection-halo .radius-line { display: none; }
+/* The caption of a saved measurement, on a dark plate so it stays readable over
+   both the bright and the dark regions of a SEM/TEM image. */
+.caption-plate { fill: rgba(12, 17, 18, .82); stroke-width: 1.5; }
+.caption-plate.auto { stroke-dasharray: 4 3; }
+.caption-leader { stroke-width: 1; stroke-dasharray: 3 3; opacity: .8; }
 .measurement-label {
   fill: #8b84ff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   text-anchor: middle;
-  paint-order: stroke;
-  stroke: #101718;
-  stroke-width: 3;
-  stroke-linejoin: round;
+  dominant-baseline: central;
 }
-.measurement-label.selected { fill: #ffc24b; }
+.measurement-caption.selected .caption-plate { fill: rgba(12, 17, 18, .95); stroke-width: 2.5; }
 .draft-line { stroke: #ffc24b; stroke-width: 3; stroke-dasharray: 7 4; }
-.draft-point { fill: #ffc24b !important; }
+.draft-point { fill: #ffc24b; }
 .measurement-controls { padding: 24px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); }
 .measurement-controls label { display: grid; gap: 7px; margin-bottom: 14px; font-weight: 700; }
 .measurement-controls input, .measurement-controls select, .measurement-controls textarea { padding: 10px; border: 1px solid #b7bdc8; border-radius: 8px; font: inherit; }

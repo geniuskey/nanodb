@@ -1317,3 +1317,21 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: CONSTRUCTION - Code Generation Part 2 Step 21/26 complete; per-step Git checkpoint required; Step 22 next
 
 ---
+
+## NANoDB Core Code Generation Step 22 Started
+
+**Timestamp**: 2026-09-08T05:20:00Z
+**User Input**: "2"
+**AI Response**: "After pushing the Step 21 checkpoint, started Step 22 external AI development verification assets and evidence for US-07."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 22 in progress
+
+---
+
+## NANoDB Core Code Generation Step 22 Complete
+
+**Timestamp**: 2026-09-08T05:32:00Z
+**User Input**: "2"
+**AI Response**: "Generated the US-07 external AI verification assets under validation/external-ai/ for the same exported task. Added manual-arm and context-arm prompts (prompts/manual-prompt.md, prompts/context-prompt.md), the input schema version reference (schema-version.txt = 1.0), an example generated summary program (generated/summarize_measurements.py) that reads data.json and writes a parameter_type,count,mean_nm CSV ordered CD/Depth/Thickness with stored-precision means and half-up two-decimal display, an offline comparison runner (compare_summary.py) that verifies the CSV against checks.json expected_summary within tolerance_nm using half-up display rounding and emits pass/fail/unverified, a per-run recording template (results/run-log-template.md) capturing preparation time, follow-up request count, checks passed and verbatim runner output, and an aggregation header (results/metrics.csv), plus a README documenting the comparison metrics and boundaries. All Python uses the standard library only, imports nothing from nanodb, and makes no model calls; the tooling is not wired into Core runtime. Verified the round trip offline: pass, fail (wrong count) and unverified (unparseable CSV) verdicts with matching exit codes 0/1/2, and Ruff passed on the new files."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 22/26 complete; per-step Git checkpoint required; Step 23 next
+
+---

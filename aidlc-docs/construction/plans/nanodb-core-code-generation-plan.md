@@ -168,7 +168,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 22. External AI development verification assets와 evidence 생성 — US-07
 
-- [ ] `validation/external-ai/`에 동일 과제용 manual/context prompt, input schema version, 생성된 summary code, 실행 command, CSV/check 비교 runner와 결과 기록 형식을 생성한다. 실제 export를 사용한 생성 코드 실행 결과는 pass/fail/unverified 그대로 기록하고 준비 시간·추가 요청 수·통과 수를 보존한다. 이 도구를 Core runtime이나 자동 model call에 연결하지 않는다.
+- [x] `validation/external-ai/`에 동일 과제용 manual/context prompt, input schema version, 생성된 summary code, 실행 command, CSV/check 비교 runner와 결과 기록 형식을 생성한다. 실제 export를 사용한 생성 코드 실행 결과는 pass/fail/unverified 그대로 기록하고 준비 시간·추가 요청 수·통과 수를 보존한다. 이 도구를 Core runtime이나 자동 model call에 연결하지 않는다.
 
 ### Step 23. Deployment artifact와 root task command 생성 — US-01~US-06
 

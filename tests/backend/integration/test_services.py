@@ -80,13 +80,13 @@ def test_summary_aggregates_per_parameter_mean_in_contract_order(
     assert summary.image_count == 1
     assert summary.measurement_count == 3
     aggregates = [
-        (entry.parameter_type, entry.count, entry.mean_nm)
+        (entry.parameter_type, entry.count, entry.mean_nm, entry.min_nm, entry.max_nm)
         for entry in summary.parameters
     ]
     # CD before Depth (contract order), Thickness absent because n=0.
     assert aggregates == [
-        (ParameterType.CD, 2, 15.0),
-        (ParameterType.DEPTH, 1, 30.0),
+        (ParameterType.CD, 2, 15.0, 10.0, 20.0),
+        (ParameterType.DEPTH, 1, 30.0, 30.0, 30.0),
     ]
 
 

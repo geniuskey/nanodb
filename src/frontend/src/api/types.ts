@@ -4,6 +4,8 @@ export interface ParameterSummary {
   parameter_type: ParameterType;
   count: number;
   mean_nm: number;
+  min_nm: number;
+  max_nm: number;
 }
 
 export interface SummaryView {

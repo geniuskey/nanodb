@@ -67,6 +67,21 @@ class ExpectedSummaryEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class ParameterStat:
+    """Per-parameter statistics for the summary API (home KPI breakdown).
+
+    Kept separate from ExpectedSummaryEntry, which is part of the frozen
+    context-export snapshot contract and must not grow new fields.
+    """
+
+    parameter_type: ParameterType
+    count: int
+    mean_nm: float
+    min_nm: float
+    max_nm: float
+
+
+@dataclass(frozen=True, slots=True)
 class ExportSnapshot:
     schema_version: str
     exported_at: datetime

@@ -139,6 +139,14 @@ h2 { letter-spacing: -0.02em; font-size: 1.5rem; margin: 0 0 6px; }
 .trend { display: flex; align-items: flex-end; gap: 3px; height: 60px; }
 .trend-bar { flex: 1; min-width: 6px; min-height: 3px; background: var(--accent); border-radius: 3px 3px 0 0; }
 
+/* ---------- Parameter breakdown table ---------- */
+.param-table { width: 100%; border-collapse: collapse; margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.param-table caption { text-align: left; padding: 14px 16px 0; }
+.param-table th, .param-table td { padding: 10px 16px; text-align: right; font-variant-numeric: tabular-nums; border-top: 1px solid var(--line); }
+.param-table thead th { color: var(--ink-muted); font-size: 0.8rem; font-weight: 700; }
+.param-table th[scope="row"] { text-align: left; color: var(--accent); }
+.param-table thead th:first-child { text-align: left; }
+
 /* ---------- Recent images ---------- */
 .recent-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
 .recent-card { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }

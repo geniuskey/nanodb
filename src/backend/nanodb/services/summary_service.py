@@ -7,7 +7,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from nanodb.domain.entities import ExpectedSummaryEntry
+from nanodb.domain.entities import ParameterStat
 from nanodb.persistence.repositories import (
     ImageRepository,
     MeasurementRepository,
@@ -20,7 +20,7 @@ class Summary:
     image_count: int
     measurement_count: int
     calculated_at: datetime
-    parameters: tuple[ExpectedSummaryEntry, ...] = field(default_factory=tuple)
+    parameters: tuple[ParameterStat, ...] = field(default_factory=tuple)
 
 
 class SummaryService:

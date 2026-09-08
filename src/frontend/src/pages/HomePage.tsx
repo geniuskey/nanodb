@@ -227,9 +227,42 @@ function KpiSection() {
           </div>
 
           {images && <CompositionBars images={images} parameters={summary.parameters} />}
+
+          <ParameterBreakdown parameters={summary.parameters} />
         </div>
       )}
     </section>
+  );
+}
+
+function ParameterBreakdown({ parameters }: { parameters: ParameterSummary[] }) {
+  if (parameters.length === 0) {
+    return null;
+  }
+  return (
+    <table className="param-table" data-testid="param-breakdown">
+      <caption className="comp-heading">파라미터별 측정 요약 (저장값, 단위 nm)</caption>
+      <thead>
+        <tr>
+          <th scope="col">항목</th>
+          <th scope="col">n</th>
+          <th scope="col">평균</th>
+          <th scope="col">최소</th>
+          <th scope="col">최대</th>
+        </tr>
+      </thead>
+      <tbody>
+        {parameters.map((param) => (
+          <tr key={param.parameter_type}>
+            <th scope="row">{PARAM_LABEL[param.parameter_type]}</th>
+            <td>{param.count}</td>
+            <td>{param.mean_nm.toFixed(2)}</td>
+            <td>{param.min_nm.toFixed(2)}</td>
+            <td>{param.max_nm.toFixed(2)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 

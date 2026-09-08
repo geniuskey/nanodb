@@ -25,8 +25,8 @@ describe("HomePage", () => {
         measurement_count: 7,
         calculated_at: "2026-09-08T04:00:00Z",
         parameters: [
-          { parameter_type: "CD", count: 5, mean_nm: 15.5 },
-          { parameter_type: "Depth", count: 2, mean_nm: 30 },
+          { parameter_type: "CD", count: 5, mean_nm: 15.5, min_nm: 10, max_nm: 21 },
+          { parameter_type: "Depth", count: 2, mean_nm: 30, min_nm: 28, max_nm: 32 },
         ],
       },
       [
@@ -55,6 +55,12 @@ describe("HomePage", () => {
     expect(summary).toHaveTextContent("7");
     expect(summary).toHaveTextContent("15.50");
     expect(summary).toHaveTextContent("CD 평균");
+
+    // Full per-parameter breakdown with min/max, not just the top-2 tiles.
+    const breakdown = screen.getByTestId("param-breakdown");
+    expect(breakdown).toHaveTextContent("최소");
+    expect(breakdown).toHaveTextContent("10.00");
+    expect(breakdown).toHaveTextContent("21.00");
   });
 
   it("shows a text failure without example KPI values but keeps static sections", async () => {

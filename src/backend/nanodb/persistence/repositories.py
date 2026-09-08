@@ -10,10 +10,10 @@ from sqlalchemy.orm import Session
 
 from nanodb.domain.calculations import MeasurementCalculation
 from nanodb.domain.entities import (
-    ExpectedSummaryEntry,
     Image,
     ImageType,
     Measurement,
+    ParameterStat,
     ParameterType,
     Point,
 )
@@ -168,8 +168,9 @@ class MeasurementRepository:
     def count(self) -> int:
         return self._session.scalar(select(func.count(MeasurementModel.id))) or 0
 
-    def aggregate_by_parameter(self) -> tuple[ExpectedSummaryEntry, ...]:
-        """Per-parameter count and mean_nm in the fixed CD, Depth, Thickness order.
+    def aggregate_by_parameter(self) -> tuple[ParameterStat, ...]:
+        """Per-parameter count, mean, min and max in the fixed CD, Depth,
+        Thickness order.
 
         Only parameters with at least one stored measurement are returned, so an
         empty database and never-measured parameters both stay absent (n=0).
@@ -178,19 +179,25 @@ class MeasurementRepository:
             MeasurementModel.parameter_type,
             func.count(MeasurementModel.id),
             func.sum(MeasurementModel.value_nm),
+            func.min(MeasurementModel.value_nm),
+            func.max(MeasurementModel.value_nm),
         ).group_by(MeasurementModel.parameter_type)
         rows = {
-            parameter_type: (int(count), float(total))
-            for parameter_type, count, total in self._session.execute(statement)
+            parameter_type: (int(count), float(total), float(low), float(high))
+            for parameter_type, count, total, low, high in self._session.execute(
+                statement
+            )
         }
         return tuple(
-            ExpectedSummaryEntry(
+            ParameterStat(
                 parameter_type=parameter_type,
                 count=rows[parameter_type.value][0],
                 mean_nm=rows[parameter_type.value][1] / rows[parameter_type.value][0],
+                min_nm=rows[parameter_type.value][2],
+                max_nm=rows[parameter_type.value][3],
             )
             for parameter_type in ParameterType
-            if rows.get(parameter_type.value, (0, 0.0))[0] > 0
+            if rows.get(parameter_type.value, (0, 0.0, 0.0, 0.0))[0] > 0
         )
 
     def list_by_image(

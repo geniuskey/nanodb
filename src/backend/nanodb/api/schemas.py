@@ -78,6 +78,8 @@ class ParameterSummaryView(BaseModel):
     parameter_type: ParameterType
     count: int
     mean_nm: float
+    min_nm: float
+    max_nm: float
 
 
 class SummaryView(BaseModel):

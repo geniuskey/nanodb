@@ -40,6 +40,9 @@ class ImageModel(Base):
     stored_filename: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False
     )
+    display_filename: Mapped[str | None] = mapped_column(
+        String(255), unique=True, nullable=True
+    )
     image_type: Mapped[str] = mapped_column(String(3), nullable=False)
     product_id: Mapped[str] = mapped_column(String(255), nullable=False)
     lot_id: Mapped[str] = mapped_column(String(255), nullable=False)

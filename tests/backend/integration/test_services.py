@@ -209,6 +209,79 @@ def test_image_delete_rejects_missing_image(
     assert caught.value.code == "IMAGE_NOT_FOUND"
 
 
+def test_tiff_registration_stores_original_and_serves_png_derivative(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+    tmp_path: Path,
+) -> None:
+    _, factory = database_engine
+    store = FileStore(tmp_path)
+    image_service = ImageService(factory, store, ImageDecoder())
+
+    content = BytesIO()
+    PillowImage.new("RGB", (24, 16), color=(40, 60, 80)).save(content, format="TIFF")
+    content.seek(0)
+    image = image_service.register(
+        content,
+        ImageRegistration(
+            original_filename="cross-section.tiff",
+            image_type=ImageType.TEM,
+            product_id="P",
+            lot_id="L",
+            wafer_id="W",
+            calibration_nm_per_pixel=0.2,
+        ),
+    )
+
+    # Original TIFF preserved, plus a distinct PNG derivative.
+    assert image.stored_filename.endswith(".tif")
+    assert image.display_filename is not None
+    assert image.display_filename.endswith(".png")
+    assert (tmp_path / image.stored_filename).is_file()
+    assert (tmp_path / image.display_filename).is_file()
+
+    # The served file is the browser-renderable PNG at the original size.
+    served = image_service.image_path(image.id)
+    assert served == tmp_path / image.display_filename
+    with PillowImage.open(served) as rendered:
+        assert rendered.format == "PNG"
+        assert rendered.size == (24, 16)
+
+    # Deleting the image removes both the original and the derivative.
+    image_service.delete(image.id)
+    assert not (tmp_path / image.stored_filename).exists()
+    assert not (tmp_path / image.display_filename).exists()
+
+
+def test_png_registration_has_no_display_derivative(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+    tmp_path: Path,
+) -> None:
+    _, factory = database_engine
+    store = FileStore(tmp_path)
+    image_service = ImageService(factory, store, ImageDecoder())
+
+    content = BytesIO()
+    PillowImage.new("RGB", (12, 12), color=(10, 10, 10)).save(content, format="PNG")
+    content.seek(0)
+    image = image_service.register(
+        content,
+        ImageRegistration(
+            original_filename="wafer.png",
+            image_type=ImageType.SEM,
+            product_id="P",
+            lot_id="L",
+            wafer_id="W",
+            calibration_nm_per_pixel=0.2,
+        ),
+    )
+
+    # Browser can display the PNG directly, so no derivative is generated.
+    assert image.display_filename is None
+    assert image_service.image_path(image.id) == tmp_path / image.stored_filename
+
+
 def test_context_export_rejects_image_without_measurements(
     database_engine: tuple[Engine, sessionmaker[Session]],
     db_session: Session,

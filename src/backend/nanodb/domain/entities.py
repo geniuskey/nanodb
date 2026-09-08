@@ -41,6 +41,9 @@ class Image:
     pixel_width: int
     pixel_height: int
     created_at: datetime
+    # Browser-renderable derivative (PNG) for formats an <img> cannot display
+    # natively (e.g. TIFF). None means the original is served directly.
+    display_filename: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

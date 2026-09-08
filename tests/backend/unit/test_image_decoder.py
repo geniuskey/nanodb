@@ -30,6 +30,37 @@ def test_png_and_jpeg_still_accepted(tmp_path: Path) -> None:
     assert jpeg.extension == ".jpg"
 
 
+def test_browser_renderable_flags_only_png_and_jpeg(tmp_path: Path) -> None:
+    decoder = ImageDecoder()
+
+    assert decoder.inspect(_write(tmp_path / "a.png", "PNG")).browser_renderable
+    assert decoder.inspect(_write(tmp_path / "a.jpg", "JPEG")).browser_renderable
+    assert not decoder.inspect(_write(tmp_path / "a.tiff", "TIFF")).browser_renderable
+
+
+def test_render_web_preview_returns_png_at_original_size(tmp_path: Path) -> None:
+    source = _write(tmp_path / "cross-section.tiff", "TIFF")
+
+    preview = ImageDecoder().render_web_preview(source)
+
+    with PillowImage.open(BytesIO(preview)) as rendered:
+        assert rendered.format == "PNG"
+        assert rendered.size == (12, 8)
+
+
+def test_render_web_preview_flattens_uncommon_modes(tmp_path: Path) -> None:
+    # 16-bit grayscale TIFF ("I;16") is not directly PNG-storable; it must be
+    # converted rather than raising.
+    path = tmp_path / "gray16.tiff"
+    PillowImage.new("I;16", (10, 6), color=1000).save(path, format="TIFF")
+
+    preview = ImageDecoder().render_web_preview(path)
+
+    with PillowImage.open(BytesIO(preview)) as rendered:
+        assert rendered.format == "PNG"
+        assert rendered.size == (10, 6)
+
+
 def test_unsupported_format_is_rejected(tmp_path: Path) -> None:
     with pytest.raises(DomainError) as caught:
         ImageDecoder().inspect(_write(tmp_path / "a.bmp", "BMP"))

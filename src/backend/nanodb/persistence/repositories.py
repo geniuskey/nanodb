@@ -31,6 +31,7 @@ def _to_image(model: ImageModel) -> Image:
         id=model.id,
         original_filename=model.original_filename,
         stored_filename=model.stored_filename,
+        display_filename=model.display_filename,
         image_type=ImageType(model.image_type),
         product_id=model.product_id,
         lot_id=model.lot_id,
@@ -73,10 +74,12 @@ class ImageRepository:
         calibration_nm_per_pixel: float,
         pixel_width: int,
         pixel_height: int,
+        display_filename: str | None = None,
     ) -> Image:
         model = ImageModel(
             original_filename=original_filename,
             stored_filename=stored_filename,
+            display_filename=display_filename,
             image_type=image_type.value,
             product_id=product_id,
             lot_id=lot_id,

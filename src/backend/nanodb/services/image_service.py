@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
 from typing import BinaryIO
 from uuid import uuid4
@@ -68,16 +69,26 @@ class ImageService:
     def register(self, stream: BinaryIO, registration: ImageRegistration) -> Image:
         self._validate_registration(registration)
         temporary_key = self._file_store.write_temporary(stream)
+        display_temporary_key: str | None = None
         final_key: str | None = None
+        display_key: str | None = None
         session = self._session_factory()
         try:
-            decoded = self._decoder.inspect(
-                self._file_store.temporary_path(temporary_key)
-            )
+            source_path = self._file_store.temporary_path(temporary_key)
+            decoded = self._decoder.inspect(source_path)
             final_key = f"{uuid4().hex}{decoded.extension}"
+            # Preserve the original untouched; generate a browser-renderable
+            # PNG derivative for formats an <img> cannot display (e.g. TIFF).
+            if not decoded.browser_renderable:
+                preview = self._decoder.render_web_preview(source_path)
+                display_temporary_key = self._file_store.write_temporary(
+                    BytesIO(preview)
+                )
+                display_key = f"{uuid4().hex}.png"
             image = ImageRepository(session).create(
                 original_filename=registration.original_filename,
                 stored_filename=final_key,
+                display_filename=display_key,
                 image_type=registration.image_type,
                 product_id=registration.product_id.strip(),
                 lot_id=registration.lot_id.strip(),
@@ -87,13 +98,19 @@ class ImageService:
                 pixel_height=decoded.pixel_height,
             )
             self._file_store.promote(temporary_key, final_key)
+            if display_temporary_key is not None and display_key is not None:
+                self._file_store.promote(display_temporary_key, display_key)
             session.commit()
             return image
         except BaseException:
             session.rollback()
             self._file_store.delete_if_exists(temporary_key, temporary=True)
+            if display_temporary_key is not None:
+                self._file_store.delete_if_exists(display_temporary_key, temporary=True)
             if final_key is not None:
                 self._file_store.delete_if_exists(final_key)
+            if display_key is not None:
+                self._file_store.delete_if_exists(display_key)
             raise
         finally:
             session.close()
@@ -134,7 +151,13 @@ class ImageService:
             repository.delete(image_id)
             session.commit()
         self._file_store.delete_if_exists(image.stored_filename)
+        if image.display_filename is not None:
+            self._file_store.delete_if_exists(image.display_filename)
 
     def image_path(self, image_id: int) -> Path:
+        """Path to serve for the image: the browser-renderable display
+        derivative when one exists (e.g. for TIFF), else the original."""
         image = self.get_image(image_id)
-        return self._file_store.path_for_response(image.stored_filename)
+        return self._file_store.path_for_response(
+            image.display_filename or image.stored_filename
+        )

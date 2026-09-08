@@ -1918,3 +1918,19 @@ UIX-009: 목록과 홈 KPI의 첫 조회에 결과와 같은 모양의 자리 �
 **Context**: CONSTRUCTION - Unit A Code Generation complete and verified; awaiting approval gate
 
 ---
+
+## Hackathon Demo — Unit A Approved, Unit B Start
+**Timestamp**: 2026-09-09T02:50:00Z
+**User Input**: "2"
+**AI Response**: "Unit A 승인(다음 단계 진행) 접수. Unit B(Feature Extraction) 착수 — Functional Design부터."
+**Context**: CONSTRUCTION - Unit A approved at completion gate; proceeding to Unit B
+
+---
+
+## Construction — Unit B (Feature Extraction) Completion
+**Timestamp**: 2026-09-09T07:55:00Z
+**User Input**: (none — continued from approved Unit B start)
+**AI Response**: "Implemented Unit B end-to-end. domain/features.py (pure, matplotlib-free) extracts up to six structural features from a target class's representative region, each expressed as measurement points that round-trip through calculate_measurement (verified to 1e-9); degenerate features are skipped with a reason. services/feature_service.py replaces only AUTO measurements, persists source=AUTO + confidence + Korean label, and refreshes TIFF tag 65011. Added POST /api/images/{id}/features route, schemas, mapper, and confidence/source on MeasurementView. Tests: unit/test_features.py (15), api/test_feature_routes.py (7), integration/test_feature_service.py (6). Fixed six 3-arg ImageService(...) calls in the integration suite left over from Unit A. Gates (verified against throwaway PostgreSQL): pytest 203 passed / 0 skipped-with-DB, mypy strict clean, ruff clean, npm typecheck clean, vitest 75 passed. Original files never modified; no git push."
+**Context**: CONSTRUCTION - Unit B Code Generation complete; presenting 2-option completion gate
+
+---

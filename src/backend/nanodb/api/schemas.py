@@ -72,6 +72,11 @@ class MeasurementView(BaseModel):
     label: str | None
     note: str | None
     measurement_method: str
+    # Provenance the UI uses to keep machine output distinct from human work:
+    # ``source`` is "manual" or "auto"; ``confidence`` is a 0..1 self-estimate
+    # populated only for auto measurements (null for manual).
+    source: str
+    confidence: float | None
     reference_status: ReferenceStatus
     created_at: datetime
 
@@ -178,6 +183,45 @@ class SegmentationResultView(BaseModel):
     # True when this run replaced a prior segmentation of the same image. Always
     # false on a plain GET.
     replaced: bool = False
+
+
+class FeatureExtractionRequestSchema(BaseModel):
+    """Optional overrides for a feature-extraction run; each keeps its default.
+
+    ``target_class`` selects which segmentation class to measure (0 = darkest).
+    ``sidewall_band`` is the vertical fraction of the region used to fit each
+    sidewall, given as ``[low, high]`` with ``0 <= low < high <= 1``.
+    """
+
+    target_class: int = Field(default=0, ge=0, le=5)
+    min_area: int = Field(default=200, ge=0)
+    curvature_frac: float = Field(default=0.6, gt=0, le=1)
+    sidewall_band: list[FiniteFloat] = Field(
+        default_factory=lambda: [0.2, 0.8], min_length=2, max_length=2
+    )
+    max_radius_factor: FiniteFloat = Field(default=3.0, gt=0)
+
+
+class SkippedFeatureViewSchema(BaseModel):
+    key: str
+    reason: str
+
+
+class FeatureExtractionResultView(BaseModel):
+    """The outcome of one feature-extraction run.
+
+    ``measurements`` are the auto measurements persisted this run (each also
+    appears in the image detail). ``skipped`` lists features that were not
+    emitted, with an honest reason, so degenerate geometry is visible rather
+    than silently dropped.
+    """
+
+    image_id: int
+    target_class: int
+    region_area_px: int
+    region_clipped: bool
+    measurements: list[MeasurementView]
+    skipped: list[SkippedFeatureViewSchema]
 
 
 class CatalogOptionView(BaseModel):

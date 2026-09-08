@@ -16,6 +16,7 @@ from nanodb.api.routes import router
 from nanodb.persistence.database import create_session_factory
 from nanodb.services.catalog_service import CatalogService
 from nanodb.services.context_export_service import ContextExportService
+from nanodb.services.feature_service import FeatureExtractionService
 from nanodb.services.image_service import ImageService
 from nanodb.services.measurement_item_service import MeasurementItemService
 from nanodb.services.measurement_service import MeasurementService
@@ -48,10 +49,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         derived_store,
     )
     app.state.measurement_service = MeasurementService(session_factory)
-    app.state.segmentation_service = SegmentationService(
+    segmentation_service = SegmentationService(
         session_factory,
         file_store,
         derived_store,
+    )
+    app.state.segmentation_service = segmentation_service
+    app.state.feature_service = FeatureExtractionService(
+        session_factory,
+        derived_store,
+        segmentation_service,
     )
     app.state.measurement_item_service = MeasurementItemService(session_factory)
     app.state.catalog_service = CatalogService(session_factory)

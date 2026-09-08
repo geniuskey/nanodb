@@ -6,6 +6,7 @@ from pathlib import Path
 from zipfile import ZipFile
 
 import pytest
+from nanodb.adapters.derived_store import DerivedStore
 from nanodb.adapters.file_store import FileStore
 from nanodb.adapters.image_decoder import ImageDecoder
 from nanodb.domain.entities import CatalogCategory, MeasurementType, Point
@@ -236,7 +237,7 @@ def test_image_delete_cascades_measurements_and_removes_stored_file(
 ) -> None:
     _, factory = database_engine
     store = FileStore(tmp_path)
-    image_service = ImageService(factory, store, ImageDecoder())
+    image_service = ImageService(factory, store, ImageDecoder(), DerivedStore(tmp_path))
 
     content = BytesIO()
     PillowImage.new("L", (20, 20)).save(content, format="PNG")
@@ -271,7 +272,9 @@ def test_image_delete_rejects_missing_image(
     tmp_path: Path,
 ) -> None:
     _, factory = database_engine
-    service = ImageService(factory, FileStore(tmp_path), ImageDecoder())
+    service = ImageService(
+        factory, FileStore(tmp_path), ImageDecoder(), DerivedStore(tmp_path)
+    )
 
     with pytest.raises(DomainError) as caught:
         service.delete(999)
@@ -286,7 +289,7 @@ def test_tiff_registration_stores_original_and_serves_png_derivative(
 ) -> None:
     _, factory = database_engine
     store = FileStore(tmp_path)
-    image_service = ImageService(factory, store, ImageDecoder())
+    image_service = ImageService(factory, store, ImageDecoder(), DerivedStore(tmp_path))
 
     content = BytesIO()
     PillowImage.new("RGB", (24, 16), color=(40, 60, 80)).save(content, format="TIFF")
@@ -330,7 +333,7 @@ def test_png_registration_has_no_display_derivative(
 ) -> None:
     _, factory = database_engine
     store = FileStore(tmp_path)
-    image_service = ImageService(factory, store, ImageDecoder())
+    image_service = ImageService(factory, store, ImageDecoder(), DerivedStore(tmp_path))
 
     content = BytesIO()
     PillowImage.new("RGB", (12, 12), color=(10, 10, 10)).save(content, format="PNG")
@@ -467,7 +470,9 @@ def test_image_delete_cascades_measurements(
     tmp_path: Path,
 ) -> None:
     _, factory = database_engine
-    image_service = ImageService(factory, FileStore(tmp_path), ImageDecoder())
+    image_service = ImageService(
+        factory, FileStore(tmp_path), ImageDecoder(), DerivedStore(tmp_path)
+    )
 
     content = BytesIO()
     PillowImage.new("L", (20, 20)).save(content, format="PNG")
@@ -546,7 +551,7 @@ def test_catalog_seeds_defaults_and_grows_from_registration(
     buffer = BytesIO()
     PillowImage.new("RGB", (1000, 800), "white").save(buffer, format="PNG")
     buffer.seek(0)
-    ImageService(factory, store, ImageDecoder()).register(
+    ImageService(factory, store, ImageDecoder(), DerivedStore(tmp_path)).register(
         buffer,
         ImageRegistration(
             original_filename="sample.png",

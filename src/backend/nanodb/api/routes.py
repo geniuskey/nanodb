@@ -10,6 +10,7 @@ from sqlalchemy import text
 
 from nanodb.api.mappers import (
     catalog_option_view,
+    feature_extraction_view,
     image_view,
     measurement_item_view,
     measurement_view,
@@ -19,6 +20,8 @@ from nanodb.api.schemas import (
     CatalogCreateSchema,
     CatalogOptionView,
     CatalogUpdateSchema,
+    FeatureExtractionRequestSchema,
+    FeatureExtractionResultView,
     ImageDetailView,
     ImageListView,
     ImageView,
@@ -35,6 +38,7 @@ from nanodb.api.schemas import (
     SummaryView,
 )
 from nanodb.domain.entities import Point
+from nanodb.services.feature_service import FeatureParams
 from nanodb.services.image_service import ImageRegistration
 from nanodb.services.measurement_service import MeasurementInput
 from nanodb.services.segmentation_service import SegmentationParams
@@ -323,6 +327,29 @@ def segmentation_variant(
     return FileResponse(
         request.app.state.segmentation_service.variant_path(image_id, variant)
     )
+
+
+@router.post(
+    "/images/{image_id}/features",
+    response_model=FeatureExtractionResultView,
+)
+def extract_features(
+    image_id: int,
+    request: Request,
+    payload: FeatureExtractionRequestSchema | None = None,
+) -> FeatureExtractionResultView:
+    options = payload or FeatureExtractionRequestSchema()
+    run = request.app.state.feature_service.run(
+        image_id,
+        FeatureParams(
+            target_class=options.target_class,
+            min_area=options.min_area,
+            curvature_frac=options.curvature_frac,
+            sidewall_band=(options.sidewall_band[0], options.sidewall_band[1]),
+            max_radius_factor=options.max_radius_factor,
+        ),
+    )
+    return feature_extraction_view(run)
 
 
 @router.get("/images/{image_id}/tagged")

@@ -2,12 +2,14 @@
 
 from nanodb.api.schemas import (
     CatalogOptionView,
+    FeatureExtractionResultView,
     ImageView,
     MeasurementItemView,
     MeasurementView,
     PointView,
     SegmentationClassStatView,
     SegmentationResultView,
+    SkippedFeatureViewSchema,
 )
 from nanodb.domain.entities import (
     CatalogOption,
@@ -16,6 +18,7 @@ from nanodb.domain.entities import (
     MeasurementItem,
     SegmentationResult,
 )
+from nanodb.services.feature_service import FeatureExtractionRun
 
 
 def catalog_option_view(option: CatalogOption) -> CatalogOptionView:
@@ -57,8 +60,23 @@ def measurement_view(measurement: Measurement) -> MeasurementView:
         label=measurement.label,
         note=measurement.note,
         measurement_method=measurement.measurement_method,
+        source=measurement.source.value,
+        confidence=measurement.confidence,
         reference_status=measurement.reference_status,
         created_at=measurement.created_at,
+    )
+
+
+def feature_extraction_view(run: FeatureExtractionRun) -> FeatureExtractionResultView:
+    return FeatureExtractionResultView(
+        image_id=run.image_id,
+        target_class=run.target_class,
+        region_area_px=run.region_area_px,
+        region_clipped=run.region_clipped,
+        measurements=[measurement_view(m) for m in run.measurements],
+        skipped=[
+            SkippedFeatureViewSchema(key=s.key, reason=s.reason) for s in run.skipped
+        ],
     )
 
 

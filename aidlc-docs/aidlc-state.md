@@ -43,7 +43,25 @@ measurements, and batch processing). Split into three units:
   derivation (65010-65013), `SegmentationResultModel` + migration 0007,
   `SegmentationService`, and the segmentation/tagged routes. `uv run pytest`
   (149 passed, 26 DB-skipped), `uv run mypy` (strict) and `uv run ruff` all green.
-- **Unit B — Feature Extraction**: not started.
+- **Unit B — Feature Extraction**: DONE and verified 2026-09-09. Pure
+  matplotlib-free `domain/features.py` ports the geometry from
+  `scripts/tem/measure.py` and extracts up to six structural features
+  (width/CD, height, spacing, bottom curvature, left/right sidewall angle) from
+  a target class's representative region. Each feature is emitted as measurement
+  *points* (length/angle/curvature) so the stored value is whatever
+  `calculate_measurement` derives — round-tripping exactly through the export
+  validator (verified to 1e-9). Degenerate cases (flat bottom, vertical wall,
+  single region) are `skipped` with a reason, never fabricated.
+  `FeatureExtractionService` loads the stored label map from `DerivedStore`,
+  replaces only AUTO measurements (`delete_auto_by_image`; manual rows never
+  touched), persists each with `source=AUTO` + confidence + Korean label, and
+  refreshes TIFF tag 65011. Added `POST /api/images/{id}/features` route,
+  request/response schemas, mapper, and `confidence`/`source` on `MeasurementView`.
+  Verified against a throwaway PostgreSQL: `uv run pytest` 203 passed (0 skipped
+  with DB), `uv run mypy` (strict) clean, `uv run ruff check .` clean,
+  `npm run typecheck` clean, `npm run test:frontend` 75 passed. Fixed a latent
+  Unit A break: six `ImageService(...)` calls in the integration suite still used
+  the pre-DerivedStore 3-arg constructor.
 - **Unit C — UI & Batch**: not started.
 
 **Infrastructure Design skipped** (all units): no new infrastructure. The feature

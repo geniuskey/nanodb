@@ -15,6 +15,7 @@ from nanodb.api.schemas import (
     ImageView,
     MeasurementInputSchema,
     MeasurementView,
+    ParameterSummaryView,
     ReadinessView,
     SummaryView,
 )
@@ -45,6 +46,9 @@ def summary(request: Request) -> SummaryView:
         image_count=value.image_count,
         measurement_count=value.measurement_count,
         calculated_at=value.calculated_at,
+        parameters=[
+            ParameterSummaryView.model_validate(entry) for entry in value.parameters
+        ],
     )
 
 

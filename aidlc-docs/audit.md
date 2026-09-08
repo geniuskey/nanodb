@@ -1577,3 +1577,19 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: Post-CONSTRUCTION home-tab visual redesign per PDF 시안; awaiting commit decision
 
 ---
+
+## Home Tab v2 — Requirements Update + Home Re-implementation (Real Data Only)
+**Timestamp**: 2026-09-08T11:40:00Z
+**User Input**: "pr 생성 및 머지했어. ui/ux 요구사항 v2 줄테니 네가 알아서 머지해줘." (이후 전체 v2 요구사항 마크다운 HOM-001~081 + "그리고 관련 pdf 는 @references/NANoDB_홈탭_v2.pdf". 이후 AskUserQuestion 답변: "문서+홈 재구현(실데이터만)")
+**AI Response**: "v2 시안과 이 MVP 백엔드(이미지·측정 두 테이블) 사이의 간극을 백엔드 감사 + PDF 확인으로 먼저 규명한 뒤, 사용자가 고른 범위('문서+홈 재구현, 단 실데이터만')대로 구현했다. 없는 백엔드(승인 워크플로·분석 엔진·파라미터 마스터·인증)는 신설하지 않고 정직한 빈 상태/로드맵으로 처리, 가짜 수치·박스플롯 금지.
+
+(A) 백엔드 실데이터 확장 — 파라미터별 평균을 정직하게 제공하도록 /api/summary 확장(기존 SUM-002 P1 구현). repositories.py MeasurementRepository.aggregate_by_parameter() 추가(GROUP BY parameter_type, count/sum → mean, 계약 순서 CD·Depth·Thickness, n=0 항목 제외, N+1 아님). summary_service.py Summary 데이터클래스에 parameters 필드(field default_factory) + get()에서 집계 주입. schemas.py ParameterSummaryView(from_attributes) + SummaryView.parameters. routes.py summary()에서 model_validate 매핑. types.ts에 ParameterSummary 인터페이스 + SummaryView.parameters. 통합 테스트 test_summary_aggregates_per_parameter_mean_in_contract_order 추가. 백엔드: 57 passed / 7 Postgres-skipped, ruff·mypy clean.
+
+(B) 문서 — requirements/home-tab-requirements.md를 v2(최종 구현 기준)로 전면 재작성. 기준 자료 references/NANoDB_홈탭_v2.pdf. §1.1에 v2-현실 간극 명시(실데이터로 채우는 것/빈 상태·로드맵/하지 않는 것), 본문 순서 v2(대의→실측 KPI→최근 이미지→왜 지금인가→Phase 1~4→AI-DLC→사용 흐름→정책), HOM-001~039 재정의, §4 데이터 계약 표(v2 전제 엔드포인트 → 이 MVP 실제 엔드포인트 매핑), §6 v1↔v2 차이(히어로 CTA 제거 포함).
+
+(C) 홈 재구현 — src/frontend/src/pages/HomePage.tsx를 v2 레이아웃으로 재작성, 실데이터만 사용. 히어로(로고+브랜드+대의 h1 '만드는 사람은 바뀌어도, 데이터와 도구는 회사에 남게', HOM-005대로 CTA 제거) + 세 가치 카드 → 실측 KPI(이미지 수+SEM/TEM, 저장 측정 수, summary.parameters 상위 2종 평균 nm·n, 없으면 —/n=0) + 구성/추이 막대(이미지 SEM/TEM 구성, 측정 CD/Depth/Thickness 구성, 최근 14일 등록 추이 — 모두 /api/summary·/api/images 실집계) → 최근 등록 이미지 6건(원본 file_url 썸네일, 본문 링크 없음) → 왜 지금인가 공개 통계 4카드(출처·연도·새 탭 링크) → NANoDB가 가는 길 Phase 1~4(Phase 1 = 이 MVP 실기능만 '지금 동작', v2가 Phase1에 넣은 승인/분석/API는 미구현이라 후속 Phase로 재배치, 비링크) → AI-DLC 3카드(실제 aidlc-docs 산출물 근거) → 이렇게 쓰세요 4단계 → 정책 줄. 분석 차트·승인 KPI·Lot 박스플롯은 데이터가 없어 미표시(가짜 미생성). /api/summary 중복 fetch 방지용 summary-context는 유지, 이미지 목록은 useImages 훅으로 조회하며 Array.isArray 방어. styles.css에 v2 홈 클래스(hero-card/hero-grid/comp-grid/comp-bar/trend/recent-grid/phase-grid/phase-card/code-box 등) 추가 및 반응형 갱신.
+
+테스트 — HomePage.test.tsx를 v2로 갱신(CTA 단언 제거, mockImplementation로 /api/summary·/api/images 분기 응답: 로딩→실측 KPI(15.50/CD 평균), 실패→alert+home-summary 미표시+정적 섹션 유지, Phase 섹션 비링크·'로드맵' 확인). App.test.tsx의 단일 Response mock을 URL 분기 mockImplementation으로 교체(홈이 이미지도 fetch하므로 body 소비 경합 방지). 검증: vitest 23 passed, tsc -b + vite build 성공. 아직 commit/push 안 함(사용자 명시 확인 대기)."
+**Context**: Post-CONSTRUCTION home-tab v2 merge (docs + real-data re-implementation); awaiting commit decision
+
+---

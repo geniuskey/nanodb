@@ -1569,3 +1569,11 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: Post-CONSTRUCTION targeted copy edit; awaiting commit decision
 
 ---
+
+## Home Tab — PDF Visual Design Spec + Home Re-implementation
+**Timestamp**: 2026-09-08T07:10:00Z
+**User Input**: "@references/NanoDB_홈탭_구성.pdf 을 보면 어떤식으로 ui/ux 를 구성해야할지 보일거야. 현재 구현과 차이가 커" (이후 AskUserQuestion 답변: "디자인 스펙 + 홈 재구현", "모양은 PDF, 내용은 MVP")
+**AI Response**: "PDF 1페이지 홈 시안을 근거로 두 갈래 작업을 수행했다. (A) 문서: requirements/home-tab-requirements.md에 「7. 시각 디자인 스펙(PDF 시안 기반)」을 추가(HOM-032~050, 색상 토큰 표, 타이포/간격, 헤더·2줄 탭바, 홈 본문 컴포넌트, 상태·접근성, PDF→MVP 매핑 표). 원칙은 '모양은 PDF, 내용은 MVP'이며 3장 기능 요구사항 우선. (B) 구현 재작성: src/frontend/src/styles.css를 인디고 팔레트(--accent #4840E0 등) CSS 변수 기반으로 전면 교체하고 공용 클래스·측정 오버레이 색을 재정렬, 홈 전용 클래스(app-header/brand/status-pill/tabbar/tab.p2/value-card/stat-*/kpi-*/flow/step-card/roadmap/policy) 추가. src/frontend/src/App.tsx를 브랜드 헤더+상태 pill+2줄 탭바(실제 링크 3 + P2 비링크 6, aria-disabled)로 재작성. src/frontend/src/pages/HomePage.tsx를 PDF 섹션 순서(eyebrow+h1 '만드는 사람은 바뀌어도, 데이터와 도구는 회사에 남게' → 세 가치 카드 → 왜 지금인가 P1 공개 통계 4카드(출처·연도) → 실제 데이터 KPI(서버 집계값만) → 이렇게 쓰세요 4단계 → 후속 로드맵 → 정책 줄)로 재작성. 헤더 pill과 홈 KPI의 /api/summary 중복 fetch를 없애기 위해 src/frontend/src/api/summary-context.ts를 신설(Shell이 1회 fetch해 Context로 공유, provider 없이 렌더되는 HomePage 단독 테스트에서는 자체 fetch로 폴백). 테스트 계약 보존: home-summary/home-browse-images(/images)/home-register-image(/images/new)/role=status(불러오는 중)/role=alert(불러오지 못했습니다, 실패 시 KPI 미표시)/후속 로드맵 heading 부모에 '자동 측정' 텍스트·<a> 없음. 검증: vitest 23 passed, tsc -b + vite build 성공. PDF 예시값(1,240·812·65%·CDx 38.2nm·11/17)은 KPI에 사용하지 않음."
+**Context**: Post-CONSTRUCTION home-tab visual redesign per PDF 시안; awaiting commit decision
+
+---

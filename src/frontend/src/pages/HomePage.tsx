@@ -377,7 +377,7 @@ function RecentImages({ images, state, reload }: ImagesState) {
               key={image.id}
               data-testid="recent-image-link"
             >
-              <img src={image.file_url} alt={image.original_filename} loading="lazy" />
+              <img src={image.file_url} alt={image.original_filename} width={240} height={180} loading="lazy" />
               <span className="recent-caption">
                 <span className="recent-name">{image.original_filename}</span>
                 <span className="recent-meta">

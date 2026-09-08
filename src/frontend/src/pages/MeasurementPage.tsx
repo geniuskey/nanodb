@@ -503,7 +503,7 @@ export function MeasurementPage() {
                 {detail.measurements.map((item: MeasurementView) => {
                   const selected = selectedId === item.id;
                   return (
-                    <tr key={item.id} className={selected ? "saved-row selected" : "saved-row"} aria-selected={selected} onClick={() => setSelectedId(item.id)} data-testid="saved-measurement-item">
+                    <tr key={item.id} className={selected ? "saved-row selected" : "saved-row"} aria-selected={selected} tabIndex={0} onClick={() => setSelectedId(item.id)} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setSelectedId(item.id); } }} data-testid="saved-measurement-item">
                       <td className="swatch-col"><span className="measurement-swatch" style={{ background: measurementColor(item.id) }} aria-hidden="true" /></td>
                       <td>
                         <strong>{item.label ? `${item.label} · ` : ""}{TYPE_LABEL[item.measurement_type]} · {formatValue(item.value, item.unit)}</strong>

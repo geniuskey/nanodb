@@ -10,15 +10,38 @@
   --bg: #fafafb;
   --p2: #a6a7b4;
   --danger: #c0392b;
+  --danger-strong: #a5281b;
 
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color-scheme: light;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", ui-sans-serif,
+    system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   color: var(--ink);
   background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; }
+body { margin: 0; min-height: 100dvh; }
 a { color: inherit; }
+
+/* Remove the 300ms tap delay and the grey flash on touch for every control,
+   while keeping our own :focus-visible / :hover feedback. */
+a, button, [role="button"], input, select, textarea, summary, [tabindex] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Honour a reduced-motion request globally: nothing animates or transitions
+   beyond an instant, so no motion the user asked to avoid slips through. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 :where(a, button, [tabindex]):focus-visible {
   outline: 3px solid var(--accent);
@@ -75,6 +98,8 @@ a { color: inherit; }
 }
 .tab-label { font-weight: 800; font-size: 0.95rem; }
 .tab-hint { font-size: 0.72rem; color: var(--ink-muted); }
+.tab:hover:not(.active) { border-bottom-color: var(--accent-track); }
+.tab:hover .tab-label { color: var(--accent-strong); }
 .tab.active { border-bottom-color: var(--accent); }
 .tab.active .tab-label { color: var(--accent); }
 
@@ -137,7 +162,7 @@ h2 { letter-spacing: -0.02em; font-size: 1.5rem; margin: 0 0 6px; }
 .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .kpi-grid.four { grid-template-columns: repeat(4, 1fr); }
 .kpi-card .kpi-label { color: var(--ink-muted); font-size: 0.9rem; }
-.kpi-card .kpi-value { font-size: 2.4rem; font-weight: 800; color: var(--accent); line-height: 1.1; margin: 6px 0 2px; }
+.kpi-card .kpi-value { font-size: 2.4rem; font-weight: 800; color: var(--accent); line-height: 1.1; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
 .kpi-card .kpi-value.muted { color: var(--p2); }
 .kpi-card .kpi-unit { font-size: 1.1rem; font-weight: 700; color: var(--ink-muted); }
 .kpi-card .kpi-sub { font-size: 0.8rem; color: var(--ink-muted); }
@@ -307,7 +332,19 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
   text-decoration: none;
   cursor: pointer;
 }
+.button { transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out; }
+.button:hover { background: var(--accent-tint); }
 .button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.button.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+.chip { transition: background-color 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out; }
+.chip:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+.viewer-toolbar .tool-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.dialog-actions button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.dialog-actions button.danger:hover:not(:disabled) { background: var(--danger-strong); border-color: var(--danger-strong); color: #fff; }
+.table-actions button:hover:not(:disabled),
+.measurement-controls button:hover:not(:disabled) { background: var(--accent-tint); }
+.delete-measurement:hover:not(:disabled) { background: var(--danger); color: #fff; }
+.retry:hover { background: var(--accent-tint); }
 
 .measurement-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 24px; align-items: start; }
 .viewer-panel { margin: 0; min-width: 0; min-height: 560px; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: 20px; border-radius: 18px; background: #101718; }
@@ -352,6 +389,7 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
   place-items: center;
   padding: 24px;
   background: rgb(25 26 44 / 55%);
+  overscroll-behavior: contain;
   z-index: 20;
 }
 .dialog {
@@ -424,6 +462,7 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .measurement-swatch { display: inline-block; width: 18px; height: 18px; border-radius: 5px; border: 1px solid rgba(0,0,0,0.2); }
 .saved-row { cursor: pointer; }
 .saved-row:hover { background: var(--accent-track); }
+.saved-row:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
 .saved-row.selected { background: var(--accent-tint); }
 .saved-row.selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .saved-row strong { display: block; }

@@ -176,7 +176,7 @@ export function ImageListPage() {
           {images.map((image) => (
             <article className="image-card-wrap" key={image.id}>
               <Link className="image-card" to={`/images/${image.id}`} data-testid="catalog-image-card">
-                <img src={image.file_url} alt={`${image.original_filename} 미리보기`} />
+                <img src={image.file_url} alt={`${image.original_filename} 미리보기`} width={180} height={150} loading="lazy" />
                 <div>
                   <span className="badge">{image.image_type}</span>
                   <h2>{image.original_filename}</h2>

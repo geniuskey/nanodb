@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { ApiError, api } from "../api/client";
 import type { CatalogCategory, CatalogOption } from "../api/types";
@@ -187,7 +187,7 @@ export function ImageRegisterPage() {
       <p className="eyebrow">New image</p><h1>이미지 등록</h1>
       <p className="section-note">
         별표(<span className="required-mark">*</span>)는 필수 입력입니다. 목록에 없는 값은 직접 입력하면 새로 추가됩니다.{" "}
-        <a href="/catalog">목록 관리</a>
+        <Link to="/catalog">목록 관리</Link>
       </p>
       <div className="registration-layout">
         <section className="preview-panel" aria-label="이미지 미리보기">

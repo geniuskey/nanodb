@@ -132,7 +132,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 13. React App Shell, Home과 Image Catalog 생성 — US-02, US-03
 
-- [ ] `src/frontend/src/`에 네 route의 App Shell, NANoDB brand/navigation, 실제 summary·빈 상태·CTA가 있는 Home과 최신순 Image Catalog를 구현한다. 활성 기능과 P2 roadmap을 행동과 표현 모두에서 구분한다.
+- [x] `src/frontend/src/`에 네 route의 App Shell, NANoDB brand/navigation, 실제 summary·빈 상태·CTA가 있는 Home과 최신순 Image Catalog를 구현한다. 활성 기능과 P2 roadmap을 행동과 표현 모두에서 구분한다.
 
 ### Step 14. App Shell, Home과 Catalog frontend unit test 생성 — US-02, US-03
 

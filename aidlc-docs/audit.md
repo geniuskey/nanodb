@@ -1093,3 +1093,39 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: CONSTRUCTION - user-authorized Git checkpoint before Code Generation Step 10
 
 ---
+
+## NANoDB Core Code Generation Git Checkpoint Complete
+
+**Timestamp**: 2026-09-08T03:53:21Z
+**User Input**: "git commit and push & 다음 작업 진행"
+**AI Response**: "Validated and committed Code Generation Steps 1~9 as dd3b6bf (feat: build NANoDB core backend foundation), then pushed main successfully to origin/main. Continued with Step 10 FastAPI API layer generation."
+**Context**: CONSTRUCTION - Git checkpoint complete; Code Generation Part 2 Step 10 in progress
+
+---
+
+## NANoDB Core Code Generation Step 10 Complete
+
+**Timestamp**: 2026-09-08T03:56:50Z
+**User Input**: "git commit and push & 다음 작업 진행"
+**AI Response**: "Implemented environment settings, the FastAPI application factory, ten operations across eight internal API paths, multipart/JSON/ZIP transport schemas, same-origin static frontend serving, correlation ID and duration logging, readiness checks and safe error envelopes. Ruff, formatting, strict mypy, OpenAPI smoke validation and existing unit tests passed."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 10/26 complete; Step 11 pending
+
+---
+
+## NANoDB Core Code Generation Step 11 Progress
+
+**Timestamp**: 2026-09-08T03:59:05Z
+**User Input**: "git commit and push & 다음 작업 진행"
+**AI Response**: "Started Step 11 and generated FastAPI transport and context ZIP contract tests. The combined pure, API and contract suite currently has 26 passing tests with one dependency deprecation warning. Step 11 remains in progress until the remaining service failure and measurement cases are generated."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 11 in progress; checkbox remains open
+
+---
+
+## Per-Step Git Checkpoint Policy Requested
+
+**Timestamp**: 2026-09-08T04:02:41Z
+**User Input**: "step 마다 git push 하고 다음 작업 시작"
+**AI Response**: "앞으로 각 Code Generation Step을 완료하고 계획 체크박스·상태·감사 기록을 갱신한 직후 별도 commit과 origin/main push를 수행한 다음 다음 Step을 시작한다. 현재 섞여 있는 Step 10 완료분과 Step 11 진행분은 파일 단위로 분리해 순차 checkpoint한다."
+**Context**: CONSTRUCTION - per-step Git commit and push policy enabled from Step 10 checkpoint onward
+
+---

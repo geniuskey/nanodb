@@ -120,7 +120,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 10. FastAPI application과 API layer 생성 — US-02~US-06
 
-- [ ] `src/backend/nanodb/api/`와 application factory에 내부 API 계약, Pydantic validation, multipart/JSON/ZIP response, same-origin static frontend/file response, correlation ID, duration·outcome structured logging과 safe error mapper를 구현한다. write 자동 retry와 CORS broad allow는 추가하지 않는다.
+- [x] `src/backend/nanodb/api/`와 application factory에 내부 API 계약, Pydantic validation, multipart/JSON/ZIP response, same-origin static frontend/file response, correlation ID, duration·outcome structured logging과 safe error mapper를 구현한다. write 자동 retry와 CORS broad allow는 추가하지 않는다.
 
 ### Step 11. API, service와 ZIP contract test 생성 — US-02~US-06
 

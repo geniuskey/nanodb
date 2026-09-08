@@ -27,6 +27,10 @@ export function CatalogPage() {
   const [pending, setPending] = useState<CatalogOption | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -74,6 +78,33 @@ export function CatalogPage() {
       }));
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function renameOption(option: CatalogOption) {
+    const value = editValue.trim();
+    setEditError(null);
+    if (!value) {
+      setEditError("값을 입력해 주세요.");
+      return;
+    }
+    if (value === option.value) {
+      setEditId(null);
+      return;
+    }
+    setRenaming(true);
+    setStatus(null);
+    try {
+      const updated = await api.updateCatalogOption(option.id, { value });
+      setOptions((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setEditId(null);
+      setStatus(`'${option.value}'을(를) '${updated.value}'(으)로 수정했습니다.`);
+    } catch (caught) {
+      setEditError(caught instanceof ApiError ? caught.message : "수정하지 못했습니다.");
+    } finally {
+      setRenaming(false);
     }
   }
 
@@ -129,19 +160,59 @@ export function CatalogPage() {
                   {items.length === 0 && <li className="catalog-empty">등록된 값이 없습니다.</li>}
                   {items.map((option) => (
                     <li key={option.id} className="catalog-value">
-                      <span>{option.value}</span>
-                      {option.is_predefined ? (
-                        <span className="badge" title="기본값은 삭제할 수 없습니다">기본</span>
-                      ) : (
-                        <button
-                          type="button"
-                          className="catalog-delete"
-                          aria-label={`${option.value} 삭제`}
-                          data-testid={`catalog-delete-${option.id}`}
-                          onClick={() => setPending(option)}
+                      {editId === option.id ? (
+                        <form
+                          className="catalog-rename"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            renameOption(option);
+                          }}
                         >
-                          삭제
-                        </button>
+                          <input
+                            type="text"
+                            autoFocus
+                            maxLength={255}
+                            aria-label={`${option.value} 수정`}
+                            data-testid={`catalog-edit-input-${option.id}`}
+                            value={editValue}
+                            onChange={(event) => setEditValue(event.target.value)}
+                          />
+                          <button type="submit" className="catalog-save" disabled={renaming} data-testid={`catalog-save-${option.id}`}>저장</button>
+                          <button type="button" className="catalog-cancel" data-testid={`catalog-cancel-${option.id}`} onClick={() => setEditId(null)}>취소</button>
+                          {editError && (
+                            <span className="field-error" role="alert" data-testid={`catalog-edit-error-${option.id}`}>
+                              {editError}
+                            </span>
+                          )}
+                        </form>
+                      ) : (
+                        <>
+                          <span>{option.value}</span>
+                          {option.is_predefined ? (
+                            <span className="badge" title="기본값은 수정·삭제할 수 없습니다">기본</span>
+                          ) : (
+                            <span className="catalog-value-actions">
+                              <button
+                                type="button"
+                                className="catalog-edit"
+                                aria-label={`${option.value} 수정`}
+                                data-testid={`catalog-edit-${option.id}`}
+                                onClick={() => { setEditId(option.id); setEditValue(option.value); setEditError(null); }}
+                              >
+                                수정
+                              </button>
+                              <button
+                                type="button"
+                                className="catalog-delete"
+                                aria-label={`${option.value} 삭제`}
+                                data-testid={`catalog-delete-${option.id}`}
+                                onClick={() => setPending(option)}
+                              >
+                                삭제
+                              </button>
+                            </span>
+                          )}
+                        </>
                       )}
                     </li>
                   ))}

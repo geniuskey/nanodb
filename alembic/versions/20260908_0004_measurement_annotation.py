@@ -53,9 +53,7 @@ def downgrade() -> None:
         sa.Column("end_y", sa.Float(), nullable=False),
         sa.Column("product", sa.String(16), nullable=True),
         sa.Column("step", sa.Text(), nullable=False, server_default=""),
-        sa.Column(
-            "measurement_name", sa.Text(), nullable=False, server_default=""
-        ),
+        sa.Column("measurement_name", sa.Text(), nullable=False, server_default=""),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

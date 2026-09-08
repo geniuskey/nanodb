@@ -51,9 +51,7 @@ def upgrade() -> None:
             "category", "value", name="uq_catalog_options_category_value"
         ),
     )
-    op.create_index(
-        "ix_catalog_options_category", "catalog_options", ["category"]
-    )
+    op.create_index("ix_catalog_options_category", "catalog_options", ["category"])
 
     # image_type becomes a managed free-text value.
     op.drop_constraint("ck_images_type", "images", type_="check")

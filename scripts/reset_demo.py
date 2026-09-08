@@ -96,9 +96,7 @@ def _clear_database(
         session.execute(delete(ImageModel))
         session.flush()
         image_count = session.scalar(select(func.count(ImageModel.id))) or 0
-        measurement_count = (
-            session.scalar(select(func.count(MeasurementModel.id))) or 0
-        )
+        measurement_count = session.scalar(select(func.count(MeasurementModel.id))) or 0
     return int(image_count), int(measurement_count)
 
 

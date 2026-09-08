@@ -60,9 +60,7 @@ def main() -> int:
         embedded = read_meta(path)
         for field in META_FIELDS:
             if embedded.get(field) != row[field]:
-                errors.append(
-                    f"metadata mismatch: {row['filename']} field={field}"
-                )
+                errors.append(f"metadata mismatch: {row['filename']} field={field}")
 
         if row["license"] == "UNVERIFIED":
             warnings.append(f"redistribution rights unverified: {row['filename']}")

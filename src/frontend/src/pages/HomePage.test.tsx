@@ -24,9 +24,9 @@ describe("HomePage", () => {
         image_count: 3,
         measurement_count: 7,
         calculated_at: "2026-09-08T04:00:00Z",
-        parameters: [
-          { parameter_type: "CD", count: 5, mean_nm: 15.5, min_nm: 10, max_nm: 21 },
-          { parameter_type: "Depth", count: 2, mean_nm: 30, min_nm: 28, max_nm: 32 },
+        types: [
+          { measurement_type: "length", unit: "nm", count: 5, mean: 15.5, min: 10, max: 21 },
+          { measurement_type: "angle", unit: "deg", count: 2, mean: 30, min: 28, max: 32 },
         ],
       },
       [
@@ -54,10 +54,10 @@ describe("HomePage", () => {
     expect(summary).toHaveTextContent("3");
     expect(summary).toHaveTextContent("7");
     expect(summary).toHaveTextContent("15.50");
-    expect(summary).toHaveTextContent("CD 평균");
+    expect(summary).toHaveTextContent("길이 평균");
 
-    // Full per-parameter breakdown with min/max, not just the top-2 tiles.
-    const breakdown = screen.getByTestId("param-breakdown");
+    // Full per-type breakdown with min/max, not just the top-2 tiles.
+    const breakdown = screen.getByTestId("type-breakdown");
     expect(breakdown).toHaveTextContent("최소");
     expect(breakdown).toHaveTextContent("10.00");
     expect(breakdown).toHaveTextContent("21.00");
@@ -68,7 +68,7 @@ describe("HomePage", () => {
       image_count: 0,
       measurement_count: 0,
       calculated_at: "2026-09-08T04:00:00Z",
-      parameters: [],
+      types: [],
     });
 
     renderWithRouter(<HomePage />);
@@ -98,7 +98,7 @@ describe("HomePage", () => {
       image_count: 0,
       measurement_count: 0,
       calculated_at: "2026-09-08T04:00:00Z",
-      parameters: [],
+      types: [],
     });
 
     renderWithRouter(<HomePage />);
@@ -114,7 +114,7 @@ describe("HomePage", () => {
       image_count: 0,
       measurement_count: 0,
       calculated_at: "2026-09-08T04:00:00Z",
-      parameters: [],
+      types: [],
     });
 
     renderWithRouter(<HomePage />);
@@ -133,7 +133,7 @@ describe("HomePage", () => {
         image_count: 1,
         measurement_count: 0,
         calculated_at: "2026-09-08T04:00:00Z",
-        parameters: [],
+        types: [],
       },
       [
         {
@@ -167,7 +167,7 @@ describe("HomePage", () => {
       image_count: 0,
       measurement_count: 0,
       calculated_at: "2026-09-08T04:00:00Z",
-      parameters: [],
+      types: [],
     });
 
     renderWithRouter(<HomePage />);
@@ -205,7 +205,7 @@ describe("HomePage", () => {
       image_count: 0,
       measurement_count: 0,
       calculated_at: "2026-09-08T04:00:00Z",
-      parameters: [],
+      types: [],
     });
 
     renderWithRouter(<HomePage />);

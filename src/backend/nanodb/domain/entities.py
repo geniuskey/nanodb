@@ -22,10 +22,34 @@ class CatalogCategory(StrEnum):
     PROCESS_STEP = "process_step"
 
 
-class ParameterType(StrEnum):
-    CD = "CD"
-    DEPTH = "Depth"
-    THICKNESS = "Thickness"
+class MeasurementType(StrEnum):
+    """How a measurement is drawn on the image and what its value means.
+
+    - ``LENGTH``: a line segment between two points; value is nanometres.
+    - ``ANGLE``: three points (vertex first, then the two arm ends); value is
+      the angle at the vertex in degrees.
+    - ``CURVATURE``: three points on an arc; a circle is fitted through them and
+      the value is the fitted radius in nanometres.
+    """
+
+    LENGTH = "length"
+    ANGLE = "angle"
+    CURVATURE = "curvature"
+
+
+# Unit each measurement type reports its value in.
+UNIT_BY_TYPE: dict[MeasurementType, str] = {
+    MeasurementType.LENGTH: "nm",
+    MeasurementType.ANGLE: "deg",
+    MeasurementType.CURVATURE: "nm",
+}
+
+# How many points the operator places for each measurement type.
+POINT_COUNT_BY_TYPE: dict[MeasurementType, int] = {
+    MeasurementType.LENGTH: 2,
+    MeasurementType.ANGLE: 3,
+    MeasurementType.CURVATURE: 3,
+}
 
 
 class ReferenceStatus(StrEnum):
@@ -60,22 +84,42 @@ class Image:
 
 
 @dataclass(frozen=True, slots=True)
+class MeasurementItem:
+    """A named, reusable measurement definition scoped to one product.
+
+    ``name`` is what the operator is measuring (e.g. "Gate CD") and
+    ``measurement_type`` fixes the geometry and unit. The pair is unique within
+    a product so each product carries its own catalogue of things to measure.
+    """
+
+    id: int
+    product_id: str
+    name: str
+    measurement_type: MeasurementType
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
 class Measurement:
     id: int
     image_id: int
-    parameter_type: ParameterType
-    start: Point
-    end: Point
-    distance_px: float
+    # The product measurement item this instance realises, when the operator
+    # picked one. Null keeps ad-hoc measurements possible.
+    item_id: int | None
+    measurement_type: MeasurementType
+    # Original-pixel points: 2 for length, 3 for angle (vertex first) and
+    # curvature. Ordered as placed so the geometry can be redrawn and revalued.
+    points: tuple[Point, ...]
+    # The computed result in ``unit`` (nm for length/curvature, deg for angle).
+    value: float
+    unit: str
     calibration_nm_per_pixel: float
-    value_nm: float
-    # Annotation of the measurement: ``label`` names what was measured
-    # (e.g. "Gate CD") and is drawn beside the line; ``note`` is a free
-    # observation memo. Both are optional and neither affects value_nm.
+    # Annotation: ``label`` names what was measured (drawn beside the shape) and
+    # ``note`` is a free observation memo. Neither affects ``value``.
     label: str | None
     note: str | None
     created_at: datetime
-    measurement_method: str = "manual_two_point"
+    measurement_method: str = "manual"
     reference_status: ReferenceStatus = ReferenceStatus.UNREVIEWED
 
 
@@ -97,24 +141,26 @@ class CatalogOption:
 
 @dataclass(frozen=True, slots=True)
 class ExpectedSummaryEntry:
-    parameter_type: ParameterType
+    measurement_type: MeasurementType
+    unit: str
     count: int
-    mean_nm: float
+    mean: float
 
 
 @dataclass(frozen=True, slots=True)
-class ParameterStat:
-    """Per-parameter statistics for the summary API (home KPI breakdown).
+class MeasurementTypeStat:
+    """Per-type statistics for the summary API (home KPI breakdown).
 
-    Kept separate from ExpectedSummaryEntry, which is part of the frozen
-    context-export snapshot contract and must not grow new fields.
+    Values within one measurement type share a unit, so mean/min/max are
+    comparable; they are not comparable across types (nm vs deg).
     """
 
-    parameter_type: ParameterType
+    measurement_type: MeasurementType
+    unit: str
     count: int
-    mean_nm: float
-    min_nm: float
-    max_nm: float
+    mean: float
+    min: float
+    max: float
 
 
 @dataclass(frozen=True, slots=True)

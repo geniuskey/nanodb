@@ -17,7 +17,7 @@ from nanodb.services.export_builder import build_context_zip
 
 
 class ContextExportService:
-    schema_version = "2.0"
+    schema_version = "3.0"
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory

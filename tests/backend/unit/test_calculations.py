@@ -15,7 +15,7 @@ from nanodb.domain.entities import (
     ExportSnapshot,
     Image,
     Measurement,
-    ParameterType,
+    MeasurementType,
     Point,
 )
 from nanodb.domain.errors import DomainError
@@ -39,83 +39,102 @@ def make_image(*, image_id: int = 1) -> Image:
     )
 
 
-def make_measurement(
+def make_length(
     measurement_id: int,
-    parameter_type: ParameterType,
     value_nm: float,
     *,
     image_id: int = 1,
-    start: Point | None = None,
-    end: Point | None = None,
     calibration: float = 0.2,
 ) -> Measurement:
-    resolved_start = start or Point(0, 0)
-    resolved_end = end or Point(value_nm / calibration, 0)
-    distance_px = math.hypot(
-        resolved_end.x - resolved_start.x,
-        resolved_end.y - resolved_start.y,
-    )
+    """A length measurement whose points reproduce ``value_nm`` at ``calibration``."""
+    points = (Point(0, 0), Point(value_nm / calibration, 0))
     return Measurement(
         id=measurement_id,
         image_id=image_id,
-        parameter_type=parameter_type,
-        start=resolved_start,
-        end=resolved_end,
-        distance_px=distance_px,
+        item_id=None,
+        measurement_type=MeasurementType.LENGTH,
+        points=points,
+        value=value_nm,
+        unit="nm",
         calibration_nm_per_pixel=calibration,
-        value_nm=value_nm,
         label="게이트 상단",
         note="한글 메모 & symbols <>",
         created_at=NOW,
     )
 
 
-def test_known_500_pixel_case_is_100_nm() -> None:
+def test_known_500_pixel_length_is_100_nm() -> None:
     result = calculate_measurement(
-        Point(100, 100),
-        Point(400, 500),
+        MeasurementType.LENGTH,
+        (Point(100, 100), Point(400, 500)),
         0.2,
         pixel_width=1000,
         pixel_height=800,
     )
 
-    assert result.distance_px == 500
-    assert result.value_nm == 100
+    assert result.value == 100
+    assert result.unit == "nm"
+
+
+def test_right_angle_of_three_points_is_ninety_degrees() -> None:
+    result = calculate_measurement(
+        MeasurementType.ANGLE,
+        (Point(100, 100), Point(200, 100), Point(100, 200)),
+        0.2,
+        pixel_width=1000,
+        pixel_height=800,
+    )
+
+    assert result.value == pytest.approx(90.0)
+    assert result.unit == "deg"
+
+
+def test_curvature_fits_the_circle_radius_in_nm() -> None:
+    # Three points on a circle of radius 100px centred at (100, 100).
+    result = calculate_measurement(
+        MeasurementType.CURVATURE,
+        (Point(200, 100), Point(100, 200), Point(0, 100)),
+        0.2,
+        pixel_width=1000,
+        pixel_height=800,
+    )
+
+    assert result.value == pytest.approx(100 * 0.2)
+    assert result.unit == "nm"
 
 
 @pytest.mark.parametrize(
-    ("start", "end", "expected_field"),
+    ("points", "expected_index"),
     [
-        (Point(-0.01, 0), Point(1, 1), "start"),
-        (Point(0, -0.01), Point(1, 1), "start"),
-        (Point(0, 0), Point(1000, 1), "end"),
-        (Point(0, 0), Point(1, 800), "end"),
+        ((Point(-0.01, 0), Point(1, 1)), 0),
+        ((Point(0, -0.01), Point(1, 1)), 0),
+        ((Point(0, 0), Point(1000, 1)), 1),
+        ((Point(0, 0), Point(1, 800)), 1),
     ],
 )
 def test_points_outside_original_bounds_are_rejected(
-    start: Point,
-    end: Point,
-    expected_field: str,
+    points: tuple[Point, Point],
+    expected_index: int,
 ) -> None:
     with pytest.raises(DomainError) as caught:
         calculate_measurement(
-            start,
-            end,
+            MeasurementType.LENGTH,
+            points,
             0.2,
             pixel_width=1000,
             pixel_height=800,
         )
 
     assert caught.value.code == "POINT_OUT_OF_BOUNDS"
-    assert caught.value.field == expected_field
+    assert caught.value.field == f"points[{expected_index}]"
 
 
 @pytest.mark.parametrize("bad_value", [math.nan, math.inf, -math.inf])
 def test_non_finite_coordinates_are_rejected(bad_value: float) -> None:
     with pytest.raises(DomainError, match="finite") as caught:
         calculate_measurement(
-            Point(bad_value, 0),
-            Point(1, 1),
+            MeasurementType.LENGTH,
+            (Point(bad_value, 0), Point(1, 1)),
             0.2,
             pixel_width=1000,
             pixel_height=800,
@@ -130,25 +149,64 @@ def test_non_positive_or_non_finite_calibration_is_rejected(
 ) -> None:
     with pytest.raises(DomainError):
         calculate_measurement(
-            Point(0, 0),
-            Point(1, 1),
+            MeasurementType.LENGTH,
+            (Point(0, 0), Point(1, 1)),
             calibration,
             pixel_width=1000,
             pixel_height=800,
         )
 
 
-def test_identical_points_are_rejected() -> None:
+def test_wrong_point_count_is_rejected() -> None:
     with pytest.raises(DomainError) as caught:
         calculate_measurement(
-            Point(10, 10),
-            Point(10, 10),
+            MeasurementType.ANGLE,
+            (Point(0, 0), Point(1, 1)),
+            0.2,
+            pixel_width=1000,
+            pixel_height=800,
+        )
+
+    assert caught.value.code == "INVALID_POINT_COUNT"
+
+
+def test_identical_length_points_are_rejected() -> None:
+    with pytest.raises(DomainError) as caught:
+        calculate_measurement(
+            MeasurementType.LENGTH,
+            (Point(10, 10), Point(10, 10)),
             0.2,
             pixel_width=1000,
             pixel_height=800,
         )
 
     assert caught.value.code == "IDENTICAL_POINTS"
+
+
+def test_degenerate_angle_arm_is_rejected() -> None:
+    with pytest.raises(DomainError) as caught:
+        calculate_measurement(
+            MeasurementType.ANGLE,
+            (Point(100, 100), Point(100, 100), Point(200, 200)),
+            0.2,
+            pixel_width=1000,
+            pixel_height=800,
+        )
+
+    assert caught.value.code == "DEGENERATE_ANGLE"
+
+
+def test_collinear_curvature_points_are_rejected() -> None:
+    with pytest.raises(DomainError) as caught:
+        calculate_measurement(
+            MeasurementType.CURVATURE,
+            (Point(0, 0), Point(100, 100), Point(200, 200)),
+            0.2,
+            pixel_width=1000,
+            pixel_height=800,
+        )
+
+    assert caught.value.code == "COLLINEAR_POINTS"
 
 
 def test_display_rounding_is_decimal_half_up_without_changing_source() -> None:
@@ -162,27 +220,24 @@ def test_display_rounding_is_decimal_half_up_without_changing_source() -> None:
 
 def test_expected_summary_uses_contract_order_and_stored_precision() -> None:
     measurements = (
-        make_measurement(1, ParameterType.DEPTH, 30),
-        make_measurement(2, ParameterType.CD, 10),
-        make_measurement(3, ParameterType.CD, 20),
+        make_length(1, 10),
+        make_length(2, 20),
     )
 
     summary = build_expected_summary(measurements)
 
-    assert [(row.parameter_type, row.count, row.mean_nm) for row in summary] == [
-        (ParameterType.CD, 2, 15),
-        (ParameterType.DEPTH, 1, 30),
-    ]
+    rows = [(row.measurement_type, row.unit, row.count, row.mean) for row in summary]
+    assert rows == [(MeasurementType.LENGTH, "nm", 2, 15)]
 
 
 def test_valid_export_snapshot_accepts_id_ordered_single_image_data() -> None:
     image = make_image()
     measurements = (
-        make_measurement(1, ParameterType.CD, 10),
-        make_measurement(2, ParameterType.DEPTH, 30),
+        make_length(1, 10),
+        make_length(2, 30),
     )
     snapshot = ExportSnapshot(
-        schema_version="1.0",
+        schema_version="3.0",
         exported_at=NOW,
         image=image,
         measurements=measurements,
@@ -194,7 +249,7 @@ def test_valid_export_snapshot_accepts_id_ordered_single_image_data() -> None:
 
 def test_export_requires_at_least_one_measurement() -> None:
     snapshot = ExportSnapshot(
-        schema_version="1.0",
+        schema_version="3.0",
         exported_at=NOW,
         image=make_image(),
         measurements=(),
@@ -208,9 +263,9 @@ def test_export_requires_at_least_one_measurement() -> None:
 
 
 def test_export_rejects_mixed_images() -> None:
-    measurements = (make_measurement(1, ParameterType.CD, 10, image_id=2),)
+    measurements = (make_length(1, 10, image_id=2),)
     snapshot = ExportSnapshot(
-        schema_version="1.0",
+        schema_version="3.0",
         exported_at=NOW,
         image=make_image(image_id=1),
         measurements=measurements,
@@ -225,11 +280,11 @@ def test_export_rejects_mixed_images() -> None:
 
 def test_export_rejects_non_deterministic_measurement_order() -> None:
     measurements = (
-        make_measurement(2, ParameterType.DEPTH, 30),
-        make_measurement(1, ParameterType.CD, 10),
+        make_length(2, 30),
+        make_length(1, 10),
     )
     snapshot = ExportSnapshot(
-        schema_version="1.0",
+        schema_version="3.0",
         exported_at=NOW,
         image=make_image(),
         measurements=measurements,
@@ -243,22 +298,22 @@ def test_export_rejects_non_deterministic_measurement_order() -> None:
 
 
 def test_export_rejects_tampered_calculated_value() -> None:
-    measurement = make_measurement(1, ParameterType.CD, 10)
+    measurement = make_length(1, 10)
     tampered = Measurement(
         id=measurement.id,
         image_id=measurement.image_id,
-        parameter_type=measurement.parameter_type,
-        start=measurement.start,
-        end=measurement.end,
-        distance_px=measurement.distance_px,
+        item_id=measurement.item_id,
+        measurement_type=measurement.measurement_type,
+        points=measurement.points,
+        value=11,
+        unit=measurement.unit,
         calibration_nm_per_pixel=measurement.calibration_nm_per_pixel,
-        value_nm=11,
         label=measurement.label,
         note=measurement.note,
         created_at=measurement.created_at,
     )
     snapshot = ExportSnapshot(
-        schema_version="1.0",
+        schema_version="3.0",
         exported_at=NOW,
         image=make_image(),
         measurements=(tampered,),

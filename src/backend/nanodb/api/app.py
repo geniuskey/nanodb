@@ -17,6 +17,7 @@ from nanodb.persistence.database import create_session_factory
 from nanodb.services.catalog_service import CatalogService
 from nanodb.services.context_export_service import ContextExportService
 from nanodb.services.image_service import ImageService
+from nanodb.services.measurement_item_service import MeasurementItemService
 from nanodb.services.measurement_service import MeasurementService
 from nanodb.services.summary_service import SummaryService
 from nanodb.settings import Settings
@@ -43,6 +44,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ImageDecoder(),
     )
     app.state.measurement_service = MeasurementService(session_factory)
+    app.state.measurement_item_service = MeasurementItemService(session_factory)
     app.state.catalog_service = CatalogService(session_factory)
     app.state.summary_service = SummaryService(session_factory)
     app.state.context_export_service = ContextExportService(session_factory)

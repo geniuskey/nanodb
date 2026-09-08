@@ -101,12 +101,7 @@ def _sha256(path: Path) -> str:
 
 
 def _utc_now() -> str:
-    return (
-        datetime.now(UTC)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _load_approved_sources() -> dict[str, dict[str, str]]:
@@ -177,9 +172,7 @@ def prepare() -> list[dict[str, str]]:
             )
         calibration = source_record["length_nm_per_pixel"]
         if float(calibration) <= 0:
-            raise PreparationError(
-                f"calibration must be positive: {spec.source_id}"
-            )
+            raise PreparationError(f"calibration must be positive: {spec.source_id}")
 
         source_path = SOURCE_IMAGE_ROOT / f"{spec.source_id}.tif"
         if not source_path.is_file():

@@ -5,7 +5,8 @@ import logo from "../../../../assets/logo/nanodb_logo_horizontal.png";
 import introVideo from "../../../../assets/video/nanodb_intro.mp4";
 import { api } from "../api/client";
 import { useSummary } from "../api/summary-context";
-import type { ImageListView, ParameterSummary, ParameterType } from "../api/types";
+import type { ImageListView, MeasurementTypeSummary } from "../api/types";
+import { TYPE_LABEL } from "../measurement/geometry";
 import { useDocumentTitle } from "../ui/useDocumentTitle";
 
 // --- Static content (대의 / Phase / AI-DLC / 사용 흐름) ---
@@ -40,8 +41,8 @@ const PHASES: {
     title: "모은다",
     status: "now",
     badge: "● 지금 동작",
-    body: "SEM, TEM 이미지를 제조 정보(Product, Lot, Wafer, 공정 Step)와 nm/pixel 보정값과 함께 등록하고, 이미지 위 두 점 측정으로 실제 길이를 재고 이름을 붙여 저장·복원합니다.",
-    basis: "이미지 등록, nm/pixel 캘리브레이션, 두 점 측정(CD·Depth·Thickness), 측정 라벨링, 항목별 평균, 파일명·Product·Lot·Wafer 검색, 측정·이미지 삭제, 개발 컨텍스트 내보내기",
+    body: "SEM, TEM 이미지를 제조 정보(Product, Lot, Wafer, 공정 Step)와 nm/pixel 보정값과 함께 등록하고, 이미지 위에서 길이·각도·곡률을 재고 제품별 측정 항목으로 관리해 저장·복원합니다.",
+    basis: "이미지 등록, nm/pixel 캘리브레이션, 길이·각도·곡률 측정, 제품별 측정 항목 관리, 측정 라벨링, 종류별 평균, 파일명·Product·Lot·Wafer 검색, 측정·이미지 삭제, 개발 컨텍스트 내보내기",
   },
   {
     name: "Phase 2",
@@ -90,15 +91,9 @@ const AIDLC = [
 const FLOW = [
   { title: "이미지 등록", body: "SEM/TEM 이미지와 Product·Lot·Wafer, 원본 파일명을 함께 남깁니다." },
   { title: "캘리브레이션", body: "이미지의 nm/pixel 보정값을 입력해 픽셀을 실제 길이로 잇습니다." },
-  { title: "측정", body: "이미지 위 두 점으로 CD·Depth·Thickness 값을 얻습니다." },
+  { title: "측정", body: "제품별 측정 항목을 골라 이미지 위에서 길이·각도·곡률 값을 얻습니다." },
   { title: "저장·내보내기", body: "저장 측정은 새로고침 후에도 복원되고, 개발 컨텍스트로 내보냅니다." },
 ];
-
-const PARAM_LABEL: Record<ParameterType, string> = {
-  CD: "CD",
-  Depth: "Depth",
-  Thickness: "Thickness",
-};
 
 // --- Recent-image / composition helpers (real data from /api/images) ---
 
@@ -138,8 +133,8 @@ function dayKey(iso: string): string {
   return iso.slice(0, 10);
 }
 
-function topParameters(parameters: ParameterSummary[]): (ParameterSummary | null)[] {
-  const sorted = [...parameters].sort((a, b) => b.count - a.count).slice(0, 2);
+function topTypes(types: MeasurementTypeSummary[]): (MeasurementTypeSummary | null)[] {
+  const sorted = [...types].sort((a, b) => b.count - a.count).slice(0, 2);
   return [sorted[0] ?? null, sorted[1] ?? null];
 }
 
@@ -196,22 +191,23 @@ function KpiSection({ images, reloadImages }: { images: ImageListView[] | null; 
             <article className="kpi-card">
               <div className="kpi-value">{summary.measurement_count}</div>
               <div className="kpi-label">저장 측정</div>
-              <div className="kpi-sub">n={summary.measurement_count} · manual two-point</div>
+              <div className="kpi-sub">n={summary.measurement_count} · manual</div>
             </article>
-            {topParameters(summary.parameters).map((param, index) => (
-              <article className="kpi-card" key={param ? param.parameter_type : `empty-${index}`}>
-                {param ? (
+            {topTypes(summary.types).map((type, index) => (
+              <article className="kpi-card" key={type ? type.measurement_type : `empty-${index}`}>
+                {type ? (
                   <>
                     <div className="kpi-value">
-                      {param.mean_nm.toFixed(2)} <span className="kpi-unit">nm</span>
+                      {type.mean.toFixed(2)}{" "}
+                      <span className="kpi-unit">{type.unit === "deg" ? "°" : type.unit}</span>
                     </div>
-                    <div className="kpi-label">{PARAM_LABEL[param.parameter_type]} 평균</div>
-                    <div className="kpi-sub">n={param.count}, 저장값만</div>
+                    <div className="kpi-label">{TYPE_LABEL[type.measurement_type]} 평균</div>
+                    <div className="kpi-sub">n={type.count}, 저장값만</div>
                   </>
                 ) : (
                   <>
                     <div className="kpi-value muted">—</div>
-                    <div className="kpi-label">파라미터 평균</div>
+                    <div className="kpi-label">측정 종류 평균</div>
                     <div className="kpi-sub">측정이 아직 없습니다 (n=0)</div>
                   </>
                 )}
@@ -219,25 +215,26 @@ function KpiSection({ images, reloadImages }: { images: ImageListView[] | null; 
             ))}
           </div>
 
-          {images && <CompositionBars images={images} parameters={summary.parameters} />}
+          {images && <CompositionBars images={images} types={summary.types} />}
 
-          <ParameterBreakdown parameters={summary.parameters} />
+          <TypeBreakdown types={summary.types} />
         </div>
       )}
     </section>
   );
 }
 
-function ParameterBreakdown({ parameters }: { parameters: ParameterSummary[] }) {
-  if (parameters.length === 0) {
+function TypeBreakdown({ types }: { types: MeasurementTypeSummary[] }) {
+  if (types.length === 0) {
     return null;
   }
   return (
-    <table className="param-table" data-testid="param-breakdown">
-      <caption className="comp-heading">파라미터별 측정 요약 (저장값, 단위 nm)</caption>
+    <table className="param-table" data-testid="type-breakdown">
+      <caption className="comp-heading">측정 종류별 요약 (저장값, 종류별 단위)</caption>
       <thead>
         <tr>
-          <th scope="col">항목</th>
+          <th scope="col">종류</th>
+          <th scope="col">단위</th>
           <th scope="col">n</th>
           <th scope="col">평균</th>
           <th scope="col">최소</th>
@@ -245,13 +242,14 @@ function ParameterBreakdown({ parameters }: { parameters: ParameterSummary[] }) 
         </tr>
       </thead>
       <tbody>
-        {parameters.map((param) => (
-          <tr key={param.parameter_type}>
-            <th scope="row">{PARAM_LABEL[param.parameter_type]}</th>
-            <td>{param.count}</td>
-            <td>{param.mean_nm.toFixed(2)}</td>
-            <td>{param.min_nm.toFixed(2)}</td>
-            <td>{param.max_nm.toFixed(2)}</td>
+        {types.map((type) => (
+          <tr key={type.measurement_type}>
+            <th scope="row">{TYPE_LABEL[type.measurement_type]}</th>
+            <td>{type.unit === "deg" ? "°" : type.unit}</td>
+            <td>{type.count}</td>
+            <td>{type.mean.toFixed(2)}</td>
+            <td>{type.min.toFixed(2)}</td>
+            <td>{type.max.toFixed(2)}</td>
           </tr>
         ))}
       </tbody>
@@ -261,17 +259,17 @@ function ParameterBreakdown({ parameters }: { parameters: ParameterSummary[] }) 
 
 function CompositionBars({
   images,
-  parameters,
+  types,
 }: {
   images: ImageListView[];
-  parameters: ParameterSummary[];
+  types: MeasurementTypeSummary[];
 }) {
   const total = images.length;
   const semCount = images.filter((image) => image.image_type === "SEM").length;
   const temCount = total - semCount;
   const pct = (part: number) => (total > 0 ? Math.round((part / total) * 100) : 0);
 
-  const paramTotal = parameters.reduce((sum, param) => sum + param.count, 0);
+  const typeTotal = types.reduce((sum, type) => sum + type.count, 0);
 
   // Registration trend: one bar per distinct registration day (최근 14일 분).
   const byDay = new Map<string, number>();
@@ -298,22 +296,22 @@ function CompositionBars({
 
       <div className="comp-block">
         <div className="comp-heading">측정 구성</div>
-        {paramTotal > 0 ? (
+        {typeTotal > 0 ? (
           <>
             <div className="comp-bar" aria-hidden="true">
-              {parameters.map((param) => (
+              {types.map((type) => (
                 <span
-                  key={param.parameter_type}
-                  className={`seg param-${param.parameter_type.toLowerCase()}`}
-                  style={{ width: `${Math.round((param.count / paramTotal) * 100)}%` }}
+                  key={type.measurement_type}
+                  className={`seg param-${type.measurement_type}`}
+                  style={{ width: `${Math.round((type.count / typeTotal) * 100)}%` }}
                 />
               ))}
             </div>
             <div className="comp-legend">
-              {parameters.map((param) => (
-                <span key={param.parameter_type}>
-                  <i className={`dot param-${param.parameter_type.toLowerCase()}`} />{" "}
-                  {PARAM_LABEL[param.parameter_type]} {param.count}
+              {types.map((type) => (
+                <span key={type.measurement_type}>
+                  <i className={`dot param-${type.measurement_type}`} />{" "}
+                  {TYPE_LABEL[type.measurement_type]} {type.count}
                 </span>
               ))}
             </div>

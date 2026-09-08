@@ -164,13 +164,19 @@ def run(csv_path: Path, checks_path: Path) -> dict[str, Any]:
     try:
         checks = json.loads(checks_path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
-        return {"verdict": UNVERIFIED, "reason": f"cannot read checks: {exc}",
-                "findings": []}
+        return {
+            "verdict": UNVERIFIED,
+            "reason": f"cannot read checks: {exc}",
+            "findings": [],
+        }
     try:
         csv_rows = _load_csv_rows(csv_path)
     except (OSError, ValueError) as exc:
-        return {"verdict": UNVERIFIED, "reason": f"cannot read CSV: {exc}",
-                "findings": []}
+        return {
+            "verdict": UNVERIFIED,
+            "reason": f"cannot read CSV: {exc}",
+            "findings": [],
+        }
     return compare(csv_rows, checks)
 
 

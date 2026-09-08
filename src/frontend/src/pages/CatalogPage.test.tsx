@@ -101,6 +101,41 @@ describe("CatalogPage", () => {
     expect(String(del[0]).endsWith("/api/catalog/2")).toBe(true);
   });
 
+  it("renames a custom option and forwards the new value", async () => {
+    const fetchMock = stubFetch((input, init) => {
+      if (init?.method === "PATCH") {
+        return Promise.resolve(
+          jsonResponse({ id: 2, category: "product_id", value: "P-DRAM-2", is_predefined: false }),
+        );
+      }
+      return Promise.resolve(jsonResponse({}));
+    });
+    renderWithRouter(<CatalogPage />);
+    const user = userEvent.setup();
+
+    await screen.findByTestId("catalog-product_id");
+    await user.click(screen.getByTestId("catalog-edit-2"));
+    const input = screen.getByTestId("catalog-edit-input-2");
+    await user.clear(input);
+    await user.type(input, "P-DRAM-2");
+    await user.click(screen.getByTestId("catalog-save-2"));
+
+    await waitFor(() =>
+      expect(within(screen.getByTestId("catalog-product_id")).getByText("P-DRAM-2")).toBeInTheDocument(),
+    );
+    const patch = fetchMock.mock.calls.find((call) => call[1]?.method === "PATCH")!;
+    expect(String(patch[0]).endsWith("/api/catalog/2")).toBe(true);
+    expect(JSON.parse(patch[1]!.body as string)).toEqual({ value: "P-DRAM-2" });
+  });
+
+  it("offers no rename control on a predefined option", async () => {
+    stubFetch(() => Promise.resolve(jsonResponse({})));
+    renderWithRouter(<CatalogPage />);
+
+    const imageTypes = await screen.findByTestId("catalog-image_type");
+    expect(within(imageTypes).queryByTestId(/^catalog-edit-/)).not.toBeInTheDocument();
+  });
+
   it("reports a failed initial load with a retry", async () => {
     const mock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       if (String(input).endsWith("/api/catalog")) {

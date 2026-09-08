@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import pytest
 from nanodb.domain.calculations import calculate_measurement
-from nanodb.domain.entities import ParameterType, Point
-from nanodb.persistence.repositories import ImageRepository, MeasurementRepository
+from nanodb.domain.entities import MeasurementType, Point
+from nanodb.persistence.repositories import (
+    ImageRepository,
+    MeasurementItemRepository,
+    MeasurementRepository,
+)
 from sqlalchemy import Engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -28,13 +32,41 @@ def create_image(
     ).id
 
 
+def create_length(
+    measurements: MeasurementRepository,
+    image_id: int,
+    end_x: float,
+    *,
+    calibration: float = 0.2,
+    label: str | None = None,
+    note: str | None = None,
+) -> object:
+    points = (Point(0, 0), Point(end_x, 0))
+    return measurements.create(
+        image_id=image_id,
+        item_id=None,
+        measurement_type=MeasurementType.LENGTH,
+        points=points,
+        result=calculate_measurement(
+            MeasurementType.LENGTH,
+            points,
+            calibration,
+            pixel_width=1000,
+            pixel_height=800,
+        ),
+        calibration_nm_per_pixel=calibration,
+        label=label,
+        note=note,
+    )
+
+
 def test_empty_database_migration_creates_core_tables(
     database_engine: tuple[Engine, sessionmaker[Session]],
 ) -> None:
     engine, _ = database_engine
     tables = set(inspect(engine).get_table_names())
 
-    assert {"alembic_version", "images", "measurements"} <= tables
+    assert {"alembic_version", "images", "measurements", "measurement_items"} <= tables
     # Shapes were folded into the measurement they describe; the standalone
     # table is gone rather than left behind empty.
     assert "annotations" not in tables
@@ -69,22 +101,7 @@ def test_aggregate_list_and_measurement_order_are_deterministic(
     first_id = create_image(images, "1")
     second_id = create_image(images, "2")
     for end_x in (10.0, 20.0):
-        measurements.create(
-            image_id=first_id,
-            parameter_type=ParameterType.CD,
-            start=Point(0, 0),
-            end=Point(end_x, 0),
-            calculation=calculate_measurement(
-                Point(0, 0),
-                Point(end_x, 0),
-                0.2,
-                pixel_width=1000,
-                pixel_height=800,
-            ),
-            calibration_nm_per_pixel=0.2,
-            label=None,
-            note=None,
-        )
+        create_length(measurements, first_id, end_x)
     db_session.commit()
 
     items = images.list_with_measurement_count()
@@ -95,6 +112,23 @@ def test_aggregate_list_and_measurement_order_are_deterministic(
     assert [item.measurement_count for item in items] == [0, 2]
     assert [measurement.id for measurement in newest] == [2, 1]
     assert [measurement.id for measurement in export] == [1, 2]
+
+
+def test_aggregate_by_type_groups_only_measured_types(db_session: Session) -> None:
+    images = ImageRepository(db_session)
+    measurements = MeasurementRepository(db_session)
+    image_id = create_image(images, "1")
+    # Two lengths: 10px -> 2nm and 20px -> 4nm, mean 3nm.
+    create_length(measurements, image_id, 10.0)
+    create_length(measurements, image_id, 20.0)
+    db_session.commit()
+
+    stats = measurements.aggregate_by_type()
+
+    assert [stat.measurement_type for stat in stats] == [MeasurementType.LENGTH]
+    (length,) = stats
+    assert (length.unit, length.count, length.mean) == ("nm", 2, 3.0)
+    assert (length.min, length.max) == (2.0, 4.0)
 
 
 def test_list_filters_by_partial_text_and_image_type(db_session: Session) -> None:
@@ -135,9 +169,7 @@ def test_list_filters_by_partial_text_and_image_type(db_session: Session) -> Non
     assert len(images.list_with_measurement_count(query="   ")) == 2
 
     # Combined filters intersect (no SEM image matches LOT-B).
-    assert images.list_with_measurement_count(
-        query="LOT-B", image_type="SEM"
-    ) == ()
+    assert images.list_with_measurement_count(query="LOT-B", image_type="SEM") == ()
 
 
 def test_list_filters_by_process_step(db_session: Session) -> None:
@@ -155,6 +187,40 @@ def test_list_filters_by_process_step(db_session: Session) -> None:
     assert [item.image.process_step for item in matched] == ["Poly Deposition"]
 
 
+def test_measurement_items_are_scoped_and_unique_per_product(
+    db_session: Session,
+) -> None:
+    items = MeasurementItemRepository(db_session)
+    gate = items.create(
+        product_id="PRODUCT-01",
+        name="Active CD",
+        measurement_type=MeasurementType.LENGTH,
+    )
+    items.create(
+        product_id="PRODUCT-01", name="Gate CD", measurement_type=MeasurementType.LENGTH
+    )
+    items.create(
+        product_id="PRODUCT-02", name="Gate CD", measurement_type=MeasurementType.LENGTH
+    )
+    db_session.commit()
+
+    # Listed by name within one product, and a same name in another product is
+    # a distinct item (unique only per product).
+    listed = items.list_by_product("PRODUCT-01")
+    assert [item.name for item in listed] == ["Active CD", "Gate CD"]
+    assert items.exists("PRODUCT-01", "Gate CD") is True
+
+    updated = items.update(
+        gate.id, name="Gate CD (rev)", measurement_type=MeasurementType.LENGTH
+    )
+    assert updated is not None
+    assert updated.name == "Gate CD (rev)"
+
+    assert items.delete(gate.id) is True
+    db_session.commit()
+    assert [item.name for item in items.list_by_product("PRODUCT-01")] == ["Gate CD"]
+
+
 def test_measurement_annotation_is_editable_and_scoped_to_its_image(
     db_session: Session,
 ) -> None:
@@ -162,17 +228,8 @@ def test_measurement_annotation_is_editable_and_scoped_to_its_image(
     measurements = MeasurementRepository(db_session)
     first_id = create_image(images, "1")
     second_id = create_image(images, "2")
-    created = measurements.create(
-        image_id=first_id,
-        parameter_type=ParameterType.CD,
-        start=Point(0, 0),
-        end=Point(10, 0),
-        calculation=calculate_measurement(
-            Point(0, 0), Point(10, 0), 0.2, pixel_width=1000, pixel_height=800
-        ),
-        calibration_nm_per_pixel=0.2,
-        label="Gate CD",
-        note="첫 메모",
+    created = create_length(
+        measurements, first_id, 10.0, label="Gate CD", note="첫 메모"
     )
     db_session.commit()
 
@@ -184,13 +241,14 @@ def test_measurement_annotation_is_editable_and_scoped_to_its_image(
     )
     assert updated is not None
     assert (updated.label, updated.note) == ("Gate CD (재확인)", None)
-    assert (updated.start, updated.end) == (Point(0, 0), Point(10, 0))
-    assert updated.value_nm == created.value_nm
+    assert updated.points == (Point(0, 0), Point(10, 0))
+    assert updated.value == created.value
 
     # An id from another image cannot be edited across the boundary.
-    assert measurements.update_annotation(
-        second_id, created.id, label="x", note=None
-    ) is None
+    assert (
+        measurements.update_annotation(second_id, created.id, label="x", note=None)
+        is None
+    )
 
     # Cascade helper removes every measurement for an image.
     assert measurements.delete_by_image(first_id) == 1

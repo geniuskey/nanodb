@@ -30,14 +30,12 @@ def _seed_image_with_measurement(session: Session) -> None:
     session.add(
         MeasurementModel(
             image_id=image.id,
-            parameter_type="CD",
-            start_x=100,
-            start_y=100,
-            end_x=400,
-            end_y=500,
-            distance_px=500,
+            item_id=None,
+            measurement_type="length",
+            points=[[100, 100], [400, 500]],
+            value=100,
+            unit="nm",
             calibration_nm_per_pixel=0.2,
-            value_nm=100,
             label="Gate CD",
             note=None,
         )

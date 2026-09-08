@@ -20,19 +20,24 @@ export interface CatalogCreateInput {
   value: string;
 }
 
-export interface ParameterSummary {
-  parameter_type: ParameterType;
+export interface CatalogUpdateInput {
+  value: string;
+}
+
+export interface MeasurementTypeSummary {
+  measurement_type: MeasurementType;
+  unit: string;
   count: number;
-  mean_nm: number;
-  min_nm: number;
-  max_nm: number;
+  mean: number;
+  min: number;
+  max: number;
 }
 
 export interface SummaryView {
   image_count: number;
   measurement_count: number;
   calculated_at: string;
-  parameters: ParameterSummary[];
+  types: MeasurementTypeSummary[];
 }
 
 export interface ImageListView {
@@ -53,24 +58,36 @@ export interface ImageListView {
 
 export type ImageView = Omit<ImageListView, "measurement_count">;
 
-export type ParameterType = "CD" | "Depth" | "Thickness";
+/**
+ * How a measurement is drawn and what its value means:
+ * - length: a line segment between 2 points; value in nm.
+ * - angle: 3 points (vertex first, then the two arm ends); value in degrees.
+ * - curvature: 3 points on an arc; value is the fitted circle radius in nm.
+ */
+export type MeasurementType = "length" | "angle" | "curvature";
+
+export interface Point {
+  x: number;
+  y: number;
+}
 
 export interface MeasurementView {
   id: number;
   image_id: number;
-  parameter_type: ParameterType;
-  start_x: number;
-  start_y: number;
-  end_x: number;
-  end_y: number;
-  distance_px: number;
+  /** The per-product item this realises, or null for an ad-hoc measurement. */
+  item_id: number | null;
+  measurement_type: MeasurementType;
+  /** Original-pixel points as placed: 2 for length, 3 for angle/curvature. */
+  points: Point[];
+  /** Computed result, expressed in `unit` (nm or deg). */
+  value: number;
+  unit: string;
   calibration_nm_per_pixel: number;
-  value_nm: number;
-  /** What this measurement is, e.g. "Gate CD". Drawn beside the line. */
+  /** What this measurement is, e.g. "Gate CD". Drawn beside the shape. */
   label: string | null;
   /** Free observation memo about the same measurement. */
   note: string | null;
-  measurement_method: "manual_two_point";
+  measurement_method: "manual";
   reference_status: "unreviewed";
   created_at: string;
 }
@@ -80,11 +97,30 @@ export interface ImageDetailView extends ImageView {
 }
 
 export interface MeasurementCreateInput {
-  parameter_type: ParameterType;
-  start: { x: number; y: number };
-  end: { x: number; y: number };
+  measurement_type: MeasurementType;
+  points: Point[];
+  item_id: number | null;
   label: string | null;
   note: string | null;
+}
+
+export interface MeasurementItemView {
+  id: number;
+  product_id: string;
+  name: string;
+  measurement_type: MeasurementType;
+  created_at: string;
+}
+
+export interface MeasurementItemCreateInput {
+  product_id: string;
+  name: string;
+  measurement_type: MeasurementType;
+}
+
+export interface MeasurementItemUpdateInput {
+  name: string;
+  measurement_type: MeasurementType;
 }
 
 /** Both fields are replaced together, so a request states the whole annotation. */

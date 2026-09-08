@@ -7,16 +7,28 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session, sessionmaker
 
 from nanodb.domain.calculations import calculate_measurement
-from nanodb.domain.entities import Measurement, ParameterType, Point
+from nanodb.domain.entities import Measurement, MeasurementType, Point
 from nanodb.domain.errors import DomainError
-from nanodb.persistence.repositories import ImageRepository, MeasurementRepository
+from nanodb.persistence.repositories import (
+    ImageRepository,
+    MeasurementItemRepository,
+    MeasurementRepository,
+)
 
 
 @dataclass(frozen=True, slots=True)
 class MeasurementInput:
-    parameter_type: ParameterType
-    start: Point
-    end: Point
+    """A drawn measurement submitted for server-side evaluation.
+
+    ``measurement_type`` fixes the geometry and the expected ``points`` count
+    (2 for length, 3 for angle/curvature). ``item_id`` links the instance to a
+    product measurement item when the operator picked one; when set, its type
+    must match ``measurement_type`` so the drawing tool and the definition agree.
+    """
+
+    measurement_type: MeasurementType
+    points: tuple[Point, ...]
+    item_id: int | None = None
     label: str | None = None
     note: str | None = None
 
@@ -30,19 +42,39 @@ class MeasurementService:
             image = ImageRepository(session).find(image_id)
             if image is None:
                 raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
-            calculation = calculate_measurement(
-                value.start,
-                value.end,
+            if value.item_id is not None:
+                item = MeasurementItemRepository(session).find(value.item_id)
+                if item is None:
+                    raise DomainError(
+                        "MEASUREMENT_ITEM_NOT_FOUND",
+                        "Measurement item was not found.",
+                        field="item_id",
+                    )
+                if item.product_id != image.product_id:
+                    raise DomainError(
+                        "MEASUREMENT_ITEM_PRODUCT_MISMATCH",
+                        "Measurement item belongs to a different product.",
+                        field="item_id",
+                    )
+                if item.measurement_type is not value.measurement_type:
+                    raise DomainError(
+                        "MEASUREMENT_TYPE_MISMATCH",
+                        "Measurement type does not match the selected item.",
+                        field="measurement_type",
+                    )
+            result = calculate_measurement(
+                value.measurement_type,
+                value.points,
                 image.calibration_nm_per_pixel,
                 pixel_width=image.pixel_width,
                 pixel_height=image.pixel_height,
             )
             measurement = MeasurementRepository(session).create(
                 image_id=image.id,
-                parameter_type=value.parameter_type,
-                start=value.start,
-                end=value.end,
-                calculation=calculation,
+                item_id=value.item_id,
+                measurement_type=value.measurement_type,
+                points=value.points,
+                result=result,
                 calibration_nm_per_pixel=image.calibration_nm_per_pixel,
                 label=value.label,
                 note=value.note,
@@ -76,9 +108,7 @@ class MeasurementService:
                 note=note,
             )
             if measurement is None:
-                raise DomainError(
-                    "MEASUREMENT_NOT_FOUND", "Measurement was not found."
-                )
+                raise DomainError("MEASUREMENT_NOT_FOUND", "Measurement was not found.")
             session.commit()
             return measurement
 
@@ -88,7 +118,5 @@ class MeasurementService:
             if ImageRepository(session).find(image_id) is None:
                 raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
             if not MeasurementRepository(session).delete(image_id, measurement_id):
-                raise DomainError(
-                    "MEASUREMENT_NOT_FOUND", "Measurement was not found."
-                )
+                raise DomainError("MEASUREMENT_NOT_FOUND", "Measurement was not found.")
             session.commit()

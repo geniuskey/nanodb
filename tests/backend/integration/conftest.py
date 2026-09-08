@@ -44,7 +44,8 @@ def db_session(
     with engine.begin() as connection:
         connection.execute(
             text(
-                "TRUNCATE TABLE measurements, images RESTART IDENTITY CASCADE"
+                "TRUNCATE TABLE measurements, measurement_items, images "
+                "RESTART IDENTITY CASCADE"
             )
         )
         # Keep the migration-seeded defaults, but drop any custom options a

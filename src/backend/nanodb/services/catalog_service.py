@@ -55,6 +55,54 @@ class CatalogService:
                 ) from error
             return option
 
+    def rename(self, option_id: int, value: str) -> CatalogOption:
+        """Change a custom option's value. Predefined options are protected and
+        duplicates within the same category are rejected."""
+        cleaned = value.strip()
+        if not cleaned:
+            raise DomainError(
+                "REQUIRED_FIELD",
+                "Option value is required.",
+                field="value",
+            )
+        if len(cleaned) > MAX_VALUE_LENGTH:
+            raise DomainError(
+                "VALUE_TOO_LONG",
+                f"Option value must be at most {MAX_VALUE_LENGTH} characters.",
+                field="value",
+            )
+        with self._session_factory() as session:
+            repository = CatalogRepository(session)
+            option = repository.find(option_id)
+            if option is None:
+                raise DomainError("OPTION_NOT_FOUND", "Option was not found.")
+            if option.is_predefined:
+                # Seeded defaults are shipped values and keep a stable name.
+                raise DomainError(
+                    "PREDEFINED_OPTION",
+                    "Predefined options cannot be renamed.",
+                )
+            if cleaned == option.value:
+                return option
+            if repository.exists(option.category, cleaned):
+                raise DomainError(
+                    "DUPLICATE_OPTION",
+                    "This value already exists in the list.",
+                    field="value",
+                )
+            try:
+                renamed = repository.rename(option_id, cleaned)
+                session.commit()
+            except IntegrityError as error:
+                session.rollback()
+                raise DomainError(
+                    "DUPLICATE_OPTION",
+                    "This value already exists in the list.",
+                    field="value",
+                ) from error
+            assert renamed is not None  # found above, same transaction
+            return renamed
+
     def delete(self, option_id: int) -> None:
         with self._session_factory() as session:
             repository = CatalogRepository(session)

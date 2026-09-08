@@ -8,17 +8,26 @@ from fastapi import APIRouter, File, Form, Query, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 from sqlalchemy import text
 
-from nanodb.api.mappers import catalog_option_view, image_view, measurement_view
+from nanodb.api.mappers import (
+    catalog_option_view,
+    image_view,
+    measurement_item_view,
+    measurement_view,
+)
 from nanodb.api.schemas import (
     CatalogCreateSchema,
     CatalogOptionView,
+    CatalogUpdateSchema,
     ImageDetailView,
     ImageListView,
     ImageView,
     MeasurementAnnotationSchema,
     MeasurementInputSchema,
+    MeasurementItemCreateSchema,
+    MeasurementItemUpdateSchema,
+    MeasurementItemView,
+    MeasurementTypeSummaryView,
     MeasurementView,
-    ParameterSummaryView,
     ReadinessView,
     SummaryView,
 )
@@ -49,8 +58,8 @@ def summary(request: Request) -> SummaryView:
         image_count=value.image_count,
         measurement_count=value.measurement_count,
         calculated_at=value.calculated_at,
-        parameters=[
-            ParameterSummaryView.model_validate(entry) for entry in value.parameters
+        types=[
+            MeasurementTypeSummaryView.model_validate(entry) for entry in value.types
         ],
     )
 
@@ -133,9 +142,9 @@ def create_measurement(
     result = request.app.state.measurement_service.create(
         image_id,
         MeasurementInput(
-            parameter_type=payload.parameter_type,
-            start=Point(payload.start.x, payload.start.y),
-            end=Point(payload.end.x, payload.end.y),
+            measurement_type=payload.measurement_type,
+            points=tuple(Point(point.x, point.y) for point in payload.points),
+            item_id=payload.item_id,
             label=payload.label,
             note=payload.note,
         ),
@@ -209,9 +218,65 @@ def create_catalog_option(
     return catalog_option_view(option)
 
 
+@router.patch("/catalog/{option_id}", response_model=CatalogOptionView)
+def rename_catalog_option(
+    option_id: int,
+    payload: CatalogUpdateSchema,
+    request: Request,
+) -> CatalogOptionView:
+    option = request.app.state.catalog_service.rename(option_id, payload.value)
+    return catalog_option_view(option)
+
+
 @router.delete("/catalog/{option_id}", status_code=204)
 def delete_catalog_option(option_id: int, request: Request) -> Response:
     request.app.state.catalog_service.delete(option_id)
+    return Response(status_code=204)
+
+
+@router.get("/measurement-items", response_model=list[MeasurementItemView])
+def list_measurement_items(
+    request: Request,
+    product_id: Annotated[str, Query(min_length=1, max_length=255)],
+) -> list[MeasurementItemView]:
+    return [
+        measurement_item_view(item)
+        for item in request.app.state.measurement_item_service.list_for_product(
+            product_id
+        )
+    ]
+
+
+@router.post("/measurement-items", response_model=MeasurementItemView, status_code=201)
+def create_measurement_item(
+    payload: MeasurementItemCreateSchema,
+    request: Request,
+) -> MeasurementItemView:
+    item = request.app.state.measurement_item_service.create(
+        payload.product_id,
+        payload.name,
+        payload.measurement_type,
+    )
+    return measurement_item_view(item)
+
+
+@router.patch("/measurement-items/{item_id}", response_model=MeasurementItemView)
+def update_measurement_item(
+    item_id: int,
+    payload: MeasurementItemUpdateSchema,
+    request: Request,
+) -> MeasurementItemView:
+    item = request.app.state.measurement_item_service.update(
+        item_id,
+        payload.name,
+        payload.measurement_type,
+    )
+    return measurement_item_view(item)
+
+
+@router.delete("/measurement-items/{item_id}", status_code=204)
+def delete_measurement_item(item_id: int, request: Request) -> Response:
+    request.app.state.measurement_item_service.delete(item_id)
     return Response(status_code=204)
 
 

@@ -2,12 +2,16 @@ import type {
   ApiErrorEnvelope,
   CatalogCreateInput,
   CatalogOption,
+  CatalogUpdateInput,
   ImageDetailView,
   ImageListView,
   ImageType,
   ImageView,
   MeasurementAnnotationInput,
   MeasurementCreateInput,
+  MeasurementItemCreateInput,
+  MeasurementItemUpdateInput,
+  MeasurementItemView,
   MeasurementView,
   SummaryView,
 } from "./types";
@@ -135,7 +139,31 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(value),
     }),
+  updateCatalogOption: (optionId: number, value: CatalogUpdateInput) =>
+    request<CatalogOption>(`/api/catalog/${optionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    }),
   deleteCatalogOption: (optionId: number) =>
     requestVoid(`/api/catalog/${optionId}`, { method: "DELETE" }),
+  listMeasurementItems: (productId: string) => {
+    const search = new URLSearchParams({ product_id: productId });
+    return request<MeasurementItemView[]>(`/api/measurement-items?${search}`);
+  },
+  createMeasurementItem: (value: MeasurementItemCreateInput) =>
+    request<MeasurementItemView>("/api/measurement-items", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    }),
+  updateMeasurementItem: (itemId: number, value: MeasurementItemUpdateInput) =>
+    request<MeasurementItemView>(`/api/measurement-items/${itemId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    }),
+  deleteMeasurementItem: (itemId: number) =>
+    requestVoid(`/api/measurement-items/${itemId}`, { method: "DELETE" }),
   downloadContext: contextDownload,
 };

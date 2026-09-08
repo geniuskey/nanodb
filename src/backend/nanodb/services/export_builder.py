@@ -38,14 +38,12 @@ def _data_json(snapshot: ExportSnapshot) -> str:
             {
                 "id": item.id,
                 "image_id": item.image_id,
-                "parameter_type": item.parameter_type.value,
-                "start_x": item.start.x,
-                "start_y": item.start.y,
-                "end_x": item.end.x,
-                "end_y": item.end.y,
-                "distance_px": item.distance_px,
+                "item_id": item.item_id,
+                "measurement_type": item.measurement_type.value,
+                "points": [[point.x, point.y] for point in item.points],
                 "calibration_nm_per_pixel": item.calibration_nm_per_pixel,
-                "value_nm": item.value_nm,
+                "value": item.value,
+                "unit": item.unit,
                 "label": item.label,
                 "note": item.note,
                 "measurement_method": item.measurement_method,
@@ -64,19 +62,24 @@ def _context_markdown() -> str:
 This export contains one selected image record and all of its saved measurements.
 Coordinates use the original image pixels: origin at top-left, X to the right, Y down.
 Valid points satisfy 0 <= x < pixel_width and 0 <= y < pixel_height.
-Distance is sqrt((end_x-start_x)^2 + (end_y-start_y)^2).
-value_nm is distance_px multiplied by the measurement calibration_nm_per_pixel.
+Each measurement has a measurement_type and an ordered points list:
+- length: 2 points; value is the pixel distance times calibration_nm_per_pixel, in nm.
+- angle: 3 points (vertex first, then the two arm ends); value is the angle at the
+  vertex, in degrees; calibration does not affect it.
+- curvature: 3 points on an arc; a circle is fitted through them and value is the
+  fitted radius times calibration_nm_per_pixel, in nm.
+unit is nm for length and curvature, deg for angle.
 Stored precision is used for calculations.
 Display values use decimal half-up to 2 places.
-parameter_type is a user choice among CD, Depth and Thickness.
-measurement_method is manual_two_point and reference_status is unreviewed.
+item_id links to a per-product measurement item definition, or is null for ad-hoc.
+measurement_method is manual and reference_status is unreviewed.
 Measurements are references, not certified ground truth or automatic boundary detection.
 
 Every measurement is annotated by its own two fields, both optional and both free
 text written by the user. label names what was measured (for example "Gate CD") and
-is the caption drawn beside the line; note is an observation memo about that same
-measurement. Neither field changes value_nm, and neither is a substitute for
-parameter_type when grouping. image.process_step names the process step the whole
+is the caption drawn beside the shape; note is an observation memo about that same
+measurement. Neither field changes value, and neither is a substitute for
+measurement_type when grouping. image.process_step names the process step the whole
 image was taken at, and is null when the user did not record one.
 
 The image binary is not included; inspect it in NANoDB when visual context is required.
@@ -86,10 +89,11 @@ The image binary is not included; inspect it in NANoDB when visual context is re
 def _task_markdown() -> str:
     return """# Development Task
 
-Read data.json and write a CSV with columns parameter_type,count,mean_nm.
-Group by parameter_type, not by the free-text label.
-Output only parameter types with measurements, ordered CD, Depth, Thickness.
-Calculate means with stored precision and display mean_nm to two decimal places.
+Read data.json and write a CSV with columns measurement_type,unit,count,mean.
+Group by measurement_type, not by the free-text label.
+Output only measurement types with measurements, ordered length, angle, curvature.
+Means are only comparable within a measurement_type because units differ across types.
+Calculate means with stored precision and display mean to two decimal places.
 Do not call external services and do not infer image boundaries.
 """
 
@@ -97,22 +101,24 @@ Do not call external services and do not infer image boundaries.
 def _checks_json(snapshot: ExportSnapshot) -> str:
     payload = {
         "schema_version": snapshot.schema_version,
-        "tolerance_nm": 0.000001,
+        "tolerance": 0.000001,
         "expected_summary": [
             {
-                "parameter_type": row.parameter_type.value,
+                "measurement_type": row.measurement_type.value,
+                "unit": row.unit,
                 "count": row.count,
-                "mean_nm": row.mean_nm,
+                "mean": row.mean,
             }
             for row in snapshot.expected_summary
         ],
         "synthetic_calculation": {
+            "measurement_type": "length",
             "image_size_px": [1000, 800],
-            "start": [100, 100],
-            "end": [400, 500],
+            "points": [[100, 100], [400, 500]],
             "calibration_nm_per_pixel": 0.2,
             "expected_distance_px": 500,
-            "expected_value_nm": 100,
+            "expected_value": 100,
+            "unit": "nm",
             "purpose": "coordinate arithmetic only; not image boundary ground truth",
         },
     }

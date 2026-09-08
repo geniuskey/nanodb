@@ -1,7 +1,18 @@
 """Domain-to-transport mapping without persistence details."""
 
-from nanodb.api.schemas import CatalogOptionView, ImageView, MeasurementView
-from nanodb.domain.entities import CatalogOption, Image, Measurement
+from nanodb.api.schemas import (
+    CatalogOptionView,
+    ImageView,
+    MeasurementItemView,
+    MeasurementView,
+    PointView,
+)
+from nanodb.domain.entities import (
+    CatalogOption,
+    Image,
+    Measurement,
+    MeasurementItem,
+)
 
 
 def catalog_option_view(option: CatalogOption) -> CatalogOptionView:
@@ -34,14 +45,12 @@ def measurement_view(measurement: Measurement) -> MeasurementView:
     return MeasurementView(
         id=measurement.id,
         image_id=measurement.image_id,
-        parameter_type=measurement.parameter_type,
-        start_x=measurement.start.x,
-        start_y=measurement.start.y,
-        end_x=measurement.end.x,
-        end_y=measurement.end.y,
-        distance_px=measurement.distance_px,
+        item_id=measurement.item_id,
+        measurement_type=measurement.measurement_type,
+        points=[PointView(x=point.x, y=point.y) for point in measurement.points],
+        value=measurement.value,
+        unit=measurement.unit,
         calibration_nm_per_pixel=measurement.calibration_nm_per_pixel,
-        value_nm=measurement.value_nm,
         label=measurement.label,
         note=measurement.note,
         measurement_method=measurement.measurement_method,
@@ -49,3 +58,12 @@ def measurement_view(measurement: Measurement) -> MeasurementView:
         created_at=measurement.created_at,
     )
 
+
+def measurement_item_view(item: MeasurementItem) -> MeasurementItemView:
+    return MeasurementItemView(
+        id=item.id,
+        product_id=item.product_id,
+        name=item.name,
+        measurement_type=item.measurement_type,
+        created_at=item.created_at,
+    )

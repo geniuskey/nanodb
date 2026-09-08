@@ -12,7 +12,7 @@ from nanodb.domain.entities import (
     ExportSnapshot,
     Image,
     Measurement,
-    ParameterType,
+    MeasurementType,
     Point,
 )
 from nanodb.services.export_builder import ENTRY_NAMES, build_context_zip
@@ -40,19 +40,19 @@ def snapshot() -> ExportSnapshot:
         Measurement(
             id=1,
             image_id=7,
-            parameter_type=ParameterType.CD,
-            start=Point(100, 100),
-            end=Point(400, 500),
-            distance_px=500,
+            item_id=None,
+            measurement_type=MeasurementType.LENGTH,
+            points=(Point(100, 100), Point(400, 500)),
+            value=100,
+            unit="nm",
             calibration_nm_per_pixel=0.2,
-            value_nm=100,
             label="홀 <경계>",
             note="한글 메모 <>&",
             created_at=NOW,
         ),
     )
     return ExportSnapshot(
-        schema_version="2.0",
+        schema_version="3.0",
         exported_at=NOW,
         image=image,
         measurements=measurements,
@@ -73,13 +73,18 @@ def test_zip_has_fixed_utf8_entries_and_allowlisted_fields(
     data = json.loads(entries["data.json"])
     checks = json.loads(entries["checks.json"])
 
-    assert data["measurements"][0]["note"] == "한글 메모 <>&"
+    measurement = data["measurements"][0]
+    assert measurement["note"] == "한글 메모 <>&"
     assert "stored_filename" not in entries["data.json"]
     assert "must-not-export.png" not in "".join(entries.values())
-    assert data["measurements"][0]["measurement_method"] == "manual_two_point"
-    assert data["measurements"][0]["reference_status"] == "unreviewed"
+    assert measurement["measurement_type"] == "length"
+    assert measurement["points"] == [[100, 100], [400, 500]]
+    assert measurement["value"] == 100
+    assert measurement["unit"] == "nm"
+    assert measurement["measurement_method"] == "manual"
+    assert measurement["reference_status"] == "unreviewed"
     assert checks["expected_summary"] == [
-        {"parameter_type": "CD", "count": 1, "mean_nm": 100.0}
+        {"measurement_type": "length", "unit": "nm", "count": 1, "mean": 100.0}
     ]
     assert checks["synthetic_calculation"]["expected_distance_px"] == 500
 
@@ -113,9 +118,9 @@ def test_annotation_is_a_caption_and_never_reaches_the_summary(
     entries = read_archive(build_context_zip(snapshot))
     checks = json.loads(entries["checks.json"])
 
-    # Grouping is by parameter_type; the label is a caption, not a category.
+    # Grouping is by measurement_type; the label is a caption, not a category.
     assert checks["expected_summary"] == [
-        {"parameter_type": "CD", "count": 1, "mean_nm": 100.0}
+        {"measurement_type": "length", "unit": "nm", "count": 1, "mean": 100.0}
     ]
     assert "label" not in entries["checks.json"]
     assert "process_step" not in entries["checks.json"]

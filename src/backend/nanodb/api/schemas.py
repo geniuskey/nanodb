@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, FiniteFloat
 
 from nanodb.domain.entities import (
     CatalogCategory,
-    ParameterType,
+    MeasurementType,
     ReferenceStatus,
 )
 
@@ -29,9 +29,16 @@ class PointInput(BaseModel):
 
 
 class MeasurementInputSchema(BaseModel):
-    parameter_type: ParameterType
-    start: PointInput
-    end: PointInput
+    """A drawn measurement submitted for server-side evaluation.
+
+    ``measurement_type`` fixes the geometry and the point count: 2 points for
+    length, 3 for angle (vertex first) and curvature. ``item_id`` links the
+    instance to a per-product measurement item when the operator picked one.
+    """
+
+    measurement_type: MeasurementType
+    points: list[PointInput] = Field(min_length=2, max_length=3)
+    item_id: int | None = None
     label: str | None = Field(default=None, max_length=255)
     note: str | None = Field(default=None, max_length=4000)
 
@@ -48,24 +55,46 @@ class MeasurementAnnotationSchema(BaseModel):
     note: str | None = Field(default=None, max_length=4000)
 
 
-class MeasurementView(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class PointView(BaseModel):
+    x: float
+    y: float
 
+
+class MeasurementView(BaseModel):
     id: int
     image_id: int
-    parameter_type: ParameterType
-    start_x: float
-    start_y: float
-    end_x: float
-    end_y: float
-    distance_px: float
+    item_id: int | None
+    measurement_type: MeasurementType
+    points: list[PointView]
+    value: float
+    unit: str
     calibration_nm_per_pixel: float
-    value_nm: float
     label: str | None
     note: str | None
     measurement_method: str
     reference_status: ReferenceStatus
     created_at: datetime
+
+
+class MeasurementItemView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    product_id: str
+    name: str
+    measurement_type: MeasurementType
+    created_at: datetime
+
+
+class MeasurementItemCreateSchema(BaseModel):
+    product_id: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=255)
+    measurement_type: MeasurementType
+
+
+class MeasurementItemUpdateSchema(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    measurement_type: MeasurementType
 
 
 class ImageView(BaseModel):
@@ -91,21 +120,22 @@ class ImageDetailView(ImageView):
     measurements: list[MeasurementView]
 
 
-class ParameterSummaryView(BaseModel):
+class MeasurementTypeSummaryView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    parameter_type: ParameterType
+    measurement_type: MeasurementType
+    unit: str
     count: int
-    mean_nm: float
-    min_nm: float
-    max_nm: float
+    mean: float
+    min: float
+    max: float
 
 
 class SummaryView(BaseModel):
     image_count: int
     measurement_count: int
     calculated_at: datetime
-    parameters: list[ParameterSummaryView] = Field(default_factory=list)
+    types: list[MeasurementTypeSummaryView] = Field(default_factory=list)
 
 
 class ReadinessView(BaseModel):
@@ -125,4 +155,8 @@ class CatalogOptionView(BaseModel):
 
 class CatalogCreateSchema(BaseModel):
     category: CatalogCategory
+    value: str = Field(min_length=1, max_length=255)
+
+
+class CatalogUpdateSchema(BaseModel):
     value: str = Field(min_length=1, max_length=255)

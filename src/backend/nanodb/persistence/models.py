@@ -17,7 +17,10 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+_MEASUREMENT_TYPE_CHECK = "measurement_type IN ('length', 'angle', 'curvature')"
 
 
 class Base(DeclarativeBase):
@@ -63,27 +66,44 @@ class ImageModel(Base):
     )
 
 
+class MeasurementItemModel(Base):
+    """A named measurement definition scoped to one product."""
+
+    __tablename__ = "measurement_items"
+    __table_args__ = (
+        CheckConstraint(
+            _MEASUREMENT_TYPE_CHECK,
+            name="ck_measurement_items_type",
+        ),
+        UniqueConstraint(
+            "product_id", "name", name="uq_measurement_items_product_name"
+        ),
+        Index("ix_measurement_items_product", "product_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    measurement_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+
 class MeasurementModel(Base):
     __tablename__ = "measurements"
     __table_args__ = (
         CheckConstraint(
-            "parameter_type IN ('CD', 'Depth', 'Thickness')",
-            name="ck_measurements_parameter_type",
+            _MEASUREMENT_TYPE_CHECK,
+            name="ck_measurements_type",
         ),
-        CheckConstraint(
-            "start_x >= 0 AND start_y >= 0 AND end_x >= 0 AND end_y >= 0",
-            name="ck_measurements_nonnegative_coordinates",
-        ),
-        CheckConstraint(
-            "start_x <> end_x OR start_y <> end_y",
-            name="ck_measurements_distinct_points",
-        ),
-        CheckConstraint("distance_px > 0", name="ck_measurements_positive_distance"),
         CheckConstraint(
             "calibration_nm_per_pixel > 0",
             name="ck_measurements_positive_calibration",
         ),
-        CheckConstraint("value_nm > 0", name="ck_measurements_positive_value"),
+        CheckConstraint("value > 0", name="ck_measurements_positive_value"),
         Index("ix_measurements_image_created", "image_id", "created_at", "id"),
     )
 
@@ -93,14 +113,18 @@ class MeasurementModel(Base):
         nullable=False,
         index=True,
     )
-    parameter_type: Mapped[str] = mapped_column(String(16), nullable=False)
-    start_x: Mapped[float] = mapped_column(Float, nullable=False)
-    start_y: Mapped[float] = mapped_column(Float, nullable=False)
-    end_x: Mapped[float] = mapped_column(Float, nullable=False)
-    end_y: Mapped[float] = mapped_column(Float, nullable=False)
-    distance_px: Mapped[float] = mapped_column(Float, nullable=False)
+    # A product measurement item defines the name and type; keep the measurement
+    # if the item is later removed, so evidence outlives its definition.
+    item_id: Mapped[int | None] = mapped_column(
+        ForeignKey("measurement_items.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    measurement_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    # Ordered original-pixel points: [[x, y], ...]. 2 for length, 3 otherwise.
+    points: Mapped[list[list[float]]] = mapped_column(JSONB, nullable=False)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+    unit: Mapped[str] = mapped_column(String(8), nullable=False)
     calibration_nm_per_pixel: Mapped[float] = mapped_column(Float, nullable=False)
-    value_nm: Mapped[float] = mapped_column(Float, nullable=False)
     label: Mapped[str | None] = mapped_column(String(255), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -136,4 +160,3 @@ class CatalogOptionModel(Base):
         nullable=False,
         server_default=func.now(),
     )
-

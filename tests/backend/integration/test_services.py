@@ -8,7 +8,7 @@ from zipfile import ZipFile
 import pytest
 from nanodb.adapters.file_store import FileStore
 from nanodb.adapters.image_decoder import ImageDecoder
-from nanodb.domain.entities import CatalogCategory, ParameterType, Point
+from nanodb.domain.entities import CatalogCategory, MeasurementType, Point
 from nanodb.domain.errors import DomainError
 from nanodb.persistence.repositories import ImageRepository, MeasurementRepository
 from nanodb.services.catalog_service import CatalogService
@@ -19,6 +19,22 @@ from nanodb.services.summary_service import SummaryService
 from PIL import Image as PillowImage
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
+
+
+def length_input(
+    end_x: float,
+    end_y: float = 0.0,
+    *,
+    start: Point | None = None,
+    label: str | None = None,
+    note: str | None = None,
+) -> MeasurementInput:
+    return MeasurementInput(
+        measurement_type=MeasurementType.LENGTH,
+        points=(start or Point(0, 0), Point(end_x, end_y)),
+        label=label,
+        note=note,
+    )
 
 
 def test_measurement_service_recalculates_from_stored_image_calibration(
@@ -42,17 +58,16 @@ def test_measurement_service_recalculates_from_stored_image_calibration(
     result = MeasurementService(factory).create(
         image.id,
         MeasurementInput(
-            parameter_type=ParameterType.CD,
-            start=Point(100, 100),
-            end=Point(400, 500),
+            measurement_type=MeasurementType.LENGTH,
+            points=(Point(100, 100), Point(400, 500)),
         ),
     )
 
-    assert result.distance_px == 500
-    assert result.value_nm == 100
+    assert result.value == 100
+    assert result.unit == "nm"
 
 
-def test_summary_aggregates_per_parameter_mean_in_contract_order(
+def test_summary_aggregates_per_type_mean_in_contract_order(
     database_engine: tuple[Engine, sessionmaker[Session]],
     db_session: Session,
 ) -> None:
@@ -71,18 +86,15 @@ def test_summary_aggregates_per_parameter_mean_in_contract_order(
     _, factory = database_engine
 
     service = MeasurementService(factory)
-    # Two CD measurements (10nm, 20nm) and one Depth (30nm); no Thickness saved.
+    # Two lengths (10nm, 20nm) and one right angle (90deg); no curvature saved.
+    service.create(image.id, length_input(50))
+    service.create(image.id, length_input(100))
     service.create(
         image.id,
-        MeasurementInput(ParameterType.CD, Point(0, 0), Point(50, 0)),
-    )
-    service.create(
-        image.id,
-        MeasurementInput(ParameterType.CD, Point(0, 0), Point(100, 0)),
-    )
-    service.create(
-        image.id,
-        MeasurementInput(ParameterType.DEPTH, Point(0, 0), Point(150, 0)),
+        MeasurementInput(
+            measurement_type=MeasurementType.ANGLE,
+            points=(Point(0, 0), Point(50, 0), Point(0, 50)),
+        ),
     )
 
     summary = SummaryService(factory).get()
@@ -90,13 +102,20 @@ def test_summary_aggregates_per_parameter_mean_in_contract_order(
     assert summary.image_count == 1
     assert summary.measurement_count == 3
     aggregates = [
-        (entry.parameter_type, entry.count, entry.mean_nm, entry.min_nm, entry.max_nm)
-        for entry in summary.parameters
+        (
+            entry.measurement_type,
+            entry.unit,
+            entry.count,
+            entry.mean,
+            entry.min,
+            entry.max,
+        )
+        for entry in summary.types
     ]
-    # CD before Depth (contract order), Thickness absent because n=0.
+    # Length before angle (contract order), curvature absent because n=0.
     assert aggregates == [
-        (ParameterType.CD, 2, 15.0, 10.0, 20.0),
-        (ParameterType.DEPTH, 1, 30.0, 30.0, 30.0),
+        (MeasurementType.LENGTH, "nm", 2, 15.0, 10.0, 20.0),
+        (MeasurementType.ANGLE, "deg", 1, 90.0, 90.0, 90.0),
     ]
 
 
@@ -130,12 +149,8 @@ def test_measurement_delete_is_scoped_to_its_image(
     db_session.commit()
     _, factory = database_engine
     service = MeasurementService(factory)
-    on_kept = service.create(
-        kept_image.id, MeasurementInput(ParameterType.CD, Point(0, 0), Point(50, 0))
-    )
-    on_other = service.create(
-        other_image.id, MeasurementInput(ParameterType.CD, Point(0, 0), Point(50, 0))
-    )
+    on_kept = service.create(kept_image.id, length_input(50))
+    on_other = service.create(other_image.id, length_input(50))
 
     # A measurement id from another image is not found under kept_image.
     with pytest.raises(DomainError) as cross_image:
@@ -158,6 +173,60 @@ def test_measurement_delete_rejects_missing_image(
         MeasurementService(factory).delete(999, 1)
 
     assert caught.value.code == "IMAGE_NOT_FOUND"
+
+
+def test_measurement_rejects_item_type_or_product_mismatch(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+) -> None:
+    from nanodb.persistence.repositories import MeasurementItemRepository
+
+    images = ImageRepository(db_session)
+    image = images.create(
+        original_filename="sample.png",
+        stored_filename="sample.png",
+        image_type="TEM",
+        product_id="P",
+        lot_id="L",
+        wafer_id="W",
+        calibration_nm_per_pixel=0.2,
+        pixel_width=1000,
+        pixel_height=800,
+    )
+    items = MeasurementItemRepository(db_session)
+    angle_item = items.create(
+        product_id="P", name="코너 각도", measurement_type=MeasurementType.ANGLE
+    )
+    other_product_item = items.create(
+        product_id="OTHER", name="Gate CD", measurement_type=MeasurementType.LENGTH
+    )
+    db_session.commit()
+    _, factory = database_engine
+    service = MeasurementService(factory)
+
+    # Length drawn against an angle item: the drawing tool and the definition disagree.
+    with pytest.raises(DomainError) as mismatch:
+        service.create(
+            image.id,
+            MeasurementInput(
+                measurement_type=MeasurementType.LENGTH,
+                points=(Point(0, 0), Point(50, 0)),
+                item_id=angle_item.id,
+            ),
+        )
+    assert mismatch.value.code == "MEASUREMENT_TYPE_MISMATCH"
+
+    # An item from another product cannot be used on this image.
+    with pytest.raises(DomainError) as wrong_product:
+        service.create(
+            image.id,
+            MeasurementInput(
+                measurement_type=MeasurementType.LENGTH,
+                points=(Point(0, 0), Point(50, 0)),
+                item_id=other_product_item.id,
+            ),
+        )
+    assert wrong_product.value.code == "MEASUREMENT_ITEM_PRODUCT_MISMATCH"
 
 
 def test_image_delete_cascades_measurements_and_removes_stored_file(
@@ -185,9 +254,7 @@ def test_image_delete_cascades_measurements_and_removes_stored_file(
     )
     stored_path = tmp_path / image.stored_filename
     assert stored_path.is_file()
-    MeasurementService(factory).create(
-        image.id, MeasurementInput(ParameterType.CD, Point(0, 0), Point(10, 0))
-    )
+    MeasurementService(factory).create(image.id, length_input(10))
 
     image_service.delete(image.id)
 
@@ -306,9 +373,8 @@ def test_measurement_annotation_is_editable_while_its_evidence_is_not(
     created = service.create(
         image.id,
         MeasurementInput(
-            parameter_type=ParameterType.CD,
-            start=Point(100, 100),
-            end=Point(400, 500),
+            measurement_type=MeasurementType.LENGTH,
+            points=(Point(100, 100), Point(400, 500)),
             label="Gate CD",
             note="처음 메모",
         ),
@@ -320,10 +386,10 @@ def test_measurement_annotation_is_editable_while_its_evidence_is_not(
 
     assert (updated.label, updated.note) == ("Gate CD 재확인", "다시 확인함")
     # The evidence the value rests on is untouched.
-    assert (updated.start, updated.end) == (created.start, created.end)
-    assert updated.parameter_type is created.parameter_type
-    assert updated.distance_px == created.distance_px
-    assert updated.value_nm == created.value_nm
+    assert updated.points == created.points
+    assert updated.measurement_type is created.measurement_type
+    assert updated.value == created.value
+    assert updated.unit == created.unit
     assert updated.calibration_nm_per_pixel == created.calibration_nm_per_pixel
     assert updated.created_at == created.created_at
 
@@ -358,9 +424,8 @@ def test_context_export_carries_measurement_annotations(
     labelled = service.create(
         image.id,
         MeasurementInput(
-            parameter_type=ParameterType.CD,
-            start=Point(100, 100),
-            end=Point(400, 500),
+            measurement_type=MeasurementType.LENGTH,
+            points=(Point(100, 100), Point(400, 500)),
             label="게이트 상단",
             note="재확인 필요",
         ),
@@ -368,9 +433,8 @@ def test_context_export_carries_measurement_annotations(
     bare = service.create(
         image.id,
         MeasurementInput(
-            parameter_type=ParameterType.DEPTH,
-            start=Point(80, 80),
-            end=Point(90, 80),
+            measurement_type=MeasurementType.LENGTH,
+            points=(Point(80, 80), Point(90, 80)),
             note=None,
         ),
     )
@@ -379,11 +443,13 @@ def test_context_export_carries_measurement_annotations(
     with ZipFile(BytesIO(archive)) as bundle:
         data = json.loads(bundle.read("data.json").decode("utf-8"))
 
-    assert data["schema_version"] == "2.0"
+    assert data["schema_version"] == "3.0"
     assert data["image"]["process_step"] == "Gate Etch"
     assert [item["id"] for item in data["measurements"]] == [labelled.id, bare.id]
     assert data["measurements"][0]["label"] == "게이트 상단"
     assert data["measurements"][0]["note"] == "재확인 필요"
+    assert data["measurements"][0]["measurement_type"] == "length"
+    assert data["measurements"][0]["points"] == [[100, 100], [400, 500]]
     # An unlabelled measurement exports its empty annotation as null, never
     # as an invented name.
     assert data["measurements"][1]["label"] is None
@@ -420,9 +486,8 @@ def test_image_delete_cascades_measurements(
     MeasurementService(factory).create(
         image.id,
         MeasurementInput(
-            parameter_type=ParameterType.CD,
-            start=Point(0, 0),
-            end=Point(10, 10),
+            measurement_type=MeasurementType.LENGTH,
+            points=(Point(0, 0), Point(10, 10)),
             note=None,
         ),
     )
@@ -535,3 +600,36 @@ def test_catalog_create_rejects_duplicate_and_delete_protects_predefined(
 
     service.delete(created.id)
     assert all(o.id != created.id for o in service.list_all())
+
+
+def test_catalog_rename_changes_value_and_protects_predefined(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+) -> None:
+    _, factory = database_engine
+    service = CatalogService(factory)
+
+    created = service.create(CatalogCategory.PRODUCT_ID, "P-DRAM")
+    renamed = service.rename(created.id, "  P-DRAM-2  ")
+    assert renamed.value == "P-DRAM-2"
+    assert renamed.id == created.id
+
+    # A predefined value cannot be renamed.
+    predefined = next(
+        o
+        for o in service.list_all()
+        if o.category is CatalogCategory.IMAGE_TYPE and o.value == "TEM"
+    )
+    with pytest.raises(DomainError) as protected:
+        service.rename(predefined.id, "TEM-X")
+    assert protected.value.code == "PREDEFINED_OPTION"
+
+    # Renaming onto an existing value in the same category is a duplicate.
+    other = service.create(CatalogCategory.PRODUCT_ID, "P-NAND")
+    with pytest.raises(DomainError) as duplicate:
+        service.rename(other.id, "P-DRAM-2")
+    assert duplicate.value.code == "DUPLICATE_OPTION"
+
+    with pytest.raises(DomainError) as missing:
+        service.rename(999999, "whatever")
+    assert missing.value.code == "OPTION_NOT_FOUND"

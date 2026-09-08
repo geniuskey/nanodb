@@ -9,19 +9,22 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from nanodb.domain.calculations import MeasurementCalculation
+from nanodb.domain.calculations import MeasurementResult
 from nanodb.domain.entities import (
+    UNIT_BY_TYPE,
     CatalogCategory,
     CatalogOption,
     Image,
     Measurement,
-    ParameterStat,
-    ParameterType,
+    MeasurementItem,
+    MeasurementType,
+    MeasurementTypeStat,
     Point,
 )
 from nanodb.persistence.models import (
     CatalogOptionModel,
     ImageModel,
+    MeasurementItemModel,
     MeasurementModel,
 )
 
@@ -54,14 +57,24 @@ def _to_measurement(model: MeasurementModel) -> Measurement:
     return Measurement(
         id=model.id,
         image_id=model.image_id,
-        parameter_type=ParameterType(model.parameter_type),
-        start=Point(model.start_x, model.start_y),
-        end=Point(model.end_x, model.end_y),
-        distance_px=model.distance_px,
+        item_id=model.item_id,
+        measurement_type=MeasurementType(model.measurement_type),
+        points=tuple(Point(float(x), float(y)) for x, y in model.points),
+        value=model.value,
+        unit=model.unit,
         calibration_nm_per_pixel=model.calibration_nm_per_pixel,
-        value_nm=model.value_nm,
         label=model.label,
         note=model.note,
+        created_at=model.created_at,
+    )
+
+
+def _to_measurement_item(model: MeasurementItemModel) -> MeasurementItem:
+    return MeasurementItem(
+        id=model.id,
+        product_id=model.product_id,
+        name=model.name,
+        measurement_type=MeasurementType(model.measurement_type),
         created_at=model.created_at,
     )
 
@@ -109,6 +122,16 @@ class CatalogRepository:
         self._session.refresh(model)
         return _to_catalog_option(model)
 
+    def rename(self, option_id: int, value: str) -> CatalogOption | None:
+        """Change an option's value in place. Returns ``None`` when missing."""
+        model = self._session.get(CatalogOptionModel, option_id)
+        if model is None:
+            return None
+        model.value = value
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_catalog_option(model)
+
     def exists(self, category: CatalogCategory, value: str) -> bool:
         statement = select(CatalogOptionModel.id).where(
             CatalogOptionModel.category == category.value,
@@ -142,6 +165,77 @@ class CatalogRepository:
             constraint="uq_catalog_options_category_value"
         )
         self._session.execute(statement)
+
+
+class MeasurementItemRepository:
+    """Per-product measurement definitions (name + geometry type)."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def list_by_product(self, product_id: str) -> tuple[MeasurementItem, ...]:
+        statement = (
+            select(MeasurementItemModel)
+            .where(MeasurementItemModel.product_id == product_id)
+            .order_by(
+                MeasurementItemModel.name.asc(),
+                MeasurementItemModel.id.asc(),
+            )
+        )
+        return tuple(
+            _to_measurement_item(model) for model in self._session.scalars(statement)
+        )
+
+    def find(self, item_id: int) -> MeasurementItem | None:
+        model = self._session.get(MeasurementItemModel, item_id)
+        return _to_measurement_item(model) if model else None
+
+    def exists(self, product_id: str, name: str) -> bool:
+        statement = select(MeasurementItemModel.id).where(
+            MeasurementItemModel.product_id == product_id,
+            MeasurementItemModel.name == name,
+        )
+        return self._session.scalar(statement) is not None
+
+    def create(
+        self,
+        *,
+        product_id: str,
+        name: str,
+        measurement_type: MeasurementType,
+    ) -> MeasurementItem:
+        model = MeasurementItemModel(
+            product_id=product_id,
+            name=name,
+            measurement_type=measurement_type.value,
+        )
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_measurement_item(model)
+
+    def update(
+        self,
+        item_id: int,
+        *,
+        name: str,
+        measurement_type: MeasurementType,
+    ) -> MeasurementItem | None:
+        model = self._session.get(MeasurementItemModel, item_id)
+        if model is None:
+            return None
+        model.name = name
+        model.measurement_type = measurement_type.value
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_measurement_item(model)
+
+    def delete(self, item_id: int) -> bool:
+        model = self._session.get(MeasurementItemModel, item_id)
+        if model is None:
+            return False
+        self._session.delete(model)
+        return True
 
 
 class ImageRepository:
@@ -243,24 +337,22 @@ class MeasurementRepository:
         self,
         *,
         image_id: int,
-        parameter_type: ParameterType,
-        start: Point,
-        end: Point,
-        calculation: MeasurementCalculation,
+        item_id: int | None,
+        measurement_type: MeasurementType,
+        points: tuple[Point, ...],
+        result: MeasurementResult,
         calibration_nm_per_pixel: float,
         label: str | None,
         note: str | None,
     ) -> Measurement:
         model = MeasurementModel(
             image_id=image_id,
-            parameter_type=parameter_type.value,
-            start_x=start.x,
-            start_y=start.y,
-            end_x=end.x,
-            end_y=end.y,
-            distance_px=calculation.distance_px,
+            item_id=item_id,
+            measurement_type=measurement_type.value,
+            points=[[point.x, point.y] for point in points],
+            value=result.value,
+            unit=result.unit,
             calibration_nm_per_pixel=calibration_nm_per_pixel,
-            value_nm=calculation.value_nm,
             label=label,
             note=note,
         )
@@ -272,36 +364,37 @@ class MeasurementRepository:
     def count(self) -> int:
         return self._session.scalar(select(func.count(MeasurementModel.id))) or 0
 
-    def aggregate_by_parameter(self) -> tuple[ParameterStat, ...]:
-        """Per-parameter count, mean, min and max in the fixed CD, Depth,
-        Thickness order.
+    def aggregate_by_type(self) -> tuple[MeasurementTypeStat, ...]:
+        """Per-type count, mean, min and max in the fixed type order.
 
-        Only parameters with at least one stored measurement are returned, so an
-        empty database and never-measured parameters both stay absent (n=0).
+        Only types with at least one stored measurement are returned, so an
+        empty database and never-measured types both stay absent (n=0). Values
+        within a type share a unit, so the statistics are comparable.
         """
         statement = select(
-            MeasurementModel.parameter_type,
+            MeasurementModel.measurement_type,
             func.count(MeasurementModel.id),
-            func.sum(MeasurementModel.value_nm),
-            func.min(MeasurementModel.value_nm),
-            func.max(MeasurementModel.value_nm),
-        ).group_by(MeasurementModel.parameter_type)
+            func.sum(MeasurementModel.value),
+            func.min(MeasurementModel.value),
+            func.max(MeasurementModel.value),
+        ).group_by(MeasurementModel.measurement_type)
         rows = {
-            parameter_type: (int(count), float(total), float(low), float(high))
-            for parameter_type, count, total, low, high in self._session.execute(
+            measurement_type: (int(count), float(total), float(low), float(high))
+            for measurement_type, count, total, low, high in self._session.execute(
                 statement
             )
         }
         return tuple(
-            ParameterStat(
-                parameter_type=parameter_type,
-                count=rows[parameter_type.value][0],
-                mean_nm=rows[parameter_type.value][1] / rows[parameter_type.value][0],
-                min_nm=rows[parameter_type.value][2],
-                max_nm=rows[parameter_type.value][3],
+            MeasurementTypeStat(
+                measurement_type=measurement_type,
+                unit=UNIT_BY_TYPE[measurement_type],
+                count=rows[measurement_type.value][0],
+                mean=rows[measurement_type.value][1] / rows[measurement_type.value][0],
+                min=rows[measurement_type.value][2],
+                max=rows[measurement_type.value][3],
             )
-            for parameter_type in ParameterType
-            if rows.get(parameter_type.value, (0, 0.0, 0.0, 0.0))[0] > 0
+            for measurement_type in MeasurementType
+            if rows.get(measurement_type.value, (0, 0.0, 0.0, 0.0))[0] > 0
         )
 
     def list_by_image(
@@ -334,12 +427,11 @@ class MeasurementRepository:
     ) -> Measurement | None:
         """Replace a measurement's annotation (its label and note).
 
-        The evidence a measurement rests on -- its coordinates, parameter,
-        distance, calibration and value -- is immutable, so only the two
-        descriptive fields are writable. Both are replaced together because
-        the editor always submits both. Returns ``None`` when the measurement
-        is missing or belongs to a different image, so callers cannot edit
-        across images by guessing ids.
+        The evidence a measurement rests on -- its points, type, value and
+        calibration -- is immutable, so only the two descriptive fields are
+        writable. Both are replaced together because the editor always submits
+        both. Returns ``None`` when the measurement is missing or belongs to a
+        different image, so callers cannot edit across images by guessing ids.
         """
         model = self._session.get(MeasurementModel, measurement_id)
         if model is None or model.image_id != image_id:

@@ -15,7 +15,7 @@ it("provides branded accessible primary navigation", async () => {
       image_count: 0,
       measurement_count: 0,
       calculated_at: "2026-09-08T04:00:00Z",
-      parameters: [],
+      types: [],
     }));
   }));
 

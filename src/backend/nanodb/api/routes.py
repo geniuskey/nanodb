@@ -142,6 +142,19 @@ def list_measurements(image_id: int, request: Request) -> list[MeasurementView]:
     ]
 
 
+@router.delete(
+    "/images/{image_id}/measurements/{measurement_id}",
+    status_code=204,
+)
+def delete_measurement(
+    image_id: int,
+    measurement_id: int,
+    request: Request,
+) -> Response:
+    request.app.state.measurement_service.delete(image_id, measurement_id)
+    return Response(status_code=204)
+
+
 @router.get("/images/{image_id}/context-export")
 def context_export(image_id: int, request: Request) -> Response:
     content = request.app.state.context_export_service.build(image_id)

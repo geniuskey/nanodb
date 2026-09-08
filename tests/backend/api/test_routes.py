@@ -60,6 +60,9 @@ class FakeImageService:
 
 
 class FakeMeasurementService:
+    def __init__(self) -> None:
+        self.delete_calls: list[tuple[int, int]] = []
+
     def create(self, image_id: int, value: object) -> Measurement:
         start = value.start
         end = value.end
@@ -87,6 +90,13 @@ class FakeMeasurementService:
         if image_id != 1:
             raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
         return ()
+
+    def delete(self, image_id: int, measurement_id: int) -> None:
+        self.delete_calls.append((image_id, measurement_id))
+        if image_id != 1:
+            raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
+        if measurement_id != 1:
+            raise DomainError("MEASUREMENT_NOT_FOUND", "Measurement was not found.")
 
 
 def build_client() -> TestClient:
@@ -185,6 +195,23 @@ def test_measurement_request_maps_original_points_and_server_result() -> None:
     assert response.status_code == 201
     assert response.json()["distance_px"] == 500
     assert response.json()["value_nm"] == 100
+
+
+def test_delete_measurement_returns_no_content_and_forwards_ids() -> None:
+    client = build_client()
+
+    response = client.delete("/api/images/1/measurements/1")
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert client.app.state.measurement_service.delete_calls == [(1, 1)]
+
+
+def test_delete_missing_measurement_uses_not_found_envelope() -> None:
+    response = build_client().delete("/api/images/1/measurements/999")
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "MEASUREMENT_NOT_FOUND"
 
 
 def test_invalid_non_finite_measurement_payload_is_not_accepted() -> None:

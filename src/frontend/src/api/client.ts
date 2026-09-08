@@ -44,6 +44,26 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function requestVoid(path: string, init?: RequestInit): Promise<void> {
+  const response = await fetch(path, {
+    ...init,
+    headers: { Accept: "application/json", ...init?.headers },
+  });
+  if (!response.ok) {
+    let error: ApiErrorEnvelope = {
+      code: "REQUEST_FAILED",
+      message: "요청을 완료하지 못했습니다. 다시 시도해 주세요.",
+    };
+    try {
+      error = (await response.json()) as ApiErrorEnvelope;
+    } catch {
+      // Keep the bounded fallback rather than exposing response internals.
+    }
+    throw new ApiError(error.code, error.message, error.detail?.field);
+  }
+  // 204 No Content: nothing to parse.
+}
+
 async function contextDownload(imageId: number): Promise<Blob> {
   const response = await fetch(`/api/images/${imageId}/context-export`, {
     headers: { Accept: "application/zip" },
@@ -86,6 +106,10 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(value),
+    }),
+  deleteMeasurement: (imageId: number, measurementId: number) =>
+    requestVoid(`/api/images/${imageId}/measurements/${measurementId}`, {
+      method: "DELETE",
     }),
   registerImage: (form: FormData) =>
     request<ImageView>("/api/images", { method: "POST", body: form }),

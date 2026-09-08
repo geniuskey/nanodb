@@ -90,6 +90,66 @@ def test_summary_aggregates_per_parameter_mean_in_contract_order(
     ]
 
 
+def test_measurement_delete_is_scoped_to_its_image(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+) -> None:
+    repository = ImageRepository(db_session)
+    kept_image = repository.create(
+        original_filename="kept.png",
+        stored_filename="kept.png",
+        image_type=ImageType.SEM,
+        product_id="P",
+        lot_id="L",
+        wafer_id="W",
+        calibration_nm_per_pixel=0.2,
+        pixel_width=1000,
+        pixel_height=800,
+    )
+    other_image = repository.create(
+        original_filename="other.png",
+        stored_filename="other.png",
+        image_type=ImageType.TEM,
+        product_id="P",
+        lot_id="L",
+        wafer_id="W",
+        calibration_nm_per_pixel=0.2,
+        pixel_width=1000,
+        pixel_height=800,
+    )
+    db_session.commit()
+    _, factory = database_engine
+    service = MeasurementService(factory)
+    on_kept = service.create(
+        kept_image.id, MeasurementInput(ParameterType.CD, Point(0, 0), Point(50, 0))
+    )
+    on_other = service.create(
+        other_image.id, MeasurementInput(ParameterType.CD, Point(0, 0), Point(50, 0))
+    )
+
+    # A measurement id from another image is not found under kept_image.
+    with pytest.raises(DomainError) as cross_image:
+        service.delete(kept_image.id, on_other.id)
+    assert cross_image.value.code == "MEASUREMENT_NOT_FOUND"
+
+    service.delete(kept_image.id, on_kept.id)
+
+    assert service.list_for_image(kept_image.id) == ()
+    assert [m.id for m in service.list_for_image(other_image.id)] == [on_other.id]
+
+
+def test_measurement_delete_rejects_missing_image(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+) -> None:
+    _, factory = database_engine
+
+    with pytest.raises(DomainError) as caught:
+        MeasurementService(factory).delete(999, 1)
+
+    assert caught.value.code == "IMAGE_NOT_FOUND"
+
+
 def test_context_export_rejects_image_without_measurements(
     database_engine: tuple[Engine, sessionmaker[Session]],
     db_session: Session,

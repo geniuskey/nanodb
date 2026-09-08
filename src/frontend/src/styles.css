@@ -254,6 +254,10 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .measurement-list button { width: 100%; display: grid; gap: 5px; text-align: left; margin-bottom: 8px; }
 .measurement-list button.selected { background: var(--accent-tint); border-color: var(--accent); }
 .measurement-list span { color: var(--ink-muted); }
+.measurement-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: stretch; }
+.measurement-row > button { margin-bottom: 0; }
+.delete-measurement { width: auto; display: inline-flex; align-items: center; padding: 0 14px; color: var(--danger); border-color: var(--danger); }
+.delete-measurement:disabled { opacity: .5; cursor: wait; }
 .export-panel { margin: 28px 0 0; padding-top: 24px; border-top: 1px solid var(--line); }
 .export-panel p { color: var(--ink-muted); line-height: 1.5; }
 .export-panel [role="alert"] { color: var(--danger); }

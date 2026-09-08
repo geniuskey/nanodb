@@ -220,6 +220,19 @@ class MeasurementRepository:
             _to_measurement(model) for model in self._session.scalars(statement)
         )
 
+    def delete(self, image_id: int, measurement_id: int) -> bool:
+        """Delete a single measurement scoped to its image.
+
+        Returns ``True`` when a matching measurement was removed. A measurement
+        that belongs to a different image is treated as not found so callers
+        cannot delete across images by guessing ids.
+        """
+        model = self._session.get(MeasurementModel, measurement_id)
+        if model is None or model.image_id != image_id:
+            return False
+        self._session.delete(model)
+        return True
+
     def delete_all(self) -> None:
         for model in self._session.scalars(select(MeasurementModel)):
             self._session.delete(model)

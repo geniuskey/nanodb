@@ -1254,3 +1254,48 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: CONSTRUCTION - Code Generation Part 2 Step 19/26 complete; per-step Git checkpoint required
 
 ---
+
+## NANoDB Core Code Generation Step 20 Started
+
+**Timestamp**: 2026-09-08T04:34:53Z
+**User Input**: "계속해줘"
+**AI Response**: "Pushed Step 19 and started Step 20 demo derivative, manifest, preflight and source-safe reset tooling generation."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 20 in progress
+
+---
+
+## NANoDB Core Code Generation Step 20 Complete
+
+**Timestamp**: 2026-09-08T04:46:10Z
+**User Input**: "aidlc 구현 step 20 중이었는데, 이어받아서 진행해줘"
+**AI Response**: "Resumed Step 20 and generated the demo tooling: scripts/prepare_demo_samples.py converts three approved TEM sources into lossless PNG derivatives under data/demo/images/ and records source ID, SHA-256, conversion time, original pixel size, SEM/TEM type, Product/Lot/Wafer and positive calibration into data/demo/manifest.csv, with an optional profile-guarded --load seed path. scripts/preflight_demo.py validates the manifest and derivatives offline (count, duplicates, presence, PNG decode, dimensions, SHA-256, calibration, type, identifiers, authorization, timestamp, root separation). scripts/reset_demo.py clears runtime Image/Measurement rows and the runtime upload root only under NANODB_PROFILE=demo with an explicit --yes target confirmation and never touches data/samples or data/demo. Ran prepare and preflight successfully, confirmed both reset guards abort safely, ruff passed and source samples remained unchanged."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 20/26 complete; Step 21 (demo preparation tests) next
+
+---
+
+## NANoDB Core Code Generation Paused
+
+**Timestamp**: 2026-09-08T04:58:33Z
+**User Input**: "잠깐.. step 20 은 멈춰줘. 어디까지 했니?"
+**AI Response**: "Stopped before Step 21. Step 20 artifacts and validation had already completed locally, but the Step 20 checkpoint has not been committed or pushed. Reported the exact local and remote status without continuing implementation."
+**Context**: CONSTRUCTION - paused after local Step 20 completion; origin/main remains at Step 19 commit 247166e
+
+---
+
+## NANoDB Core Code Generation Step 20 Finalization Resumed
+
+**Timestamp**: 2026-09-08T04:59:48Z
+**User Input**: "step 20 마무리해줘. 푸시까지."
+**AI Response**: "Resumed final verification of the locally completed Step 20 artifacts and prepared a Step 20-only Git checkpoint for origin/main. Step 21 remains out of scope for this interaction."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 20 finalization
+
+---
+
+## NANoDB Core Code Generation Step 20 Finalization Complete
+
+**Timestamp**: 2026-09-08T05:03:31Z
+**User Input**: "step 20 마무리해줘. 푸시까지."
+**AI Response**: "Finalized Step 20 by recording and validating both approved source and derivative SHA-256 values, requiring an explicitly supplied NANODB_PROFILE=demo for load/reset, constraining reset to the dedicated var/uploads target, and recursively restoring its known-empty runtime state. Demo preflight, TEM/Layout source verification, source hash immutability, both reset refusal guards, Ruff, Python compilation and 32 non-integration backend tests passed; 6 PostgreSQL integration tests were skipped because TEST_DATABASE_URL was not configured. Prepared the Step 20-only commit and push."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 20/26 complete; Step 21 not started
+
+---

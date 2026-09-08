@@ -160,7 +160,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 20. Demo derivative, preflight와 reset tooling 생성 — US-01
 
-- [ ] `data/demo/images/`, `data/demo/manifest.csv`, `scripts/prepare_demo_samples.py`, `scripts/preflight_demo.py`와 `scripts/reset_demo.py`를 생성한다. 승인된 TEM source 최소 3개를 무리샘플 PNG로 준비해 source ID·SHA-256·변환 시각·원본 크기·SEM/TEM·Product/Lot/Wafer·양수 보정값을 기록하고, `NANODB_PROFILE=demo`와 명시적 target guard를 통과한 경우에만 전용 DB row와 `var/uploads/`를 known empty state로 초기화한다.
+- [x] `data/demo/images/`, `data/demo/manifest.csv`, `scripts/prepare_demo_samples.py`, `scripts/preflight_demo.py`와 `scripts/reset_demo.py`를 생성한다. 승인된 TEM source 최소 3개를 무리샘플 PNG로 준비해 source ID·SHA-256·변환 시각·원본 크기·SEM/TEM·Product/Lot/Wafer·양수 보정값을 기록하고, `NANODB_PROFILE=demo`와 명시적 target guard를 통과한 경우에만 전용 DB row와 `var/uploads/`를 known empty state로 초기화한다.
 
 ### Step 21. Demo preparation test 생성 — US-01
 

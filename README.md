@@ -14,25 +14,25 @@
 
 NANoDB는 반도체 SEM/TEM 이미지와 측정 근거를 축적하고, 이를 AI 기반 분석 소프트웨어 개발에 필요한 컨텍스트와 검증 데이터로 재사용하는 경량 웹 애플리케이션입니다. 이름은 `Nano Assets, Never orphaned Database`에서 왔으며, 데이터와 맥락이 담당자나 도구의 변화 속에서도 흩어지지 않게 하는 것을 지향합니다.
 
-> 현재 저장소에는 MVP 요구사항, AI-DLC 워크플로우, 로고와 검증된 샘플 데이터에 더해 NANoDB Core 웹 애플리케이션(FastAPI backend, React frontend, PostgreSQL 스키마·migration, demo·검증 tooling)과 계층별 테스트가 생성되어 있습니다. 2026-09-08 기준 Docker/PostgreSQL 환경에서 컨테이너 스택 기동과 전체 게이트(backend 104 passed·skip 없음, frontend 66 passed, Playwright e2e 7 passed, lint·typecheck·preflight)를 실행해 통과했습니다.
+> 현재 저장소에는 MVP 요구사항, AI-DLC 워크플로우, 로고와 검증된 샘플 데이터에 더해 NANoDB Core 웹 애플리케이션(FastAPI backend, React frontend, PostgreSQL 스키마·migration, demo·검증 tooling)과 계층별 테스트가 생성되어 있습니다. 2026-09-08 기준 Docker/PostgreSQL 환경에서 컨테이너 스택 기동과 전체 게이트(backend 98 passed·skip 없음, frontend 66 passed, Playwright e2e 7 passed, lint·typecheck·preflight)를 실행해 통과했습니다.
 
 ## MVP에서 보여줄 것
 
-1. PNG/JPEG/TIFF 이미지를 제조 메타데이터와 함께 등록합니다. TIFF는 원본을 그대로 보존하고 화면 표시용 PNG 파생본을 자동으로 만듭니다.
+1. PNG/JPEG/TIFF 이미지를 제조 메타데이터(Product, Lot, Wafer와 선택 입력 공정 Step)와 함께 등록합니다. TIFF는 원본을 그대로 보존하고 화면 표시용 PNG 파생본을 자동으로 만듭니다.
 2. 등록된 이미지를 목록에서 검색어·SEM/TEM 필터로 찾아 다시 엽니다.
 3. 이미지 위에서 두 점을 선택하거나 원본 좌표를 직접 입력해 CD, Depth, Thickness를 측정합니다.
 4. `nm/pixel` 보정값으로 실제 길이를 계산합니다.
 5. 저장된 좌표와 측정값을 새로고침 후에도 같은 위치에 복원합니다.
-6. 화살표·원 도형으로 관심 위치를 표시하고 도형마다 제품·Step·측정 항목 명을 남깁니다. 확대·이동으로 원하는 위치를 크게 보며 점을 찍을 수 있고, 현재 배율에서 화면 1px이 원본 몇 px인지 표시됩니다.
+6. 측정에 이름(측정 항목 명)을 붙이면 그 측정선 옆에 캡션으로 표시됩니다. 확대·이동으로 원하는 위치를 크게 보며 점을 찍을 수 있고, 현재 배율에서 화면 1px이 원본 몇 px인지 표시됩니다.
 7. 홈에서 실제 이미지 수, 측정 수와 항목별 평균·최소·최대를 확인합니다.
-8. 선택 이미지의 명세·측정 데이터·도형 라벨·개발 요청·검증 기준을 담은 ZIP을 내보냅니다(계약 버전 1.1).
+8. 선택 이미지의 명세·측정 데이터·측정 라벨·개발 요청·검증 기준을 담은 ZIP을 내보냅니다(계약 버전 2.0).
 9. 기존 AI 개발 도구에서 요약 CSV 생성 스크립트를 만들고 로컬에서 검증합니다. 이 단계는 앱 외부의 수동 개발 데모입니다.
 
 위 항목은 구현 목표입니다. 계측 기반을 먼저 검증한 후 개발 컨텍스트 기능을 구현하며, 두 게이트와 생성 코드 검증이 모두 통과해야 대회용 MVP 완료입니다. 수동 측정은 미검토 참고값이며 자동 계측의 정답으로 취급하지 않습니다.
 
-단일 키워드 검색·종류 필터, 측정 삭제, 이미지 삭제, 항목별 표본 수·평균·최소·최대와 도형 라벨링은 P1으로 구현을 마쳤습니다.
+단일 키워드 검색·종류 필터, 측정 삭제, 이미지 삭제, 항목별 표본 수·평균·최소·최대와 측정 라벨링은 P1으로 구현을 마쳤습니다.
 
-홈 최상단 소개 영상은 외부 임베드입니다. **네트워크가 차단된 환경에서는 영상이 표시되지 않지만 홈의 나머지 내용과 앱 기능은 그대로 동작합니다.** 영상 자리에는 그 사실을 설명하는 문구가 항상 함께 표시되므로 빈 상자로 남지 않으며, 심사·시연은 영상 없이 진행해도 됩니다. 시스템에서 동작 줄이기(reduced motion)를 켠 환경에서는 자동 재생하지 않고 재생 버튼을 제공합니다.
+홈 최상단 소개 영상은 저장소에 포함된 로컬 파일(`assets/video/nanodb_intro.mp4`)을 재생합니다. 외부 임베드나 서드파티 스크립트를 쓰지 않으므로 **네트워크가 차단된 환경에서도 그대로 재생됩니다.** 영상은 보조 자료이므로 재생하지 않고 홈 내용만으로 진행해도 되며, 그 안내가 영상 아래에 항상 표시됩니다. 시스템에서 동작 줄이기(reduced motion)를 켠 환경에서는 자동 재생하지 않고 재생 버튼을 제공합니다.
 
 자유 윤곽(폴리곤) 라벨링과 라벨 검수, 피처 자동 추출, Tool 등록, Lineage, Report는 이번 3일 MVP의 후속 로드맵입니다.
 
@@ -42,18 +42,17 @@ NANoDB는 반도체 SEM/TEM 이미지와 측정 근거를 축적하고, 이를 A
 Playwright가 자동 캡처한 실제 동작 화면입니다(캡처 시각 2026-09-08, working tree
 `7a387cb`, 캡처 스크립트 [`scripts/capture_screenshots.mjs`](scripts/capture_screenshots.mjs)).
 공개 배포된 서비스가 아니라 로컬 실행 결과이며, 비밀정보나 비공개 자료는 포함하지 않습니다.
-캡처 환경은 외부 네트워크가 차단돼 있어 홈 최상단의 소개 영상 자리가 비어 있습니다.
-영상은 보조 자료이며 앱 기능 근거가 아닙니다(HOM-040).
+홈 최상단의 소개 영상은 보조 자료이며 앱 기능 근거가 아닙니다(HOM-040).
 캡처 스크립트는 `screenshots/`와 사이트용 사본 `docs/public/screenshots/`를 함께 갱신하므로
 두 곳이 어긋나지 않습니다.
 
 | 화면 | 대응 기능 |
 | --- | --- |
-| ![홈: 실제 이미지·측정 집계와 사용 흐름](screenshots/01-home.png) | 홈에서 실제 이미지 수·측정 수·파라미터 집계와 사용 흐름 끝의 등록·목록 CTA (MVP 6) |
+| ![홈: 실제 이미지·측정 집계와 사용 흐름](screenshots/01-home.png) | 홈에서 실제 이미지 수·측정 수·파라미터 집계와 사용 흐름 끝의 등록·목록 CTA (MVP 7) |
 | ![이미지 목록: 최신순 카드와 측정 수](screenshots/02-catalog.png) | 등록된 이미지를 목록에서 최신순으로 찾아 다시 열기 (MVP 2) |
 | ![이미지 등록: 미리보기와 제조 메타데이터 폼](screenshots/03-register.png) | PNG/JPEG/TIFF를 제조 메타데이터·보정값과 함께 등록 (MVP 1, 4) |
 | ![측정 뷰어: 두 점 선택 draft와 실시간 preview](screenshots/04-measurement-draft.png) | 이미지 위 두 점 선택으로 CD/Depth/Thickness 측정과 preview (MVP 3, 4) |
-| ![저장 후: overlay 복원·저장 항목·context export 활성](screenshots/05-measurement-saved.png) | 저장 좌표·값의 overlay 복원과 측정이 있을 때 활성화되는 컨텍스트 ZIP 내보내기 (MVP 5, 7) |
+| ![저장 후: overlay 복원·저장 항목·context export 활성](screenshots/05-measurement-saved.png) | 저장 좌표·값의 overlay 복원과 측정이 있을 때 활성화되는 컨텍스트 ZIP 내보내기 (MVP 5, 8) |
 
 캡처는 미검토 참고값인 수동 측정을 자동 계측의 정답으로 표현하지 않습니다.
 
@@ -147,7 +146,7 @@ make reset                  # NANODB_PROFILE=demo, 전용 target guard 통과 �
 
 `reset`은 `NANODB_PROFILE=demo`와 전용 `var/uploads` target guard를 통과해야만 demo DB
 행과 업로드를 known-empty 상태로 되돌리며, source sample을 대상으로 삼지 않습니다.
-저장된 측정과 도형을 함께 지운 뒤 이미지를 지웁니다.
+저장된 측정을 먼저 지운 뒤 이미지를 지웁니다.
 
 `NANODB_PROFILE=demo cmd` 같은 앞머리 환경변수 문법은 sh 계열 셸(Git Bash, WSL, macOS,
 Linux) 전용입니다. PowerShell에서는 다음처럼 나눠서 실행합니다.
@@ -203,7 +202,7 @@ frontend는 컨테이너 이미지 안에서 build되므로 이 경로에서는 
 필요 없습니다. `npm ci`는 demo·테스트 tooling용입니다.
 
 이 절 전체를 2026-09-08에 Windows 11 + Docker Desktop + PowerShell/Git Bash에서 실행해
-확인했습니다: 스택 기동, demo 적재 3건, backend 104 passed, frontend 66 passed,
+확인했습니다: 스택 기동, demo 적재 3건, backend 98 passed, frontend 66 passed,
 Playwright e2e 7 passed, ruff·mypy·tsc green.
 
 ## 테스트
@@ -234,7 +233,7 @@ PowerShell에서는 `$env:TEST_DATABASE_URL`에 같은 값을 넣고 `uv run pyt
 포트는 `.env`의 `DB_PORT`에 맞춥니다(기본 `5432`).
 
 `npm run test:e2e`는 이미 떠 있는 앱(`E2E_BASE_URL`, 기본 `http://127.0.0.1:8000`)을 대상으로
-실행되며 스택을 직접 띄우지 않습니다. e2e는 실제로 이미지·측정·도형을 등록하므로 실행 후
+실행되며 스택을 직접 띄우지 않습니다. e2e는 실제로 이미지와 측정을 등록하므로 실행 후
 demo 데이터가 늘어납니다. 깨끗한 시연 상태로 되돌리려면 위 4번의 `reset` 후 `seed-demo`를
 다시 실행합니다.
 
@@ -243,7 +242,7 @@ demo 데이터가 늘어납니다. 깨끗한 시연 상태로 되돌리려면 �
 이미지 상세에서 `GET /api/images/{id}/context-export`로 고정 네 파일 ZIP을 내려받습니다.
 
 - `context.md` — 좌표계·계산 규칙·데이터 주의사항
-- `data.json` — 선택 이미지와 저장된 모든 측정, 저장된 도형과 도형 라벨 (`schema_version` `1.1`)
+- `data.json` — 선택 이미지와 저장된 모든 측정. 각 측정은 자기 라벨(`label`)과 메모(`note`)를 함께 담습니다 (`schema_version` `2.0`)
 - `task.md` — 수행할 개발 과제
 - `checks.json` — 검증용 정답(ground truth)
 
@@ -281,13 +280,13 @@ CD·Depth는 같은 전사에도 우연히 일치했습니다.
 ## 알려진 제한
 
 - 인증·권한은 이번 범위 밖입니다.
-- 저장된 측정은 메모 외에는 수정할 수 없습니다. 좌표·항목·값·보정값은 측정 근거이므로 불변이며, 잘못 찍은 측정은 삭제 후 다시 측정합니다.
-- 그린 도형은 이동·크기 조절할 수 없습니다. 삭제 후 다시 그립니다.
+- 저장된 측정은 라벨과 메모 외에는 수정할 수 없습니다. 좌표·항목·값·보정값은 측정 근거이므로 불변이며, 잘못 찍은 측정은 삭제 후 다시 측정합니다.
+- 측정선은 이동·크기 조절할 수 없습니다. 삭제 후 다시 측정합니다. 측정과 분리된 화살표·원 도형은 제공하지 않습니다. 길이만 재는 도구가 반지름을 저장하는 도형을 그리게 하면 이 MVP가 계산하지 않는 곡률을 잰 것처럼 읽히기 때문입니다.
 - 이미지 위 클릭 외에 측정 화면의 `좌표로 직접 지정`으로 원본 좌표를 입력해 측정할 수 있습니다. 태블릿·모바일 터치 측정과 다크모드는 지원 범위가 아닙니다.
 - 자동 계측·윤곽 검출은 없습니다. 측정은 수동 두 점 방식의 미검토 참고값입니다.
 - 앱은 단일 호스트 로컬 파일 저장을 사용하며 multi-instance·객체 저장소·HA는 범위 밖입니다.
 - 앱 내부 AI 호출·코드 실행 기능은 없습니다.
-- 모든 게이트를 Docker/PostgreSQL 환경에서 실행·통과했습니다(2026-09-08): 컨테이너 스택 기동, backend 104 passed(PostgreSQL integration 포함, skip 없음), frontend 66 passed, Playwright e2e 7 passed, lint·typecheck green.
+- 모든 게이트를 Docker/PostgreSQL 환경에서 실행·통과했습니다(2026-09-08): 컨테이너 스택 기동, backend 98 passed(PostgreSQL integration 포함, skip 없음), frontend 66 passed, Playwright e2e 7 passed, lint·typecheck green.
 - 배포·API 상세는 [deployment.md](aidlc-docs/construction/nanodb-core/code/deployment.md),
   [api-reference.md](aidlc-docs/construction/nanodb-core/code/api-reference.md)를 참고하세요.
 
@@ -406,7 +405,7 @@ Node 버전은 루트 `.nvmrc`(22.17.1)로 로컬·CI를 일치시킵니다.
 - 측정과 수정 실험 결과는 원본과 분리된 파생 데이터로 저장합니다.
 - 이미지 교체 시 manifest의 SHA-256과 메타데이터를 함께 갱신합니다.
 - 런타임 업로드, PostgreSQL 연결 비밀값, 생성 결과는 Git에 커밋하지 않습니다.
-- 공개 통계, 예시 KPI와 실제 데이터 집계값을 명확히 구분합니다.
+- 홈에는 실제 데이터 집계값만 표시하고 예시 KPI를 대입하지 않습니다.
 
 ## 대회와 팀 목표
 
@@ -433,7 +432,7 @@ NANoDB는 AI로 분석 코드를 만들 때 반복하는 데이터 형식·좌�
 - [x] 개발 컨텍스트 ZIP 구현
 - [x] demo 준비·검증 tooling과 배포 artifact 생성
 - [x] 외부 AI 생성 코드 검증 자산 생성
-- [x] Build and Test: 전체 게이트 통과 (backend 104 passed·skip 없음, frontend 66 passed, e2e 7 passed, lint·typecheck·preflight green, 2026-09-08)
+- [x] Build and Test: 전체 게이트 통과 (backend 98 passed·skip 없음, frontend 66 passed, e2e 7 passed, lint·typecheck·preflight green, 2026-09-08)
 - [x] Docker/PostgreSQL 환경에서 integration·브라우저 e2e·컨테이너 스택 최종 통과 판정
 - [x] 외부 AI 개발 데모 2개 arm 실행·기록 (context `pass` 3/3, manual `fail` 2/3)
 - [ ] 설명 준비 시간 비교는 사람이 직접 수행하는 run이 필요 (현재 `unmeasured`)

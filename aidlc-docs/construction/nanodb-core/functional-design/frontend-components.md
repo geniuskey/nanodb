@@ -1,19 +1,21 @@
 # NANoDB Core Frontend Components
 
-> 2026-09-08 갱신: 홈 v2(CTA 규칙), 검색·필터, 삭제, 도형 라벨링, 확대·이동, 앱 내 확인 대화상자와 성공 알림을 반영해 현재 구현 기준으로 다시 썼다. 근거는 [ui-ux-review-2026-09-08.md](../../../inception/requirements/ui-ux-review-2026-09-08.md)다.
+> 2026-09-08 갱신 1: 홈 v2(CTA 규칙), 검색·필터, 삭제, 확대·이동, 앱 내 확인 대화상자와 성공 알림을 반영해 현재 구현 기준으로 다시 썼다. 근거는 [ui-ux-review-2026-09-08.md](../../../inception/requirements/ui-ux-review-2026-09-08.md)다.
+>
+> 2026-09-08 갱신 2: 측정과 분리된 화살표·원 도형 라벨링을 삭제하고, 측정에 라벨을 붙이는 측정 라벨링(ANN-001~005)으로 바꿨다. 홈에서는 로드맵 탭 여섯 개와 `왜 지금인가` 공개 통계 섹션을 없애고, 최근 이미지 카드를 측정 화면 링크로 만들고, 소개 영상을 로컬 파일 재생으로 바꿨다.
 
 ## 화면 구조
 
 | 화면 | 하위 컴포넌트 | 책임 | API 연결 |
 | --- | --- | --- | --- |
 | App Shell | Header, Navigation, Feedback Region | 브랜드, 현재 위치, 공통 이동과 텍스트 상태 | 필요 시 summary |
-| Home Page | Intro Video, Hero, Value Cards, KPI + Composition, Recent Images, Public Stats, Phases, AI-DLC, Flow + CTA, Policy Line | 제품 목적, 실측 KPI, 로드맵 구분 | summary·image 목록 조회 |
+| Home Page | Intro Video, Hero, Value Cards, KPI + Composition, Recent Images, Phases, AI-DLC, Flow + CTA, Policy Line | 제품 목적, 실측 KPI, 로드맵 구분 | summary·image 목록 조회 |
 | Image List Page | List Header, Toolbar (검색·종류 필터), Result Count, Empty State, Image Cards, Delete | 최신순 이미지와 측정 건수, 검색·필터, 상세 이동, 삭제 | image 목록 조회, image 삭제 |
 | Image Register Page | Image Preview, Metadata Form, Submit State | 파일·metadata 입력, 선행 검증과 등록 | image 등록 |
-| Measurement Page | Image Viewer(+Zoom), Annotation Toolbar, Image Facts, Annotation Table, Measurement Controls, Measurement List(+Note Editor), Export Panel | 두 점 선택·표시·저장·복원, 도형 라벨링, 메모 수정, 삭제와 ZIP 다운로드 | image 상세, measurement 생성·메모 수정·삭제, annotation CRUD, image 삭제, export |
+| Measurement Page | Image Viewer(+Zoom, Label Caption), Image Facts, Measurement Controls(+Label·Note), Measurement List(+Annotation Editor), Export Panel | 두 점 선택·표시·저장·복원, 측정 라벨링, 라벨·메모 수정, 삭제와 ZIP 다운로드 | image 상세, measurement 생성·라벨·메모 수정·삭제, image 삭제, export |
 | 공용 | ConfirmDialog, StatusBanner | 되돌릴 수 없는 동작의 확인, 쓰기 성공 알림 | 없음 |
 
-P0 게이트는 변하지 않았다. 위 표의 검색·필터, 삭제, 도형 라벨링, 확대·이동, 메모 수정은 P1으로 구현을 마친 항목이다.
+P0 게이트는 변하지 않았다. 위 표의 검색·필터, 삭제, 측정 라벨링, 확대·이동, 라벨·메모 수정은 P1으로 구현을 마친 항목이다.
 
 ## 공통 상태
 
@@ -41,10 +43,10 @@ P0 게이트는 변하지 않았다. 위 표의 검색·필터, 삭제, 도형 �
 ### 상호작용
 
 - 홈 본문은 읽는 문서로 두고 화면 이동은 상단 navigation이 담당한다(HOM-005). navigation은 어느 경로에서도 탭 하나만 현재 위치로 표시한다.
-- 예외는 `이렇게 쓰세요` 사용 흐름 섹션 끝의 CTA 두 개(`이미지 등록`, `이미지 둘러보기`)뿐이다(HOM-034a).
-- 미구현 로드맵 항목은 버튼이나 활성 navigation으로 표현하지 않는다.
+- 예외는 두 곳이다. `이렇게 쓰세요` 사용 흐름 섹션 끝의 CTA 두 개(`이미지 등록`, `이미지 둘러보기`)와(HOM-034a), 자기 측정 화면으로 가는 최근 이미지 카드다(HOM-023).
+- 미구현 로드맵 항목은 버튼이나 navigation 탭으로 표현하지 않는다. navigation에는 실제로 열리는 화면만 둔다(HOM-006).
 - KPI나 최근 이미지 조회가 실패해도 정적 섹션은 계속 렌더링하고, 실패 자리에 다시 시도를 제공한다.
-- 소개 영상은 유일한 외부 런타임 의존이다. 프레임 아래에 항상 설명 문구를 두어 차단 환경에서도 빈 상자로 남지 않게 하고, 동작 줄이기를 선택한 사용자에게는 자동 재생 대신 재생 버튼을 제공한다.
+- 소개 영상은 저장소에 포함된 로컬 파일을 `<video controls>`로 재생하며 외부 런타임 의존이 없다. 프레임 아래에 영상 없이도 홈 내용만으로 충분하다는 문구를 두고, 동작 줄이기를 선택한 사용자에게는 자동 재생하지 않는다.
 
 ## Image List Page
 
@@ -99,8 +101,7 @@ P0 게이트는 변하지 않았다. 위 표의 검색·필터, 삭제, 도형 �
 - 선택한 `parameter_type`
 - draft 원본 좌표 최대 두 점
 - draft `distance_px`와 예상 `value_nm`
-- 선택 메모와 메모 수정 draft
-- 선택한 도형 도구와 draft 도형
+- 선택 라벨·메모와 라벨·메모 수정 draft
 - 확인 대기 중인 삭제 대상
 - 저장·삭제·export 진행 상태, 오류와 성공 메시지
 
@@ -115,13 +116,13 @@ P0 게이트는 변하지 않았다. 위 표의 검색·필터, 삭제, 도형 �
 
 `nm/pixel` 보정값, 원본 픽셀 크기와 등록 시각을 측정 중에 상시 표시한다. 측정값의 신뢰 근거가 export에만 있고 화면에 없으면 안 되기 때문이다.
 
-### 도형 라벨링
+### 측정 라벨링
 
-- 화살표와 원 두 도구를 제공하고, 도구가 선택된 동안에만 overlay가 포인터 입력을 받는다.
-- 도형은 그린 순서대로 번호가 붙고 표에 한 행씩 나타난다. 행에서 제품·Step·측정 항목 명을 입력한다.
-- 도형과 표 행은 양방향으로 같은 강조 상태를 가진다. 도형의 hit 영역은 획으로 제한해 측정 클릭을 뺏지 않는다.
-- 도형은 삭제할 수 있고, 이동·크기 조절은 제공하지 않는다.
-- 도형은 계산값을 만들지 않는 참고 라벨이며 측정값과 시각적으로 구분한다.
+- 측정을 저장할 때 그 측정이 무엇인지 나타내는 라벨을 함께 입력한다(ANN-001). 선택 입력이다.
+- 라벨이 있는 저장 측정은 자기 측정선 옆에 캡션으로 표시한다(ANN-002). 캡션 좌표는 측정선에서 파생하므로 따로 저장하지 않는다.
+- 라벨과 메모는 저장 후에도 함께 수정할 수 있고, 좌표·항목·거리·값·보정값은 불변이다(ANN-003, RES-007).
+- 측정과 분리된 도형 도구는 두지 않는다. 측정선 자체가 도형이므로 그릴 대상이 하나뿐이고, 길이만 재는 도구가 반지름을 저장하는 원을 그리게 하면 이 MVP가 계산하지 않는 곡률을 잰 것처럼 읽히기 때문이다.
+- 공정 Step은 이미지 등록에서 한 번만 입력하며 측정마다 고르지 않는다(ANN-004).
 
 ### 좌표 직접 입력
 
@@ -154,7 +155,7 @@ P0 게이트는 변하지 않았다. 위 표의 검색·필터, 삭제, 도형 �
 ### Export Panel
 
 - 저장 Measurement가 없으면 버튼을 비활성화하고 이유를 표시한다.
-- 제조 식별정보, 원본 파일명, 메모와 저장 도형·도형 라벨이 포함되고 이미지 binary는 제외됨을 다운로드 전에 보여준다.
+- 제조 식별정보, 원본 파일명, 각 측정의 라벨과 메모가 포함되고 이미지 binary는 제외됨을 다운로드 전에 보여준다.
 - 앱이 외부 AI로 자동 전송하지 않음을 명시한다.
 - export 중 중복 요청을 막는다.
 - 성공 응답만 ZIP 다운로드로 처리하고 오류 응답을 파일로 저장하지 않는다.
@@ -171,11 +172,11 @@ P0 게이트는 변하지 않았다. 위 표의 검색·필터, 삭제, 도형 �
 
 ### ConfirmDialog
 
-되돌릴 수 없는 동작(이미지·측정·도형 삭제)의 확인을 담당한다. `window.confirm`을 쓰지 않는 이유는 문구·삭제될 파생 데이터 건수·포커스 이동을 앱이 통제해야 하기 때문이다.
+되돌릴 수 없는 동작(이미지·측정 삭제)의 확인을 담당한다. `window.confirm`을 쓰지 않는 이유는 문구·삭제될 파생 데이터 건수·포커스 이동을 앱이 통제해야 하기 때문이다.
 
 - 열릴 때 확인 버튼으로 포커스를 옮기고, 닫힐 때 호출한 요소로 돌려준다.
 - Escape로 취소하고 Tab은 대화상자 안에서 순환한다.
-- 본문에 함께 사라지는 측정·도형 건수를 명시한다.
+- 본문에 함께 사라지는 측정 건수를 명시한다.
 
 ### ErrorBoundary와 NotFoundPage
 

@@ -1,12 +1,10 @@
 import type {
-  AnnotationCreateInput,
-  AnnotationUpdateInput,
-  AnnotationView,
   ApiErrorEnvelope,
   ImageDetailView,
   ImageListView,
   ImageType,
   ImageView,
+  MeasurementAnnotationInput,
   MeasurementCreateInput,
   MeasurementView,
   SummaryView,
@@ -110,15 +108,15 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(value),
     }),
-  updateMeasurementNote: (
+  updateMeasurementAnnotation: (
     imageId: number,
     measurementId: number,
-    note: string | null,
+    value: MeasurementAnnotationInput,
   ) =>
     request<MeasurementView>(`/api/images/${imageId}/measurements/${measurementId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note }),
+      body: JSON.stringify(value),
     }),
   deleteMeasurement: (imageId: number, measurementId: number) =>
     requestVoid(`/api/images/${imageId}/measurements/${measurementId}`, {
@@ -128,27 +126,5 @@ export const api = {
     requestVoid(`/api/images/${imageId}`, { method: "DELETE" }),
   registerImage: (form: FormData) =>
     request<ImageView>("/api/images", { method: "POST", body: form }),
-  listAnnotations: (imageId: number) =>
-    request<AnnotationView[]>(`/api/images/${imageId}/annotations`),
-  createAnnotation: (imageId: number, value: AnnotationCreateInput) =>
-    request<AnnotationView>(`/api/images/${imageId}/annotations`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(value),
-    }),
-  updateAnnotation: (
-    imageId: number,
-    annotationId: number,
-    value: AnnotationUpdateInput,
-  ) =>
-    request<AnnotationView>(`/api/images/${imageId}/annotations/${annotationId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(value),
-    }),
-  deleteAnnotation: (imageId: number, annotationId: number) =>
-    requestVoid(`/api/images/${imageId}/annotations/${annotationId}`, {
-      method: "DELETE",
-    }),
   downloadContext: contextDownload,
 };

@@ -18,16 +18,6 @@ const REAL_TABS = [
   { to: "/images/new", label: "이미지 등록", hint: "작업", end: false },
 ];
 
-// PDF 시안의 제품 온톨로지 탭. MVP에서는 로드맵(P2)이므로 링크·포커스를 제공하지 않는다.
-const ROADMAP_TABS = [
-  { label: "라벨DB", hint: "P2" },
-  { label: "피처", hint: "P2" },
-  { label: "툴", hint: "P2" },
-  { label: "계보", hint: "P2" },
-  { label: "리포트", hint: "P2" },
-  { label: "API", hint: "P2" },
-];
-
 function StatusPill() {
   const { summary } = useSummary();
 
@@ -51,7 +41,7 @@ function Shell() {
   return (
     <SummaryContext.Provider value={summary}>
     <div className="app-shell">
-      {/* Fifteen header and tab elements sit before the body; give keyboard
+      {/* The header and tab strip sit before the body; give keyboard
           users one hop past them (UIX-005). */}
       <a className="skip-link" href="#main-content">본문으로 건너뛰기</a>
       <header className="app-header">
@@ -77,12 +67,6 @@ function Shell() {
             <span className="tab-label">{tab.label}</span>
             <span className="tab-hint">{tab.hint}</span>
           </NavLink>
-        ))}
-        {ROADMAP_TABS.map((tab) => (
-          <span key={tab.label} className="tab p2" aria-disabled="true" title="준비 중 · 후속 로드맵">
-            <span className="tab-label">{tab.label}</span>
-            <span className="tab-hint">{tab.hint}</span>
-          </span>
         ))}
       </nav>
       <div id="main-content" tabIndex={-1}>

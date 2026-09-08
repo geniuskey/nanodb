@@ -1,33 +1,13 @@
-import {
-  MouseEvent,
-  PointerEvent as ReactPointerEvent,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { MouseEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { ApiError, api } from "../api/client";
-import type {
-  AnnotationView,
-  ImageDetailView,
-  MeasurementView,
-  ParameterType,
-  ProductType,
-  ShapeKind,
-} from "../api/types";
-import { AnnotationLayer, type DraftShape } from "../measurement/AnnotationLayer";
-import {
-  toOriginalPoint,
-  toOriginalPointClamped,
-  type Point,
-} from "../measurement/coordinates";
+import type { ImageDetailView, MeasurementView, ParameterType } from "../api/types";
+import { toOriginalPoint, type Point } from "../measurement/coordinates";
 import { MeasurementOverlay } from "../measurement/MeasurementOverlay";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { StatusBanner } from "../ui/StatusBanner";
 import { useDocumentTitle } from "../ui/useDocumentTitle";
-
-const PRODUCTS: ProductType[] = ["DRAM", "Flash", "Logic", "Sensor"];
 
 // Fixed steps rather than free zooming: a demo operator can land on the same
 // magnification twice, and every step keeps the "screen 1px = N original px"
@@ -35,10 +15,7 @@ const PRODUCTS: ProductType[] = ["DRAM", "Flash", "Logic", "Sensor"];
 const ZOOM_STEPS = [1, 1.5, 2, 3, 4, 6, 8];
 
 /** What a pending confirmation would delete. */
-type PendingDelete =
-  | { kind: "measurement"; id: number }
-  | { kind: "annotation"; id: number; index: number }
-  | { kind: "image" };
+type PendingDelete = { kind: "measurement"; id: number } | { kind: "image" };
 
 interface Size {
   width: number;
@@ -57,6 +34,7 @@ export function MeasurementPage() {
   const [detail, setDetail] = useState<ImageDetailView | null>(null);
   const [draft, setDraft] = useState<Point[]>([]);
   const [parameter, setParameter] = useState<ParameterType>("CD");
+  const [label, setLabel] = useState("");
   const [note, setNote] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [rendered, setRendered] = useState<Size>({ width: 0, height: 0 });
@@ -65,18 +43,13 @@ export function MeasurementPage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [noteEditId, setNoteEditId] = useState<number | null>(null);
-  const [noteDraft, setNoteDraft] = useState("");
-  const [savingNote, setSavingNote] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [edit, setEdit] = useState({ label: "", note: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
   const [pending, setPending] = useState<PendingDelete | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [annotations, setAnnotations] = useState<AnnotationView[]>([]);
-  const [tool, setTool] = useState<ShapeKind | null>(null);
-  const [draftShape, setDraftShape] = useState<DraftShape | null>(null);
-  const [activeAnnotationId, setActiveAnnotationId] = useState<number | null>(null);
-  const [annotationError, setAnnotationError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [coords, setCoords] = useState({ sx: "", sy: "", ex: "", ey: "" });
   const [coordError, setCoordError] = useState<string | null>(null);
@@ -85,22 +58,10 @@ export function MeasurementPage() {
 
   useEffect(() => {
     setError(null);
-    api.getImage(imageId).then((loaded) => {
-      setDetail(loaded);
-      setAnnotations(loaded.annotations ?? []);
-    }).catch((caught) =>
+    api.getImage(imageId).then(setDetail).catch((caught) =>
       setError(caught instanceof ApiError ? caught.message : "이미지를 불러오지 못했습니다."),
     );
   }, [imageId, attempt]);
-
-  useEffect(() => {
-    if (!draftShape) return;
-    const cancel = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setDraftShape(null);
-    };
-    window.addEventListener("keydown", cancel);
-    return () => window.removeEventListener("keydown", cancel);
-  }, [draftShape]);
 
   // Re-measure the image and its scroll viewport whenever either can have
   // changed. Both updates bail out when the size is unchanged, so having
@@ -176,80 +137,6 @@ export function MeasurementPage() {
     if (point) setDraft((current) => [...current, point]);
   }
 
-  function originalSize() {
-    return { width: detail!.pixel_width, height: detail!.pixel_height };
-  }
-
-  function startDraw(event: ReactPointerEvent<SVGSVGElement>) {
-    if (!tool) return;
-    const rect = imageRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    // A new shape must start inside the image; ignore presses in the margin.
-    const start = toOriginalPoint({ x: event.clientX, y: event.clientY }, rect, originalSize());
-    if (!start) return;
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    setDraftShape({ kind: tool, start, end: start });
-  }
-
-  function moveDraw(event: ReactPointerEvent<SVGSVGElement>) {
-    if (!draftShape) return;
-    const rect = imageRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    // Clamp the drag to the image so a shape never escapes its bounds.
-    const end = toOriginalPointClamped({ x: event.clientX, y: event.clientY }, rect, originalSize());
-    if (end) setDraftShape((current) => current && { ...current, end });
-  }
-
-  async function endDraw() {
-    const shape = draftShape;
-    if (!shape) return;
-    setDraftShape(null);
-    // A click without a drag (zero-size shape) does not create a row.
-    if (shape.start.x === shape.end.x && shape.start.y === shape.end.y) return;
-    setAnnotationError(null);
-    try {
-      const created = await api.createAnnotation(imageId, {
-        kind: shape.kind,
-        start: shape.start,
-        end: shape.end,
-        product: null,
-        step: "",
-        measurement_name: "",
-      });
-      setAnnotations((current) => [...current, created]);
-      setStatus(`${shape.kind === "arrow" ? "화살표" : "원"} 도형을 저장했습니다.`);
-    } catch (caught) {
-      setAnnotationError(
-        caught instanceof ApiError ? caught.message : "도형을 저장하지 못했습니다.",
-      );
-    }
-  }
-
-  function editRow(id: number, changes: Partial<AnnotationView>) {
-    setAnnotations((current) =>
-      current.map((row) => (row.id === id ? { ...row, ...changes } : row)),
-    );
-  }
-
-  function persistRow(row: AnnotationView) {
-    api
-      .updateAnnotation(imageId, row.id, {
-        product: row.product,
-        step: row.step,
-        measurement_name: row.measurement_name,
-      })
-      .then((updated) =>
-        setAnnotations((current) =>
-          current.map((item) => (item.id === updated.id ? updated : item)),
-        ),
-      )
-      .catch((caught) =>
-        setAnnotationError(
-          caught instanceof ApiError ? caught.message : "입력값을 저장하지 못했습니다.",
-        ),
-      );
-  }
-
   async function save() {
     if (draft.length !== 2 || saving) return;
     setSaving(true); setError(null); setStatus(null);
@@ -258,39 +145,40 @@ export function MeasurementPage() {
         parameter_type: parameter,
         start: draft[0],
         end: draft[1],
+        label: label.trim() || null,
         note: note.trim() || null,
       });
       setDetail((current) => current && ({
         ...current,
         measurements: [created, ...current.measurements],
       }));
-      setSelectedId(created.id); setDraft([]); setNote("");
-      setStatus(`${created.parameter_type} ${created.value_nm.toFixed(2)}nm 측정을 저장했습니다.`);
+      setSelectedId(created.id); setDraft([]); setLabel(""); setNote("");
+      setStatus(`${created.label ?? created.parameter_type} ${created.value_nm.toFixed(2)}nm 측정을 저장했습니다.`);
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : "측정을 저장하지 못했습니다.");
     } finally { setSaving(false); }
   }
 
-  async function saveNote(measurementId: number) {
-    if (savingNote) return;
-    setSavingNote(true); setError(null); setStatus(null);
+  /** Save the annotation of one measurement: what it is, and what was seen. */
+  async function saveAnnotation(measurementId: number) {
+    if (savingEdit) return;
+    setSavingEdit(true); setError(null); setStatus(null);
     try {
-      const updated = await api.updateMeasurementNote(
-        imageId,
-        measurementId,
-        noteDraft.trim() || null,
-      );
+      const updated = await api.updateMeasurementAnnotation(imageId, measurementId, {
+        label: edit.label.trim() || null,
+        note: edit.note.trim() || null,
+      });
       setDetail((current) => current && ({
         ...current,
         measurements: current.measurements.map((item) =>
           item.id === updated.id ? updated : item,
         ),
       }));
-      setNoteEditId(null);
-      setStatus("메모를 수정했습니다.");
+      setEditId(null);
+      setStatus("측정 라벨과 메모를 수정했습니다.");
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : "메모를 수정하지 못했습니다.");
-    } finally { setSavingNote(false); }
+      setError(caught instanceof ApiError ? caught.message : "라벨과 메모를 수정하지 못했습니다.");
+    } finally { setSavingEdit(false); }
   }
 
   /**
@@ -333,19 +221,11 @@ export function MeasurementPage() {
         label: "측정 삭제",
       };
     }
-    if (target.kind === "annotation") {
-      return {
-        title: `${target.index}번 도형을 삭제할까요?`,
-        body: "되돌릴 수 없습니다. 도형은 참고 라벨이므로 저장된 측정값과 원본 이미지에는 영향이 없습니다.",
-        label: "도형 삭제",
-      };
-    }
     const measurements = detail?.measurements.length ?? 0;
-    const shapes = annotations.length;
     return {
       title: "이 이미지를 삭제할까요?",
-      body: measurements + shapes > 0
-        ? `저장된 측정 ${measurements}개와 도형 ${shapes}개가 함께 삭제됩니다. 되돌릴 수 없습니다.`
+      body: measurements > 0
+        ? `저장된 측정 ${measurements}개가 함께 삭제됩니다. 되돌릴 수 없습니다.`
         : "되돌릴 수 없습니다.",
       label: "이미지 삭제",
     };
@@ -353,7 +233,7 @@ export function MeasurementPage() {
 
   async function runDelete() {
     if (!pending || deleting) return;
-    setDeleting(true); setError(null); setAnnotationError(null); setStatus(null);
+    setDeleting(true); setError(null); setStatus(null);
     try {
       if (pending.kind === "measurement") {
         await api.deleteMeasurement(imageId, pending.id);
@@ -363,11 +243,6 @@ export function MeasurementPage() {
         }));
         setSelectedId((current) => (current === pending.id ? null : current));
         setStatus("측정을 삭제했습니다.");
-      } else if (pending.kind === "annotation") {
-        await api.deleteAnnotation(imageId, pending.id);
-        setAnnotations((current) => current.filter((item) => item.id !== pending.id));
-        setActiveAnnotationId((current) => (current === pending.id ? null : current));
-        setStatus("도형을 삭제했습니다.");
       } else {
         await api.deleteImage(imageId);
         navigate("/images");
@@ -375,9 +250,7 @@ export function MeasurementPage() {
       }
       setPending(null);
     } catch (caught) {
-      const message = caught instanceof ApiError ? caught.message : "삭제하지 못했습니다.";
-      if (pending.kind === "annotation") setAnnotationError(message);
-      else setError(message);
+      setError(caught instanceof ApiError ? caught.message : "삭제하지 못했습니다.");
       setPending(null);
     } finally { setDeleting(false); }
   }
@@ -404,15 +277,12 @@ export function MeasurementPage() {
   return (
     <main>
       <Link to="/images">← 목록으로</Link>
-      <div className="page-heading"><div><p className="eyebrow">{detail.image_type} 측정·라벨링</p><h1>{detail.original_filename}</h1></div><div className="heading-actions"><p>{detail.product_id} · {detail.lot_id} · {detail.wafer_id}</p><button type="button" className="heading-delete" data-testid="detail-image-delete" onClick={() => setPending({ kind: "image" })}>이미지 삭제</button></div></div>
+      <div className="page-heading"><div><p className="eyebrow">{detail.image_type} 측정</p><h1>{detail.original_filename}</h1></div><div className="heading-actions"><p>{detail.product_id} · {detail.lot_id} · {detail.wafer_id}{detail.process_step ? ` · ${detail.process_step}` : ""}</p><button type="button" className="heading-delete" data-testid="detail-image-delete" onClick={() => setPending({ kind: "image" })}>이미지 삭제</button></div></div>
       <StatusBanner message={status} />
       <div className="measurement-layout">
-        <section className="viewer-panel" aria-label="측정·라벨링 이미지">
+        <section className="viewer-panel" aria-label="측정 이미지">
           <div className="editor-column">
-            <div className="annotation-toolbar" role="toolbar" aria-label="도형 도구와 배율">
-              <button type="button" className={tool === "arrow" ? "tool-button active" : "tool-button"} aria-pressed={tool === "arrow"} aria-label="화살표 그리기 도구" data-testid="tool-arrow" onClick={() => setTool((current) => (current === "arrow" ? null : "arrow"))}>↗ 화살표</button>
-              <button type="button" className={tool === "circle" ? "tool-button active" : "tool-button"} aria-pressed={tool === "circle"} aria-label="원 그리기 도구" data-testid="tool-circle" onClick={() => setTool((current) => (current === "circle" ? null : "circle"))}>○ 원</button>
-              <span className="toolbar-gap" />
+            <div className="viewer-toolbar" role="toolbar" aria-label="배율">
               <button type="button" className="tool-button" aria-label="축소" data-testid="zoom-out" disabled={zoomIndex <= 0} onClick={() => changeZoom(-1)}>−</button>
               <span className="zoom-value" data-testid="zoom-level">{Math.round(zoom * 100)}%</span>
               <button type="button" className="tool-button" aria-label="확대" data-testid="zoom-in" disabled={zoomIndex >= ZOOM_STEPS.length - 1} onClick={() => changeZoom(1)}>+</button>
@@ -422,7 +292,6 @@ export function MeasurementPage() {
               <div className="image-stage" style={displayWidth > 0 ? { width: displayWidth } : undefined}>
                 <img ref={imageRef} src={detail.file_url} alt={detail.original_filename} onClick={selectPoint} style={displayWidth > 0 ? { width: displayWidth } : undefined} onLoad={() => { const rect = imageRef.current?.getBoundingClientRect(); if (rect) setRendered({ width: rect.width, height: rect.height }); }} data-testid="measurement-image" />
                 {rendered.width > 0 && <MeasurementOverlay width={rendered.width} height={rendered.height} original={{ width: detail.pixel_width, height: detail.pixel_height }} measurements={detail.measurements} selectedId={selectedId} draft={draft} />}
-                {rendered.width > 0 && <AnnotationLayer width={rendered.width} height={rendered.height} original={{ width: detail.pixel_width, height: detail.pixel_height }} annotations={annotations} draft={draftShape} interactive={tool !== null} selectedId={activeAnnotationId} onSelect={setActiveAnnotationId} onPointerDown={startDraw} onPointerMove={moveDraw} onPointerUp={endDraw} />}
               </div>
             </div>
             <p className="viewer-scale" data-testid="viewer-scale">
@@ -444,35 +313,9 @@ export function MeasurementPage() {
             <dl data-testid="image-facts">
               <div><dt>보정값</dt><dd>{detail.calibration_nm_per_pixel} nm/pixel</dd></div>
               <div><dt>원본 크기</dt><dd>{detail.pixel_width} × {detail.pixel_height} px</dd></div>
+              {detail.process_step && <div><dt>공정 Step</dt><dd data-testid="image-process-step">{detail.process_step}</dd></div>}
               <div><dt>등록</dt><dd>{new Date(detail.created_at).toLocaleString()}</dd></div>
             </dl>
-          </section>
-          <section className="annotation-panel" aria-label="도형별 측정 항목">
-            <h2>도형 라벨링</h2>
-            {annotationError && <p role="alert">{annotationError}</p>}
-            {annotations.length === 0 ? (
-              <p data-testid="annotation-empty">화살표 또는 원을 그리면 도형마다 표에 행이 하나씩 추가됩니다.</p>
-            ) : (
-              <table className="annotation-table">
-                <thead><tr><th scope="col">#</th><th scope="col">제품</th><th scope="col">Step</th><th scope="col">측정 항목 명</th><th scope="col"><span className="visually-hidden">삭제</span></th></tr></thead>
-                <tbody>
-                  {annotations.map((row, index) => (
-                    <tr key={row.id} data-testid="annotation-row" className={row.id === activeAnnotationId ? "active" : ""} onFocus={() => setActiveAnnotationId(row.id)} onClick={() => setActiveAnnotationId(row.id)}>
-                      <td className="annotation-index">{index + 1}</td>
-                      <td>
-                        <select aria-label={`도형 ${index + 1} 제품`} data-testid="annotation-product" value={row.product ?? ""} onChange={(event) => { const product = (event.target.value || null) as ProductType | null; editRow(row.id, { product }); persistRow({ ...row, product }); }}>
-                          <option value="">선택</option>
-                          {PRODUCTS.map((product) => <option key={product} value={product}>{product}</option>)}
-                        </select>
-                      </td>
-                      <td><input aria-label={`도형 ${index + 1} Step`} data-testid="annotation-step" value={row.step} onChange={(event) => editRow(row.id, { step: event.target.value })} onBlur={() => persistRow(row)} /></td>
-                      <td><input aria-label={`도형 ${index + 1} 측정 항목 명`} data-testid="annotation-name" value={row.measurement_name} onChange={(event) => editRow(row.id, { measurement_name: event.target.value })} onBlur={() => persistRow(row)} /></td>
-                      <td><button type="button" className="delete-annotation" data-testid="delete-annotation" aria-label={`도형 ${index + 1} 삭제`} onClick={() => setPending({ kind: "annotation", id: row.id, index: index + 1 })}>삭제</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
           </section>
           <label>측정 항목<select value={parameter} onChange={(event) => setParameter(event.target.value as ParameterType)} data-testid="measurement-parameter"><option>CD</option><option>Depth</option><option>Thickness</option></select></label>
           <p>선택한 점: {draft.length}/2</p>
@@ -492,29 +335,36 @@ export function MeasurementPage() {
             <button type="button" data-testid="coord-apply" onClick={applyCoordinates}>좌표로 지정</button>
           </details>
           {preview !== null && <p data-testid="measurement-preview">{preview.toFixed(2)}px · {(preview * detail.calibration_nm_per_pixel).toFixed(2)}nm</p>}
+          {/* The label names what the line measures and is drawn beside it on
+              the image; the note is the free observation about the same line. */}
+          <label>측정 항목 명<input value={label} maxLength={255} placeholder="예: Gate CD" onChange={(event) => setLabel(event.target.value)} data-testid="measurement-label-input" /></label>
           <label>메모<textarea value={note} onChange={(event) => setNote(event.target.value)} /></label>
           {error && <p role="alert">{error}</p>}
           <div className="actions"><button type="button" onClick={() => setDraft([])} data-testid="measurement-reset">초기화</button><button type="button" onClick={save} disabled={draft.length !== 2 || saving} data-testid="measurement-save">{saving ? "저장 중…" : "측정 저장"}</button></div>
           <h2>저장된 측정</h2>
           {detail.measurements.length === 0 ? <p>저장된 측정이 없습니다. 이미지 위에서 두 점을 선택해 첫 측정을 저장하세요.</p> : <ul className="measurement-list">{detail.measurements.map((item: MeasurementView) => (
             <li key={item.id} className="measurement-row">
-              <button type="button" className={selectedId === item.id ? "selected" : ""} onClick={() => setSelectedId(item.id)} data-testid="saved-measurement-item"><strong>{item.parameter_type} · {item.value_nm.toFixed(2)}nm</strong><span>{item.distance_px.toFixed(2)}px · {new Date(item.created_at).toLocaleString()}</span>{item.note && <span>{item.note}</span>}</button>
+              <button type="button" className={selectedId === item.id ? "selected" : ""} onClick={() => setSelectedId(item.id)} data-testid="saved-measurement-item"><strong>{item.label ? `${item.label} · ` : ""}{item.parameter_type} · {item.value_nm.toFixed(2)}nm</strong><span>{item.distance_px.toFixed(2)}px · {new Date(item.created_at).toLocaleString()}</span>{item.note && <span>{item.note}</span>}</button>
               <div className="measurement-row-actions">
-                <button type="button" className="edit-note" onClick={() => { setNoteEditId(item.id); setNoteDraft(item.note ?? ""); }} data-testid="edit-note" aria-label={`${item.parameter_type} 측정 메모 수정`}>메모</button>
-                <button type="button" className="delete-measurement" onClick={() => setPending({ kind: "measurement", id: item.id })} data-testid="delete-measurement" aria-label={`${item.parameter_type} 측정 삭제`}>삭제</button>
+                <button type="button" className="edit-note" onClick={() => { setEditId(item.id); setEdit({ label: item.label ?? "", note: item.note ?? "" }); }} data-testid="edit-annotation" aria-label={`${item.label ?? item.parameter_type} 측정 라벨과 메모 수정`}>라벨·메모</button>
+                <button type="button" className="delete-measurement" onClick={() => setPending({ kind: "measurement", id: item.id })} data-testid="delete-measurement" aria-label={`${item.label ?? item.parameter_type} 측정 삭제`}>삭제</button>
               </div>
-              {noteEditId === item.id && (
+              {editId === item.id && (
                 <div className="note-editor">
-                  {/* Only the note is editable: coordinates, parameter, value and
-                      calibration stay as measured (RES-007). */}
+                  {/* Only the annotation is editable: coordinates, parameter,
+                      value and calibration stay as measured (RES-007). */}
                   <label>
-                    메모 수정
-                    <textarea value={noteDraft} autoFocus onChange={(event) => setNoteDraft(event.target.value)} data-testid="note-input" />
+                    측정 항목 명
+                    <input value={edit.label} maxLength={255} autoFocus onChange={(event) => setEdit((current) => ({ ...current, label: event.target.value }))} data-testid="label-input" />
+                  </label>
+                  <label>
+                    메모
+                    <textarea value={edit.note} onChange={(event) => setEdit((current) => ({ ...current, note: event.target.value }))} data-testid="note-input" />
                   </label>
                   <p className="note-hint">좌표·항목·값·보정값은 측정한 그대로 유지됩니다.</p>
                   <div className="actions">
-                    <button type="button" onClick={() => setNoteEditId(null)} data-testid="note-cancel">취소</button>
-                    <button type="button" onClick={() => saveNote(item.id)} disabled={savingNote} data-testid="note-save">{savingNote ? "저장 중…" : "메모 저장"}</button>
+                    <button type="button" onClick={() => setEditId(null)} data-testid="note-cancel">취소</button>
+                    <button type="button" onClick={() => saveAnnotation(item.id)} disabled={savingEdit} data-testid="note-save">{savingEdit ? "저장 중…" : "라벨·메모 저장"}</button>
                   </div>
                 </div>
               )}
@@ -522,7 +372,7 @@ export function MeasurementPage() {
           ))}</ul>}
           <section className="export-panel" aria-labelledby="context-export-heading">
             <h2 id="context-export-heading">Context Export</h2>
-            <p>포함: Product ID, Lot ID, Wafer ID, 원본 파일명, 저장된 측정과 메모, 저장된 도형과 도형 라벨</p>
+            <p>포함: Product ID, Lot ID, Wafer ID, 공정 Step, 원본 파일명, 저장된 측정과 측정별 라벨·메모</p>
             <p>제외: 이미지 바이너리</p>
             <p>다운로드한 ZIP은 사용자가 외부 AI 도구에 수동으로 전달합니다. NANoDB가 자동으로 외부에 전송하지 않습니다.</p>
             {detail.measurements.length === 0 && <p data-testid="context-export-disabled-reason">저장된 측정이 하나 이상 있어야 내보낼 수 있습니다.</p>}

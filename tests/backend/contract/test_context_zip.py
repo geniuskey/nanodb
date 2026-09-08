@@ -9,15 +9,12 @@ from zipfile import ZipFile
 import pytest
 from nanodb.domain.calculations import build_expected_summary
 from nanodb.domain.entities import (
-    Annotation,
     ExportSnapshot,
     Image,
     ImageType,
     Measurement,
     ParameterType,
     Point,
-    ProductType,
-    ShapeKind,
 )
 from nanodb.services.export_builder import ENTRY_NAMES, build_context_zip
 
@@ -34,6 +31,7 @@ def snapshot() -> ExportSnapshot:
         product_id="PRODUCT-01",
         lot_id="LOT-01",
         wafer_id="WAFER-01",
+        process_step="식각 & 세정",
         calibration_nm_per_pixel=0.2,
         pixel_width=1000,
         pixel_height=800,
@@ -49,30 +47,17 @@ def snapshot() -> ExportSnapshot:
             distance_px=500,
             calibration_nm_per_pixel=0.2,
             value_nm=100,
+            label="홀 <경계>",
             note="한글 메모 <>&",
             created_at=NOW,
         ),
     )
-    annotations = (
-        Annotation(
-            id=3,
-            image_id=7,
-            kind=ShapeKind.CIRCLE,
-            start=Point(200, 200),
-            end=Point(260, 200),
-            product=ProductType.SENSOR,
-            step="식각 & 세정",
-            measurement_name="홀 <경계>",
-            created_at=NOW,
-        ),
-    )
     return ExportSnapshot(
-        schema_version="1.1",
+        schema_version="2.0",
         exported_at=NOW,
         image=image,
         measurements=measurements,
         expected_summary=build_expected_summary(measurements),
-        annotations=annotations,
     )
 
 
@@ -104,38 +89,51 @@ def test_same_snapshot_produces_identical_zip_bytes(snapshot: ExportSnapshot) ->
     assert build_context_zip(snapshot) == build_context_zip(snapshot)
 
 
-def test_annotations_travel_with_their_labels_and_stay_out_of_the_summary(
+def test_annotation_travels_with_the_measurement_it_describes(
     snapshot: ExportSnapshot,
 ) -> None:
     entries = read_archive(build_context_zip(snapshot))
     data = json.loads(entries["data.json"])
+
+    measurement = data["measurements"][0]
+    # Korean text and special characters survive the JSON round trip.
+    assert measurement["label"] == "홀 <경계>"
+    assert measurement["note"] == "한글 메모 <>&"
+    assert data["image"]["process_step"] == "식각 & 세정"
+
+    # The consuming AI is told what the two free-text fields mean, so it can no
+    # longer be instructed to ignore them.
+    assert "label names what was measured" in entries["context.md"]
+    assert "ignore" not in entries["task.md"]
+    assert "not by the free-text label" in entries["task.md"]
+
+
+def test_annotation_is_a_caption_and_never_reaches_the_summary(
+    snapshot: ExportSnapshot,
+) -> None:
+    entries = read_archive(build_context_zip(snapshot))
     checks = json.loads(entries["checks.json"])
 
-    shape = data["annotations"][0]
-    assert shape["kind"] == "circle"
-    assert (shape["start_x"], shape["start_y"]) == (200, 200)
-    assert (shape["end_x"], shape["end_y"]) == (260, 200)
-    assert shape["product"] == "Sensor"
-    # Korean text and special characters survive the JSON round trip.
-    assert shape["step"] == "식각 & 세정"
-    assert shape["measurement_name"] == "홀 <경계>"
-
-    # A shape is a label, not a measured value: it must not reach the summary
-    # the generated code is asked to reproduce.
+    # Grouping is by parameter_type; the label is a caption, not a category.
     assert checks["expected_summary"] == [
         {"parameter_type": "CD", "count": 1, "mean_nm": 100.0}
     ]
-    assert "annotations" not in entries["checks.json"]
-    assert "must not be counted in any measurement summary" in entries["context.md"]
-    assert "ignore annotations" in entries["task.md"]
+    assert "label" not in entries["checks.json"]
+    assert "process_step" not in entries["checks.json"]
 
 
-def test_export_without_shapes_carries_an_empty_annotation_list(
+def test_unannotated_measurement_exports_null_rather_than_an_invented_name(
     snapshot: ExportSnapshot,
 ) -> None:
-    bare = replace(snapshot, annotations=())
+    bare = replace(
+        snapshot,
+        image=replace(snapshot.image, process_step=None),
+        measurements=(replace(snapshot.measurements[0], label=None, note=None),),
+    )
 
     data = json.loads(read_archive(build_context_zip(bare))["data.json"])
 
-    # The key is always present, so a consumer never has to branch on absence.
-    assert data["annotations"] == []
+    # The keys are always present, so a consumer never has to branch on absence.
+    assert data["measurements"][0]["label"] is None
+    assert data["measurements"][0]["note"] is None
+    assert data["image"]["process_step"] is None

@@ -10,21 +10,14 @@ from sqlalchemy.orm import Session
 
 from nanodb.domain.calculations import MeasurementCalculation
 from nanodb.domain.entities import (
-    Annotation,
     Image,
     ImageType,
     Measurement,
     ParameterStat,
     ParameterType,
     Point,
-    ProductType,
-    ShapeKind,
 )
-from nanodb.persistence.models import (
-    AnnotationModel,
-    ImageModel,
-    MeasurementModel,
-)
+from nanodb.persistence.models import ImageModel, MeasurementModel
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +36,7 @@ def _to_image(model: ImageModel) -> Image:
         product_id=model.product_id,
         lot_id=model.lot_id,
         wafer_id=model.wafer_id,
+        process_step=model.process_step,
         calibration_nm_per_pixel=model.calibration_nm_per_pixel,
         pixel_width=model.pixel_width,
         pixel_height=model.pixel_height,
@@ -60,21 +54,8 @@ def _to_measurement(model: MeasurementModel) -> Measurement:
         distance_px=model.distance_px,
         calibration_nm_per_pixel=model.calibration_nm_per_pixel,
         value_nm=model.value_nm,
+        label=model.label,
         note=model.note,
-        created_at=model.created_at,
-    )
-
-
-def _to_annotation(model: AnnotationModel) -> Annotation:
-    return Annotation(
-        id=model.id,
-        image_id=model.image_id,
-        kind=ShapeKind(model.kind),
-        start=Point(model.start_x, model.start_y),
-        end=Point(model.end_x, model.end_y),
-        product=ProductType(model.product) if model.product else None,
-        step=model.step,
-        measurement_name=model.measurement_name,
         created_at=model.created_at,
     )
 
@@ -96,6 +77,7 @@ class ImageRepository:
         pixel_width: int,
         pixel_height: int,
         display_filename: str | None = None,
+        process_step: str | None = None,
     ) -> Image:
         model = ImageModel(
             original_filename=original_filename,
@@ -105,6 +87,7 @@ class ImageRepository:
             product_id=product_id,
             lot_id=lot_id,
             wafer_id=wafer_id,
+            process_step=process_step,
             calibration_nm_per_pixel=calibration_nm_per_pixel,
             pixel_width=pixel_width,
             pixel_height=pixel_height,
@@ -139,8 +122,9 @@ class ImageRepository:
         """List images newest-first, optionally filtered.
 
         ``query`` is a case-insensitive partial match against original filename,
-        product, lot and wafer. ``image_type`` narrows to SEM or TEM. A blank
-        query matches everything so the catalog stays visible while typing.
+        product, lot, wafer and process step. ``image_type`` narrows to SEM or
+        TEM. A blank query matches everything so the catalog stays visible
+        while typing.
         """
         statement: Select[tuple[ImageModel, int]] = (
             select(ImageModel, func.count(MeasurementModel.id))
@@ -158,6 +142,7 @@ class ImageRepository:
                     ImageModel.product_id.ilike(pattern),
                     ImageModel.lot_id.ilike(pattern),
                     ImageModel.wafer_id.ilike(pattern),
+                    ImageModel.process_step.ilike(pattern),
                 )
             )
         return tuple(
@@ -179,6 +164,7 @@ class MeasurementRepository:
         end: Point,
         calculation: MeasurementCalculation,
         calibration_nm_per_pixel: float,
+        label: str | None,
         note: str | None,
     ) -> Measurement:
         model = MeasurementModel(
@@ -191,6 +177,7 @@ class MeasurementRepository:
             distance_px=calculation.distance_px,
             calibration_nm_per_pixel=calibration_nm_per_pixel,
             value_nm=calculation.value_nm,
+            label=label,
             note=note,
         )
         self._session.add(model)
@@ -253,23 +240,27 @@ class MeasurementRepository:
             _to_measurement(model) for model in self._session.scalars(statement)
         )
 
-    def update_note(
+    def update_annotation(
         self,
         image_id: int,
         measurement_id: int,
+        *,
+        label: str | None,
         note: str | None,
     ) -> Measurement | None:
-        """Update only a measurement's note.
+        """Replace a measurement's annotation (its label and note).
 
         The evidence a measurement rests on -- its coordinates, parameter,
-        distance, calibration and value -- is immutable, so only the note is
-        writable. Returns ``None`` when the measurement is missing or belongs
-        to a different image, so callers cannot edit across images by guessing
-        ids.
+        distance, calibration and value -- is immutable, so only the two
+        descriptive fields are writable. Both are replaced together because
+        the editor always submits both. Returns ``None`` when the measurement
+        is missing or belongs to a different image, so callers cannot edit
+        across images by guessing ids.
         """
         model = self._session.get(MeasurementModel, measurement_id)
         if model is None or model.image_id != image_id:
             return None
+        model.label = label
         model.note = note
         self._session.flush()
         self._session.refresh(model)
@@ -302,99 +293,6 @@ class MeasurementRepository:
     def delete_all(self) -> None:
         for model in self._session.scalars(select(MeasurementModel)):
             self._session.delete(model)
-
-
-class AnnotationRepository:
-    def __init__(self, session: Session) -> None:
-        self._session = session
-
-    def create(
-        self,
-        *,
-        image_id: int,
-        kind: ShapeKind,
-        start: Point,
-        end: Point,
-        product: ProductType | None,
-        step: str,
-        measurement_name: str,
-    ) -> Annotation:
-        model = AnnotationModel(
-            image_id=image_id,
-            kind=kind.value,
-            start_x=start.x,
-            start_y=start.y,
-            end_x=end.x,
-            end_y=end.y,
-            product=product.value if product else None,
-            step=step,
-            measurement_name=measurement_name,
-        )
-        self._session.add(model)
-        self._session.flush()
-        self._session.refresh(model)
-        return _to_annotation(model)
-
-    def update_fields(
-        self,
-        image_id: int,
-        annotation_id: int,
-        *,
-        product: ProductType | None,
-        step: str,
-        measurement_name: str,
-    ) -> Annotation | None:
-        """Update only the editable label fields of one annotation.
-
-        Geometry is immutable (no move/resize). Returns ``None`` when the
-        annotation is missing or belongs to a different image, so callers
-        cannot edit across images by guessing ids.
-        """
-        model = self._session.get(AnnotationModel, annotation_id)
-        if model is None or model.image_id != image_id:
-            return None
-        model.product = product.value if product else None
-        model.step = step
-        model.measurement_name = measurement_name
-        self._session.flush()
-        self._session.refresh(model)
-        return _to_annotation(model)
-
-    def list_by_image(self, image_id: int) -> tuple[Annotation, ...]:
-        """List an image's annotations oldest-first so their display numbers
-        stay stable as new shapes are appended."""
-        statement = (
-            select(AnnotationModel)
-            .where(AnnotationModel.image_id == image_id)
-            .order_by(AnnotationModel.created_at.asc(), AnnotationModel.id.asc())
-        )
-        return tuple(
-            _to_annotation(model) for model in self._session.scalars(statement)
-        )
-
-    def delete(self, image_id: int, annotation_id: int) -> bool:
-        """Delete a single annotation scoped to its image.
-
-        Returns ``True`` when a matching annotation was removed. An annotation
-        that belongs to a different image is treated as not found so callers
-        cannot delete across images by guessing ids.
-        """
-        model = self._session.get(AnnotationModel, annotation_id)
-        if model is None or model.image_id != image_id:
-            return False
-        self._session.delete(model)
-        return True
-
-    def delete_by_image(self, image_id: int) -> int:
-        """Delete every annotation for an image; returns how many were removed."""
-        count = 0
-        statement = select(AnnotationModel).where(
-            AnnotationModel.image_id == image_id
-        )
-        for model in self._session.scalars(statement):
-            self._session.delete(model)
-            count += 1
-        return count
 
 
 def database_clock(session: Session) -> datetime:

@@ -44,8 +44,7 @@ def db_session(
     with engine.begin() as connection:
         connection.execute(
             text(
-                "TRUNCATE TABLE annotations, measurements, images "
-                "RESTART IDENTITY CASCADE"
+                "TRUNCATE TABLE measurements, images RESTART IDENTITY CASCADE"
             )
         )
     with factory() as session:

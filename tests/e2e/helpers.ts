@@ -16,6 +16,7 @@ export async function registerSampleImage(page: Page): Promise<string> {
   await page.getByTestId("registration-product").fill("DEMO-PRODUCT");
   await page.locator('input[name="lot_id"]').fill("LOT-1");
   await page.locator('input[name="wafer_id"]').fill("WAFER-1");
+  await page.getByTestId("registration-process-step").fill("Gate Etch");
   await page.locator('input[name="calibration_nm_per_pixel"]').fill("0.5");
   await page.getByTestId("registration-submit").click();
 

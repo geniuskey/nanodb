@@ -7,14 +7,17 @@ import { ImageRegisterPage } from "./ImageRegisterPage";
 
 afterEach(() => vi.unstubAllGlobals());
 
-async function fillValidForm() {
+function field(name: string) {
+  return document.querySelector<HTMLInputElement>(`[name="${name}"]`)!;
+}
+
+async function fillValidForm(calibration = "0.2") {
   const user = userEvent.setup();
   await user.upload(screen.getByTestId("registration-file"), new File(["png"], "sample.png", { type: "image/png" }));
   await user.type(screen.getByTestId("registration-product"), "P1");
-  const inputs = screen.getAllByRole("textbox");
-  await user.type(inputs[1], "L1");
-  await user.type(inputs[2], "W1");
-  await user.type(inputs[3], "0.2");
+  await user.type(field("lot_id"), "L1");
+  await user.type(field("wafer_id"), "W1");
+  await user.type(field("calibration_nm_per_pixel"), calibration);
   return user;
 }
 
@@ -52,13 +55,7 @@ describe("ImageRegisterPage", () => {
   it("rejects a non-positive calibration next to that field", async () => {
     const fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock);
     renderWithRouter(<ImageRegisterPage />);
-    const user = userEvent.setup();
-    await user.upload(screen.getByTestId("registration-file"), new File(["png"], "s.png", { type: "image/png" }));
-    await user.type(screen.getByTestId("registration-product"), "P1");
-    const inputs = screen.getAllByRole("textbox");
-    await user.type(inputs[1], "L1");
-    await user.type(inputs[2], "W1");
-    await user.type(inputs[3], "0");
+    const user = await fillValidForm("0");
 
     await user.click(screen.getByTestId("registration-submit"));
 
@@ -79,6 +76,34 @@ describe("ImageRegisterPage", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     resolveRequest(jsonResponse({ id: 5 }));
     await waitFor(() => expect(screen.getByTestId("registration-submit")).not.toBeDisabled());
+  });
+
+  it("sends the optional process step with the image", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ id: 5 }, 201));
+    vi.stubGlobal("fetch", fetchMock);
+    renderWithRouter(<ImageRegisterPage />);
+    const user = await fillValidForm();
+    await user.type(screen.getByTestId("registration-process-step"), "Gate Etch");
+    await user.click(screen.getByTestId("registration-submit"));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const body = fetchMock.mock.calls[0][1].body as FormData;
+    // One step for the whole image: the operator picks it once at registration
+    // instead of retyping it on every figure drawn later.
+    expect(body.get("process_step")).toBe("Gate Etch");
+  });
+
+  it("registers without a process step because the field is optional", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ id: 5 }, 201));
+    vi.stubGlobal("fetch", fetchMock);
+    renderWithRouter(<ImageRegisterPage />);
+    const user = await fillValidForm();
+    await user.click(screen.getByTestId("registration-submit"));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(screen.queryByTestId("error-process_step")).not.toBeInTheDocument();
+    const body = fetchMock.mock.calls[0][1].body as FormData;
+    expect(body.get("process_step")).toBe("");
   });
 
   it("keeps entered values when the server rejects registration", async () => {

@@ -6,13 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat
 
-from nanodb.domain.entities import (
-    ImageType,
-    ParameterType,
-    ProductType,
-    ReferenceStatus,
-    ShapeKind,
-)
+from nanodb.domain.entities import ImageType, ParameterType, ReferenceStatus
 
 
 class ErrorDetail(BaseModel):
@@ -34,12 +28,19 @@ class MeasurementInputSchema(BaseModel):
     parameter_type: ParameterType
     start: PointInput
     end: PointInput
+    label: str | None = Field(default=None, max_length=255)
     note: str | None = Field(default=None, max_length=4000)
 
 
-class MeasurementNoteSchema(BaseModel):
-    """Only the note is editable; the measurement's evidence is immutable."""
+class MeasurementAnnotationSchema(BaseModel):
+    """The annotation of a measurement: what it is, and what was observed.
 
+    Only these two fields are editable; the measurement's evidence is
+    immutable. Both are replaced together, so a request always states the
+    full annotation rather than patching one half of it.
+    """
+
+    label: str | None = Field(default=None, max_length=255)
     note: str | None = Field(default=None, max_length=4000)
 
 
@@ -56,38 +57,10 @@ class MeasurementView(BaseModel):
     distance_px: float
     calibration_nm_per_pixel: float
     value_nm: float
+    label: str | None
     note: str | None
     measurement_method: str
     reference_status: ReferenceStatus
-    created_at: datetime
-
-
-class AnnotationInputSchema(BaseModel):
-    kind: ShapeKind
-    start: PointInput
-    end: PointInput
-    product: ProductType | None = None
-    step: str = Field(default="", max_length=255)
-    measurement_name: str = Field(default="", max_length=255)
-
-
-class AnnotationUpdateSchema(BaseModel):
-    product: ProductType | None = None
-    step: str = Field(default="", max_length=255)
-    measurement_name: str = Field(default="", max_length=255)
-
-
-class AnnotationView(BaseModel):
-    id: int
-    image_id: int
-    kind: ShapeKind
-    start_x: float
-    start_y: float
-    end_x: float
-    end_y: float
-    product: ProductType | None
-    step: str
-    measurement_name: str
     created_at: datetime
 
 
@@ -98,6 +71,7 @@ class ImageView(BaseModel):
     product_id: str
     lot_id: str
     wafer_id: str
+    process_step: str | None
     calibration_nm_per_pixel: float
     pixel_width: int
     pixel_height: int
@@ -111,7 +85,6 @@ class ImageListView(ImageView):
 
 class ImageDetailView(ImageView):
     measurements: list[MeasurementView]
-    annotations: list[AnnotationView] = Field(default_factory=list)
 
 
 class ParameterSummaryView(BaseModel):

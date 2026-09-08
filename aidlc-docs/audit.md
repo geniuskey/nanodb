@@ -1806,3 +1806,35 @@ UIX-009: 목록과 홈 KPI의 첫 조회에 결과와 같은 모양의 자리 �
 **Context**: CONSTRUCTION - Build and Test: container stack verified, US-07 both arms executed and recorded
 
 ---
+
+## Requirement Review Request (TEM Measurement / Labeling)
+**Timestamp**: 2026-09-08T00:00:00Z
+**User Input**: "tem 측정/라벨링 관련 요구사항이 너무 문제가 많아. 최악이야. 선분과 원이라니. 길이 측정에 곡률을 측정하는데, 말이 안돼. 그리고 도형 라벨링을 하나의 이미지에 하는데 화살표 or 원 요소마다 제품을 선택하는 것은 말이 안돼. 이건 진심 요구사항부터 완전히 잘못된 것이야. 그동안의 요구사항 중에 모든 해당 페이지 생성에 있어 모든 요구사항들을 의심해. 전체 플랫폼에서 도움되지 않는 요소들은 과감히 제거하고, 무엇을 버리고 개선해야할지 리뷰해줘."
+**AI Response**: "요구사항·코드·문서를 교차 검증해 네 가지 검증 가능한 결함을 보고했다. (1) export_builder.py의 task.md가 생성 코드에 annotations를 무시하라고 지시하므로, P1 도형 라벨링이 만든 데이터를 P0 핵심 기능인 컨텍스트 내보내기가 그대로 버린다. (2) 원 도형이 중심+가장자리(반지름)를 저장하는데 constraints.md 4절은 반경·곡률 계산을 금지 범위로 명시한다. 길이만 재는 도구가 곡률 도형을 그리게 한 것이다. (3) ProductType(DRAM/Flash/Logic/Sensor)이 models.py CHECK와 MeasurementPage.tsx에만 존재하고 어떤 요구사항 문서에도 없으며, 자유 문자열인 image.product_id와 충돌한다. (4) 근본 원인은 requirements/nanodb-mvp-requirements.md:81에 스스로 적혀 있다. ANN 절은 이미 있던 코드에서 역으로 채워 넣은 것이라 코드가 요구사항과 대조된 적이 없다. 함께 제거를 권고한 항목: 누를 수 없는 P2 로드맵 탭 6개, 홈의 '왜 지금인가' 공개 통계 섹션, 클릭되지 않는 최근 이미지 카드, 외부 임베드 소개 영상."
+**Context**: INCEPTION - Requirements Analysis: adversarial review of shipped requirements
+
+---
+
+## Improvement Approval
+**Timestamp**: 2026-09-08T00:00:00Z
+**User Input**: "개선해줘."
+**AI Response**: "권고안대로 개선을 시작했다. Annotation 엔티티 전면 삭제를 포함한 계획으로 착수."
+**Context**: CONSTRUCTION - Code Generation: approved to execute the review recommendations
+
+---
+
+## Course Correction: Annotation Must Survive
+**Timestamp**: 2026-09-08T00:00:00Z
+**User Input**: "잠깐 4번 Annotation 은 필요한 요소야. 측정과 그거이 무엇인지 annotating 필요해. 그것 빼고는 네 추천대로 개선"
+**AI Response**: "Annotation 전면 삭제 계획을 철회하고, 라벨링 능력을 측정에 붙이는 방향으로 재설계했다. Measurement에 label(무엇을 쟀는지 나타내는 측정 항목 명)을 추가해 자기 측정선 옆에 캡션으로 그리고, 기존 note(관찰 메모)는 그대로 둔다. 측정선 자체가 도형이므로 별도 도형은 그리지 않는다. process_step은 도형마다 고르던 값에서 images.process_step 한 개(등록 시 선택 입력)로 승격했다. 나머지 권고(P2 로드맵 탭 6개 제거, '왜 지금인가' 섹션 제거, 최근 이미지 카드 링크화, 소개 영상 로컬 파일화)는 그대로 진행했다.
+
+구현 결과: annotations 테이블·엔티티·서비스·리포지토리·라우트·스키마·UI 삭제, Measurement.label 추가, Image.process_step 추가, 내보내기 계약 schema_version 1.1 -> 2.0(annotations 배열 제거, 측정마다 label/note, image.process_step 포함), task.md의 '도형 무시' 지시 삭제.
+
+문서 정정: requirements/nanodb-mvp-requirements.md(3.7절을 측정 라벨링 ANN-001~005로 재작성, ANN-006~008 철회, API 표를 실제 13개 엔드포인트로 교체, IMG-002/004, CAT-006/007, MEA-009, RES-002/007, CTX-004/005/012, UIX-001, 4장 데이터 모델, 5장 화면, 7.1), requirements/home-tab-requirements.md(HOM-005/006/008/011/023/029/030/037/040, HOM-024~027 철회, 수용 기준, v1/v2 비교표), requirements/constraints.md, aidlc-docs/inception/requirements/requirements.md, 프론트엔드 설계·요약 문서, api-reference.md(schema_version 1.0 오기와 누락된 delete/patch 엔드포인트 보완), README.md, docs/index.md, docs/evidence.md.
+
+의도적으로 손대지 않은 것: validation/external-ai/exports/와 results/run-*.md의 US-07 실행 증거는 당시 계약인 schema_version 1.1 그대로 보존했다. 실행 기록을 나중에 고쳐 쓰면 증거가 아니게 되기 때문이다. 앞을 향한 계약 문서만 2.0으로 옮기고 그 간극을 validation README에 적었다.
+
+검증: ruff clean, mypy clean(26 files), pytest 98 passed(실제 PostgreSQL, skip 0), vitest 66 passed(7 files), tsc -b clean, vite build 성공."
+**Context**: CONSTRUCTION - Code Generation: annotation redefined as measurement labelling; requirement documents corrected
+
+---

@@ -62,6 +62,7 @@ async function main() {
   await page.locator('input[name="lot_id"]').fill("LOT-1");
   await page.locator('input[name="wafer_id"]').fill("WAFER-1");
   await page.locator('input[name="calibration_nm_per_pixel"]').fill("0.5");
+  await page.getByTestId("registration-process-step").fill("Gate Etch");
   await shot("03-register.png");
 
   // 등록 제출 → 상세(측정) 페이지로 이동
@@ -75,6 +76,7 @@ async function main() {
   await image.click({ position: { x: box.width * 0.25, y: box.height * 0.3 } });
   await image.click({ position: { x: box.width * 0.75, y: box.height * 0.7 } });
   await page.getByTestId("measurement-preview").waitFor();
+  await page.getByTestId("measurement-label-input").fill("Gate CD");
   await shot("04-measurement-draft.png");
 
   // 5) 저장 후: overlay 복원·선택 항목·context export 활성

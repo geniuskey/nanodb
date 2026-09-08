@@ -17,6 +17,7 @@ class MeasurementInput:
     parameter_type: ParameterType
     start: Point
     end: Point
+    label: str | None = None
     note: str | None = None
 
 
@@ -43,6 +44,7 @@ class MeasurementService:
                 end=value.end,
                 calculation=calculation,
                 calibration_nm_per_pixel=image.calibration_nm_per_pixel,
+                label=value.label,
                 note=value.note,
             )
             session.commit()
@@ -54,20 +56,24 @@ class MeasurementService:
                 raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
             return MeasurementRepository(session).list_by_image(image_id)
 
-    def update_note(
+    def update_annotation(
         self,
         image_id: int,
         measurement_id: int,
+        *,
+        label: str | None,
         note: str | None,
     ) -> Measurement:
-        """Edit a saved measurement's note, leaving its evidence untouched."""
+        """Edit what a saved measurement is (label) and the observation memo
+        (note), leaving its evidence untouched."""
         with self._session_factory() as session:
             if ImageRepository(session).find(image_id) is None:
                 raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
-            measurement = MeasurementRepository(session).update_note(
+            measurement = MeasurementRepository(session).update_annotation(
                 image_id,
                 measurement_id,
-                note,
+                label=label,
+                note=note,
             )
             if measurement is None:
                 raise DomainError(

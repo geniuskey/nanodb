@@ -109,12 +109,13 @@
 - Keep image binaries in a local directory on the single application host. Multi-instance storage and high availability remain out of scope.
 - Treat about 1,000 registered beta users as a target, not a verified concurrency guarantee.
 - All three extension choices remain disabled (B/B/C), N/A; full rules were not loaded.
-- Arrow and circle annotation labeling is an implemented P1 feature (ANN-001~008), separate from roadmap free-polygon labeling and label review.
+- Labelling is attached to the measurement, not to a separate figure: a measurement carries an optional `label` naming what was measured, drawn as a caption beside its own line (ANN-001~005). Standalone arrow and circle shapes were withdrawn on 2026-09-08 — see the amendment section below. Free-polygon labelling and label review stay on the roadmap.
 - Registration accepts PNG, JPEG and TIFF. A TIFF original is preserved and served through a PNG derivative that keeps the original pixel dimensions, so stored coordinates map 1:1.
-- Image delete is in scope with cascade disclosure and confirmation; a saved measurement's coordinates, parameter, value and calibration are immutable and only its note can be edited.
-- Annotations travel in the context ZIP, which bumps the export `schema_version`.
+- Image delete is in scope with cascade disclosure and confirmation; a saved measurement's coordinates, parameter, value and calibration are immutable and only its label and note can be edited.
+- Each measurement's label and note travel in the context ZIP at `schema_version` 2.0; there is no separate annotations array.
+- The process step is an image attribute entered once at registration, not a per-figure choice.
 - The home body stays a reading document; the only in-body CTAs are the pair at the end of the usage-flow section. `home-tab-requirements.md` is the source of truth for the home screen.
-- The home intro video is the single permitted external runtime dependency and must degrade to readable text.
+- The home intro video is a local file in the repository played through `<video controls>`; the home page has no external runtime dependency at all. The video stays supporting material, never evidence of a feature.
 - Supported surface is mouse input on desktop at 1280px or wider in current Chrome or Edge. Touch-only measurement and dark mode are out of scope.
 
 ## Amendment Plan Progress
@@ -225,3 +226,22 @@ Separately, and by design, the external AI development demo (US-07, EVL-006~008)
 - **Execute**: Application Design, Units Generation, applicable per-unit Functional Design, NFR Requirements, NFR Design, Infrastructure Design, Code Generation, Build and Test.
 - **Skip**: Reverse Engineering (greenfield); Operations (placeholder).
 - **Provisional units**: NANoDB Core followed by Evidence Site.
+
+## Requirement Correction: Measurement Labelling (2026-09-08)
+
+The user rejected the arrow/circle labelling requirements outright — a length-measuring tool that draws circles, and a per-shape product picker on an image that already has one product — and asked for every requirement behind those screens to be distrusted, not just the shape feature.
+
+Four defects were verifiable in the code, not matters of taste:
+
+1. `export_builder.py` told its own AI consumer to ignore annotations, so the P0 flagship export discarded exactly the data this P1 feature produced.
+2. Circle geometry stored a centre and an edge point — a radius — while `constraints.md` section 4 bans radius and curvature calculation.
+3. `ProductType` (DRAM/Flash/Logic/Sensor) existed only in a database CHECK and one component. No requirement mentioned it, and it contradicted the free-string `image.product_id`.
+4. The root cause is recorded in the requirements themselves: the ANN section was back-filled from code that already existed, so the code was never checked against a requirement.
+
+What changed. The standalone Annotation entity is gone (table, service, repository, routes, schemas, UI). Annotating survives on the thing being annotated: `Measurement.label` names what was measured and is drawn beside its own line, `Measurement.note` stays the observation memo, and `Image.process_step` is entered once at registration. The export contract moved to `schema_version` 2.0 and `task.md` no longer tells anyone to throw the labels away. Also removed in the same pass: the six unclickable P2 roadmap tabs, and the home page's `왜 지금인가` public-statistics section, which put external survey numbers beside measured KPIs. Recent-image cards became links to their own measurement screen, and the intro video became a local file.
+
+The user's one correction to the plan is why `label` exists at all: the review had proposed deleting annotation entirely, and they interrupted to say annotating is needed — a measurement has to record what it is, not only how long it is.
+
+Requirement documents amended: `requirements/nanodb-mvp-requirements.md` (section 3.7 rewritten as 측정 라벨링, ANN-006~008 withdrawn, the API table replaced with the 13 endpoints that actually exist, IMG-002/004, CAT-006/007, MEA-009, RES-002/007, CTX-004/005/012, UIX-001, the data model and the screen sections), `requirements/home-tab-requirements.md` (HOM-005/006/008/011/023/029/030/037/040, HOM-024~027 withdrawn, acceptance criteria and the v1/v2 table), `requirements/constraints.md`, and the consolidated `aidlc-docs/inception/requirements/requirements.md`. Design and code documents amended: the frontend design and summary, and `api-reference.md`, which was still describing `schema_version` 1.0 and was missing every delete and patch endpoint.
+
+Historical evidence was deliberately left alone. The US-07 run artefacts under `validation/external-ai/exports/` and `results/run-*.md` still carry `schema_version` 1.1, the contract in force when those runs were recorded; rewriting them would falsify the evidence. Only the forward-looking contract files moved to 2.0, and the validation README explains the gap.

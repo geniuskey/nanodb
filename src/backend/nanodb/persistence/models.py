@@ -47,6 +47,7 @@ class ImageModel(Base):
     product_id: Mapped[str] = mapped_column(String(255), nullable=False)
     lot_id: Mapped[str] = mapped_column(String(255), nullable=False)
     wafer_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    process_step: Mapped[str | None] = mapped_column(String(255), nullable=True)
     calibration_nm_per_pixel: Mapped[float] = mapped_column(Float, nullable=False)
     pixel_width: Mapped[int] = mapped_column(Integer, nullable=False)
     pixel_height: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -56,10 +57,6 @@ class ImageModel(Base):
         server_default=func.now(),
     )
     measurements: Mapped[list[MeasurementModel]] = relationship(
-        back_populates="image",
-        cascade="save-update, merge",
-    )
-    annotations: Mapped[list[AnnotationModel]] = relationship(
         back_populates="image",
         cascade="save-update, merge",
     )
@@ -103,6 +100,7 @@ class MeasurementModel(Base):
     distance_px: Mapped[float] = mapped_column(Float, nullable=False)
     calibration_nm_per_pixel: Mapped[float] = mapped_column(Float, nullable=False)
     value_nm: Mapped[float] = mapped_column(Float, nullable=False)
+    label: Mapped[str | None] = mapped_column(String(255), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -111,50 +109,3 @@ class MeasurementModel(Base):
     )
     image: Mapped[ImageModel] = relationship(back_populates="measurements")
 
-
-class AnnotationModel(Base):
-    __tablename__ = "annotations"
-    __table_args__ = (
-        CheckConstraint(
-            "kind IN ('arrow', 'circle')",
-            name="ck_annotations_kind",
-        ),
-        CheckConstraint(
-            "product IS NULL OR product IN ('DRAM', 'Flash', 'Logic', 'Sensor')",
-            name="ck_annotations_product",
-        ),
-        CheckConstraint(
-            "start_x >= 0 AND start_y >= 0 AND end_x >= 0 AND end_y >= 0",
-            name="ck_annotations_nonnegative_coordinates",
-        ),
-        CheckConstraint(
-            "start_x <> end_x OR start_y <> end_y",
-            name="ck_annotations_distinct_points",
-        ),
-        Index("ix_annotations_image_created", "image_id", "created_at", "id"),
-    )
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    image_id: Mapped[int] = mapped_column(
-        ForeignKey("images.id", ondelete="RESTRICT"),
-        nullable=False,
-        index=True,
-    )
-    kind: Mapped[str] = mapped_column(String(16), nullable=False)
-    start_x: Mapped[float] = mapped_column(Float, nullable=False)
-    start_y: Mapped[float] = mapped_column(Float, nullable=False)
-    end_x: Mapped[float] = mapped_column(Float, nullable=False)
-    end_y: Mapped[float] = mapped_column(Float, nullable=False)
-    product: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    step: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
-    measurement_name: Mapped[str] = mapped_column(
-        Text, nullable=False, server_default=""
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-    )
-    image: Mapped[ImageModel] = relationship(back_populates="annotations")

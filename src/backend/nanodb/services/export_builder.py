@@ -29,6 +29,7 @@ def _data_json(snapshot: ExportSnapshot) -> str:
             "product_id": image.product_id,
             "lot_id": image.lot_id,
             "wafer_id": image.wafer_id,
+            "process_step": image.process_step,
             "pixel_width": image.pixel_width,
             "pixel_height": image.pixel_height,
             "calibration_nm_per_pixel": image.calibration_nm_per_pixel,
@@ -45,28 +46,13 @@ def _data_json(snapshot: ExportSnapshot) -> str:
                 "distance_px": item.distance_px,
                 "calibration_nm_per_pixel": item.calibration_nm_per_pixel,
                 "value_nm": item.value_nm,
+                "label": item.label,
                 "note": item.note,
                 "measurement_method": item.measurement_method,
                 "reference_status": item.reference_status.value,
                 "created_at": _iso(item.created_at),
             }
             for item in snapshot.measurements
-        ],
-        "annotations": [
-            {
-                "id": shape.id,
-                "image_id": shape.image_id,
-                "kind": shape.kind.value,
-                "start_x": shape.start.x,
-                "start_y": shape.start.y,
-                "end_x": shape.end.x,
-                "end_y": shape.end.y,
-                "product": shape.product.value if shape.product else None,
-                "step": shape.step,
-                "measurement_name": shape.measurement_name,
-                "created_at": _iso(shape.created_at),
-            }
-            for shape in snapshot.annotations
         ],
     }
     return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
@@ -86,13 +72,12 @@ parameter_type is a user choice among CD, Depth and Thickness.
 measurement_method is manual_two_point and reference_status is unreviewed.
 Measurements are references, not certified ground truth or automatic boundary detection.
 
-annotations are shapes a user drew to mark where they looked, in the same original
-pixel coordinates. kind is arrow or circle. For an arrow, start is the tail and end
-is the head. For a circle, start is the centre and end is a point on the circumference,
-so the radius is the distance between them. product, step and measurement_name are
-free user labels and may be empty.
-annotations carry no calculated value: they are not measurements, they have no nm
-value, and they must not be counted in any measurement summary.
+Every measurement is annotated by its own two fields, both optional and both free
+text written by the user. label names what was measured (for example "Gate CD") and
+is the caption drawn beside the line; note is an observation memo about that same
+measurement. Neither field changes value_nm, and neither is a substitute for
+parameter_type when grouping. image.process_step names the process step the whole
+image was taken at, and is null when the user did not record one.
 
 The image binary is not included; inspect it in NANoDB when visual context is required.
 """
@@ -102,7 +87,7 @@ def _task_markdown() -> str:
     return """# Development Task
 
 Read data.json and write a CSV with columns parameter_type,count,mean_nm.
-Use the measurements array only; ignore annotations, which are labels without values.
+Group by parameter_type, not by the free-text label.
 Output only parameter types with measurements, ordered CD, Depth, Thickness.
 Calculate means with stored precision and display mean_nm to two decimal places.
 Do not call external services and do not infer image boundaries.

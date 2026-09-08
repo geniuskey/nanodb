@@ -152,6 +152,14 @@ export function ImageRegisterPage() {
               <FieldError name={name} />
             </label>
           ))}
+          {/* The process step describes the whole image, not any one
+              measurement, and is optional: an operator who does not know it
+              should still be able to register the evidence. */}
+          <label>
+            <span>공정 Step</span>
+            <input name="process_step" maxLength={255} placeholder="예: Gate Etch" data-testid="registration-process-step" />
+            <span className="field-hint">선택 입력. 이 이미지를 촬영한 공정 단계입니다.</span>
+          </label>
           <label>
             <span>nm/pixel <span className="required-mark">*</span></span>
             <input name="calibration_nm_per_pixel" inputMode="decimal" {...fieldProps("calibration_nm_per_pixel")} />

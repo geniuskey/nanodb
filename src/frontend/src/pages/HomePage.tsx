@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import logo from "../../../../assets/logo/nanodb_logo_horizontal.png";
+import introVideo from "../../../../assets/video/nanodb_intro.mp4";
 import { api } from "../api/client";
 import { useSummary } from "../api/summary-context";
 import type { ImageListView, ParameterSummary, ParameterType } from "../api/types";
 import { useDocumentTitle } from "../ui/useDocumentTitle";
 
-// --- Static content (대의 / 왜 지금인가 / Phase / AI-DLC / 사용 흐름) ---
+// --- Static content (대의 / Phase / AI-DLC / 사용 흐름) ---
 
 const VALUES = [
   {
@@ -21,38 +22,6 @@ const VALUES = [
   {
     title: "떠나도 남는다",
     body: "원본은 읽기 전용으로 보존하고, 측정은 좌표·보정값과 함께 파생 데이터로 남습니다.",
-  },
-];
-
-// 공개 통계(P1). 정적 콘텐츠이며 실측값과 섞지 않는다. 출처 기관·연도·링크를 함께 표기한다.
-const PUBLIC_STATS = [
-  {
-    value: "80%",
-    title: "로우코드 툴 사용자 가운데 IT 부서 밖 개발자 (2026년 전망)",
-    meaning: "툴을 만드는 사람은 이미 현업 엔지니어입니다.",
-    source: "Gartner, 2022",
-    href: "https://www.gartner.com/en/newsroom/press-releases/2021-11-10-gartner-forecasts-worldwide-low-code-development-technologies-market-to-grow-23-percent-in-2021",
-  },
-  {
-    value: "78%",
-    title: "저장된 기업 데이터 가운데 비정형 데이터 (이미지, 문서)",
-    meaning: "5.5 ZB(2024)에서 10.5 ZB(2028)로. 이미지가 가장 빨리 쌓입니다.",
-    source: "IDC StorageSphere, 2024",
-    href: "https://www.idc.com/",
-  },
-  {
-    value: "68%",
-    title: "기업이 확보하고도 쓰지 못하는 데이터",
-    meaning: "모아두지만 찾지도 쓰지도 못합니다.",
-    source: "Seagate·IDC Rethink Data, 2020",
-    href: "https://www.seagate.com/gb/en/our-story/rethink-data/",
-  },
-  {
-    value: "38%",
-    title: "데이터 준비(정제, 로딩)에 쓰는 시간",
-    meaning: "표준화된 저장이 없으면 분석 전에 시간이 샙니다.",
-    source: "Anaconda, 2022",
-    href: "https://www.anaconda.com/resources/whitepapers/state-of-data-science-report-2022",
   },
 ];
 
@@ -71,16 +40,16 @@ const PHASES: {
     title: "모은다",
     status: "now",
     badge: "● 지금 동작",
-    body: "SEM, TEM 이미지를 제조 정보(Product, Lot, Wafer)와 nm/pixel 보정값과 함께 등록하고, 이미지 위 두 점 측정으로 실제 길이를 재고 저장·복원합니다.",
-    basis: "이미지 등록, nm/pixel 캘리브레이션, 두 점 측정(CD·Depth·Thickness), 저장·재확인, 개발 컨텍스트 내보내기",
+    body: "SEM, TEM 이미지를 제조 정보(Product, Lot, Wafer, 공정 Step)와 nm/pixel 보정값과 함께 등록하고, 이미지 위 두 점 측정으로 실제 길이를 재고 이름을 붙여 저장·복원합니다.",
+    basis: "이미지 등록, nm/pixel 캘리브레이션, 두 점 측정(CD·Depth·Thickness), 측정 라벨링, 항목별 평균, 파일명·Product·Lot·Wafer 검색, 측정·이미지 삭제, 개발 컨텍스트 내보내기",
   },
   {
     name: "Phase 2",
     title: "표준화한다",
     status: "next",
     badge: "○ 다음",
-    body: "파라미터별 평균 카드를 넓히고, 파일명·Product·Lot·Wafer 부분 일치 검색과 측정 삭제를 더합니다.",
-    basis: "항목별 평균(P1) 확장, 단일 검색, 측정 삭제",
+    body: "측정 항목을 자유 문자열에서 관리되는 정의로 옮기고, 여러 이미지를 한 번에 등록·내보낼 수 있게 합니다.",
+    basis: "측정 항목(파라미터) 마스터, 라벨 표준화, 이미지 일괄 등록과 일괄 내보내기",
   },
   {
     name: "Phase 3",
@@ -400,24 +369,30 @@ function RecentImages({ images, state, reload }: ImagesState) {
         <p className="empty-state">아직 등록된 이미지가 없습니다. `이미지 등록` 탭에서 첫 SEM/TEM 이미지를 올려 보세요.</p>
       ) : (
         <div className="recent-grid">
+          {/* A recent image is the shortest path into the product, so the whole
+              card is the link: seeing a thumbnail and not being able to open it
+              was the single most confusing thing about this section. */}
           {recent.map((image) => (
-            <figure className="recent-card" key={image.id}>
+            <Link
+              className="recent-card"
+              to={`/images/${image.id}`}
+              key={image.id}
+              data-testid="recent-image-link"
+            >
               <img src={image.file_url} alt={image.original_filename} loading="lazy" />
-              <figcaption>
+              <span className="recent-caption">
                 <span className="recent-name">{image.original_filename}</span>
                 <span className="recent-meta">
                   {image.image_type} {image.lot_id} {image.wafer_id}
                 </span>
-              </figcaption>
-            </figure>
+              </span>
+            </Link>
           ))}
         </div>
       )}
     </section>
   );
 }
-
-const VIDEO_EMBED = "https://www.youtube.com/embed/x1iTw_qvHB0";
 
 /** True when the viewer asked their system to reduce motion. */
 function prefersReducedMotion(): boolean {
@@ -427,37 +402,30 @@ function prefersReducedMotion(): boolean {
 }
 
 /**
- * Intro video (HOM-040). It is the one external runtime dependency on this
- * page, so it never gets to be a mystery black box: the caption below always
- * describes it, and if the embed cannot load, everything else on the home page
- * still reads. Autoplay is skipped for a reduced-motion viewer, who gets a
- * play button instead.
+ * Intro video (HOM-040). The file ships with the build, so the home page has
+ * no external runtime dependency and works on an air-gapped demo machine.
+ * Autoplay is skipped for a reduced-motion viewer, who presses play instead,
+ * and the page reads fine for anyone whose browser plays nothing at all.
  */
 function IntroVideo() {
   const [reduced] = useState(prefersReducedMotion);
-  const [started, setStarted] = useState(false);
-  const playing = started || !reduced;
 
   return (
     <section aria-labelledby="video-title" className="video-section">
       <h2 id="video-title" className="visually-hidden">NANoDB 소개 영상</h2>
-      <div className="video-frame">
-        {playing ? (
-          <iframe
-            src={`${VIDEO_EMBED}?autoplay=1&mute=1&rel=0&playsinline=1`}
-            title="NANoDB 소개 영상"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
-        ) : (
-          <button type="button" className="video-play" data-testid="video-play" onClick={() => setStarted(true)}>
-            ▶ NANoDB 소개 영상 재생
-          </button>
-        )}
-      </div>
+      <video
+        className="intro-video"
+        data-testid="intro-video"
+        src={introVideo}
+        controls
+        muted
+        loop
+        playsInline
+        autoPlay={!reduced}
+        preload="metadata"
+      />
       <p className="video-caption" data-testid="video-caption">
-        NANoDB 소개 영상입니다. 외부 동영상 서비스에서 불러오므로 네트워크가 차단된 환경에서는
-        이 자리가 비어 있을 수 있습니다. 영상 없이도 아래 내용만으로 NANoDB를 확인할 수 있습니다.
+        NANoDB 소개 영상입니다. 영상 없이도 아래 내용만으로 NANoDB를 확인할 수 있습니다.
       </p>
     </section>
   );
@@ -499,28 +467,6 @@ export function HomePage() {
       <KpiSection images={imageList.images} reloadImages={imageList.reload} />
 
       <RecentImages {...imageList} />
-
-      <section aria-labelledby="why-title">
-        <h2 id="why-title">왜 지금인가</h2>
-        <div className="stat-grid">
-          {PUBLIC_STATS.map((stat) => (
-            <article className="stat-card" key={stat.title}>
-              <div className="stat-value">{stat.value}</div>
-              <div className="stat-title">{stat.title}</div>
-              <p className="stat-meaning">{stat.meaning}</p>
-              <div className="stat-source">
-                {stat.source}{" "}
-                <a href={stat.href} target="_blank" rel="noreferrer noopener">
-                  출처
-                </a>
-              </div>
-            </article>
-          ))}
-        </div>
-        <p className="section-foot">
-          외부 공개 조사 수치입니다. 발표 연도를 함께 표기하며 NANoDB 실측값과 섞지 않습니다.
-        </p>
-      </section>
 
       <section aria-labelledby="phase-title">
         <h2 id="phase-title">NANoDB가 가는 길, Phase 1에서 4까지</h2>
@@ -568,8 +514,8 @@ export function HomePage() {
             </li>
           ))}
         </ol>
-        {/* The only in-body links on the home page (HOM-005, HOM-034a): a
-            reader who just went through the four steps can start here. */}
+        {/* The two entry points the page argues toward (HOM-005, HOM-034a):
+            a reader who just went through the four steps can start here. */}
         <div className="flow-cta">
           <Link className="button primary" to="/images/new" data-testid="home-register-image">
             이미지 등록

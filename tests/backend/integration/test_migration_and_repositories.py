@@ -2,24 +2,18 @@ from __future__ import annotations
 
 import pytest
 from nanodb.domain.calculations import calculate_measurement
-from nanodb.domain.entities import (
-    ImageType,
-    ParameterType,
-    Point,
-    ProductType,
-    ShapeKind,
-)
-from nanodb.persistence.repositories import (
-    AnnotationRepository,
-    ImageRepository,
-    MeasurementRepository,
-)
+from nanodb.domain.entities import ImageType, ParameterType, Point
+from nanodb.persistence.repositories import ImageRepository, MeasurementRepository
 from sqlalchemy import Engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 
-def create_image(repository: ImageRepository, suffix: str = "1") -> int:
+def create_image(
+    repository: ImageRepository,
+    suffix: str = "1",
+    process_step: str | None = None,
+) -> int:
     return repository.create(
         original_filename=f"sample-{suffix}.png",
         stored_filename=f"stored-{suffix}.png",
@@ -30,6 +24,7 @@ def create_image(repository: ImageRepository, suffix: str = "1") -> int:
         calibration_nm_per_pixel=0.2,
         pixel_width=1000,
         pixel_height=800,
+        process_step=process_step,
     ).id
 
 
@@ -39,7 +34,10 @@ def test_empty_database_migration_creates_core_tables(
     engine, _ = database_engine
     tables = set(inspect(engine).get_table_names())
 
-    assert {"alembic_version", "images", "measurements", "annotations"} <= tables
+    assert {"alembic_version", "images", "measurements"} <= tables
+    # Shapes were folded into the measurement they describe; the standalone
+    # table is gone rather than left behind empty.
+    assert "annotations" not in tables
 
 
 def test_database_rejects_invalid_image_constraints(db_session: Session) -> None:
@@ -84,6 +82,7 @@ def test_aggregate_list_and_measurement_order_are_deterministic(
                 pixel_height=800,
             ),
             calibration_nm_per_pixel=0.2,
+            label=None,
             note=None,
         )
     db_session.commit()
@@ -141,83 +140,62 @@ def test_list_filters_by_partial_text_and_image_type(db_session: Session) -> Non
     ) == ()
 
 
-def test_annotations_number_stably_and_editing_is_scoped_to_the_image(
+def test_list_filters_by_process_step(db_session: Session) -> None:
+    images = ImageRepository(db_session)
+    create_image(images, "etch", process_step="Gate Etch")
+    create_image(images, "depo", process_step="Poly Deposition")
+    create_image(images, "none")
+    db_session.commit()
+
+    found = images.list_with_measurement_count(query="gate et")
+    assert [item.image.original_filename for item in found] == ["sample-etch.png"]
+
+    # An image registered without a step is simply never matched by one.
+    matched = images.list_with_measurement_count(query="deposition")
+    assert [item.image.process_step for item in matched] == ["Poly Deposition"]
+
+
+def test_measurement_annotation_is_editable_and_scoped_to_its_image(
     db_session: Session,
 ) -> None:
     images = ImageRepository(db_session)
-    annotations = AnnotationRepository(db_session)
+    measurements = MeasurementRepository(db_session)
     first_id = create_image(images, "1")
     second_id = create_image(images, "2")
-    arrow = annotations.create(
+    created = measurements.create(
         image_id=first_id,
-        kind=ShapeKind.ARROW,
-        start=Point(10, 10),
-        end=Point(40, 60),
-        product=None,
-        step="",
-        measurement_name="",
-    )
-    circle = annotations.create(
-        image_id=first_id,
-        kind=ShapeKind.CIRCLE,
-        start=Point(100, 100),
-        end=Point(120, 100),
-        product=ProductType.SENSOR,
-        step="S2",
-        measurement_name="hole",
+        parameter_type=ParameterType.CD,
+        start=Point(0, 0),
+        end=Point(10, 0),
+        calculation=calculate_measurement(
+            Point(0, 0), Point(10, 0), 0.2, pixel_width=1000, pixel_height=800
+        ),
+        calibration_nm_per_pixel=0.2,
+        label="Gate CD",
+        note="첫 메모",
     )
     db_session.commit()
 
-    # Oldest-first ordering keeps the display numbers stable as shapes append.
-    listed = annotations.list_by_image(first_id)
-    assert [item.id for item in listed] == [arrow.id, circle.id]
-    assert listed[1].product is ProductType.SENSOR
+    assert measurements.list_by_image(first_id)[0].label == "Gate CD"
 
-    # Only label fields change; geometry stays immutable.
-    updated = annotations.update_fields(
-        first_id,
-        arrow.id,
-        product=ProductType.DRAM,
-        step="ETCH",
-        measurement_name="gate",
+    # Only the annotation changes; the evidence under it stays as measured.
+    updated = measurements.update_annotation(
+        first_id, created.id, label="Gate CD (재확인)", note=None
     )
     assert updated is not None
-    assert updated.product is ProductType.DRAM
-    assert updated.start == Point(10, 10) and updated.end == Point(40, 60)
+    assert (updated.label, updated.note) == ("Gate CD (재확인)", None)
+    assert (updated.start, updated.end) == (Point(0, 0), Point(10, 0))
+    assert updated.value_nm == created.value_nm
 
     # An id from another image cannot be edited across the boundary.
-    assert annotations.update_fields(
-        second_id,
-        arrow.id,
-        product=None,
-        step="",
-        measurement_name="",
+    assert measurements.update_annotation(
+        second_id, created.id, label="x", note=None
     ) is None
 
-    # Cascade helper removes every annotation for an image.
-    assert annotations.delete_by_image(first_id) == 2
+    # Cascade helper removes every measurement for an image.
+    assert measurements.delete_by_image(first_id) == 1
     db_session.commit()
-    assert annotations.list_by_image(first_id) == ()
-
-
-def test_database_rejects_zero_size_annotation(db_session: Session) -> None:
-    image_id = create_image(ImageRepository(db_session))
-    db_session.commit()
-
-    with pytest.raises(IntegrityError), db_session.begin():
-        db_session.execute(
-            text(
-                """
-                    INSERT INTO annotations (
-                        image_id, kind, start_x, start_y, end_x, end_y
-                    ) VALUES (:image_id, 'arrow', 5, 5, 5, 5)
-                    """
-            ),
-            {"image_id": image_id},
-        )
-
-    db_session.rollback()
-    assert AnnotationRepository(db_session).list_by_image(image_id) == ()
+    assert measurements.list_by_image(first_id) == ()
 
 
 def test_committed_data_is_visible_from_a_fresh_session(

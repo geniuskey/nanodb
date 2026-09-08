@@ -21,10 +21,10 @@ whatever the runs show is what gets recorded.
 
 Both arms ask the external tool to perform the task in the export's `task.md`:
 read `data.json` and write a CSV with columns `parameter_type,count,mean_nm`,
-using the `measurements` array only and ignoring `annotations` (labels that
-carry no nm value), including only parameter types that have measurements,
-ordered CD, Depth, Thickness, with means computed at stored precision and
-`mean_nm` displayed half-up to two decimal places.
+grouping the `measurements` array by `parameter_type` rather than by each
+measurement's free-text `label`, including only parameter types that have
+measurements, ordered CD, Depth, Thickness, with means computed at stored
+precision and `mean_nm` displayed half-up to two decimal places.
 
 ## Files
 
@@ -32,7 +32,7 @@ ordered CD, Depth, Thickness, with means computed at stored precision and
 | --- | --- |
 | `prompts/manual-prompt.md` | Baseline arm: hand-written explanation to paste into the tool. |
 | `prompts/context-prompt.md` | Context arm: instructions for attaching the exported files. |
-| `schema-version.txt` | Input schema version (`1.1`) the exports are expected to carry. |
+| `schema-version.txt` | Input schema version (`2.0`) current exports carry. |
 | `generated/summarize_measurements.py` | Example generated solution, replaced by the actual generated code per run. |
 | `compare_summary.py` | Offline runner comparing a summary CSV against `checks.json`. |
 | `results/run-log-template.md` | Per-run recording format (prep time, follow-ups, verdict, verbatim output). |
@@ -80,7 +80,11 @@ application, and performs no network access.
 
 Both runs used the same image (id 1) and the same task. The export they ran
 against is preserved under [`exports/2026-09-08-image-1/`](exports/2026-09-08-image-1/)
-so the verdicts reproduce without a running app.
+so the verdicts reproduce without a running app. That preserved export carries
+`schema_version` `1.1`, the contract in force when the runs were recorded, and is
+left exactly as it was run. Schema `2.0` dropped the separate `annotations` array
+and moved annotation onto each measurement as `label` and `note`; the summary
+task is unchanged, because it always grouped by `parameter_type`.
 
 **What these two runs do and do not show.**
 

@@ -65,7 +65,7 @@ AI-DLC v1.0.1 워크플로우로 INCEPTION → CONSTRUCTION을 단계별로 수�
   내보내, 외부 AI 개발 도구가 사람의 반복 설명 없이 소비하도록 설계.
 - **산출물**: 컨텍스트 내보내기 구현과 계약
   (`GET /api/images/{id}/context-export`, 4파일 ZIP: `context.md`/`data.json`/`task.md`/
-  `checks.json`, `schema_version 1.1` — 저장 측정과 도형 라벨을 함께 포함),
+  `checks.json`, `schema_version 2.0` — 저장 측정과 각 측정의 라벨·메모를 함께 포함),
   `aidlc-docs/construction/nanodb-core/code/api-reference.md`,
   외부 검증 자산 `validation/external-ai/`.
 - **상태**: `pass` (엔드포인트·스키마·검증 자산 존재).

@@ -63,7 +63,7 @@ describe("HomePage", () => {
     expect(breakdown).toHaveTextContent("21.00");
   });
 
-  it("embeds the autoplaying intro video at the top of the page", () => {
+  it("plays a bundled intro video with no third-party embed", () => {
     stubApi({
       image_count: 0,
       measurement_count: 0,
@@ -73,13 +73,18 @@ describe("HomePage", () => {
 
     renderWithRouter(<HomePage />);
 
-    const frame = document.querySelector('iframe[title="NANoDB 소개 영상"]');
-    expect(frame?.getAttribute("src")).toContain("youtube.com/embed/x1iTw_qvHB0");
-    expect(frame?.getAttribute("src")).toContain("autoplay=1");
-    expect(frame?.getAttribute("src")).toContain("mute=1");
-    // The frame is always explained, so a blocked network leaves a labelled
-    // area rather than an unexplained black box (HOM-040).
-    expect(screen.getByTestId("video-caption")).toHaveTextContent("네트워크가 차단된 환경");
+    const video = screen.getByTestId("intro-video");
+    expect(video.tagName).toBe("VIDEO");
+    // The file ships with the build, so a demo machine with no network still
+    // plays it and no viewer data leaves the host (HOM-040).
+    expect(document.querySelector("iframe")).toBeNull();
+    expect(video).toHaveAttribute("src");
+    expect(video.getAttribute("src")).not.toContain("http");
+    expect(video).toHaveAttribute("controls");
+    expect(video).toHaveAttribute("autoplay");
+    expect(screen.getByTestId("video-caption")).toHaveTextContent(
+      "영상 없이도 아래 내용만으로",
+    );
   });
 
   it("does not autoplay for a reduced-motion viewer", () => {
@@ -98,11 +103,10 @@ describe("HomePage", () => {
 
     renderWithRouter(<HomePage />);
 
-    expect(document.querySelector("iframe")).toBeNull();
-    expect(screen.getByTestId("video-play")).toBeInTheDocument();
-    // The video is still reachable, just on the viewer's terms.
-    fireEvent.click(screen.getByTestId("video-play"));
-    expect(document.querySelector('iframe[title="NANoDB 소개 영상"]')).not.toBeNull();
+    // The video stays on the page with its controls; only autoplay is dropped.
+    const video = screen.getByTestId("intro-video");
+    expect(video).not.toHaveAttribute("autoplay");
+    expect(video).toHaveAttribute("controls");
   });
 
   it("puts the only in-body links at the end of the usage flow", () => {
@@ -117,9 +121,45 @@ describe("HomePage", () => {
 
     expect(screen.getByTestId("home-register-image")).toHaveAttribute("href", "/images/new");
     expect(screen.getByTestId("home-browse-images")).toHaveAttribute("href", "/images");
-    // HOM-005: those two are the whole set. Nothing else in the body navigates.
+    // HOM-005: with no images registered these two are the whole set, so the
+    // static argument of the page still navigates nowhere on its own.
     const links = [...document.querySelectorAll("main a[href^='/']")];
     expect(links).toHaveLength(2);
+  });
+
+  it("opens the measurement screen from a recent image card", async () => {
+    stubApi(
+      {
+        image_count: 1,
+        measurement_count: 0,
+        calculated_at: "2026-09-08T04:00:00Z",
+        parameters: [],
+      },
+      [
+        {
+          id: 42,
+          original_filename: "wafer.png",
+          image_type: "TEM",
+          product_id: "P",
+          lot_id: "L1",
+          wafer_id: "W1",
+          calibration_nm_per_pixel: 0.2,
+          pixel_width: 100,
+          pixel_height: 100,
+          created_at: "2026-09-07T00:00:00Z",
+          file_url: "/api/images/42/file",
+          measurement_count: 0,
+        },
+      ],
+    );
+
+    renderWithRouter(<HomePage />);
+
+    // The whole card is the link: a visible thumbnail that could not be opened
+    // was the most confusing thing about this section.
+    const card = await screen.findByTestId("recent-image-link");
+    expect(card).toHaveAttribute("href", "/images/42");
+    expect(card).toHaveTextContent("wafer.png");
   });
 
   it("names the screen in the document title", () => {
@@ -156,7 +196,8 @@ describe("HomePage", () => {
     const alerts = await screen.findAllByRole("alert");
     expect(alerts.some((el) => el.textContent?.includes("불러오지 못했습니다"))).toBe(true);
     expect(screen.queryByTestId("home-summary")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "왜 지금인가" })).toBeInTheDocument();
+    // The static argument survives a failed fetch; only measured numbers vanish.
+    expect(screen.getByRole("heading", { name: "이렇게 쓰세요" })).toBeInTheDocument();
   });
 
   it("renders future phases as roadmap rather than links", async () => {

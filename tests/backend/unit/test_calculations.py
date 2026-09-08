@@ -65,6 +65,7 @@ def make_measurement(
         distance_px=distance_px,
         calibration_nm_per_pixel=calibration,
         value_nm=value_nm,
+        label="게이트 상단",
         note="한글 메모 & symbols <>",
         created_at=NOW,
     )
@@ -253,6 +254,7 @@ def test_export_rejects_tampered_calculated_value() -> None:
         distance_px=measurement.distance_px,
         calibration_nm_per_pixel=measurement.calibration_nm_per_pixel,
         value_nm=11,
+        label=measurement.label,
         note=measurement.note,
         created_at=measurement.created_at,
     )

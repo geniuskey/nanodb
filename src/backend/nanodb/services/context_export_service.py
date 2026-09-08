@@ -12,16 +12,12 @@ from nanodb.domain.calculations import (
 )
 from nanodb.domain.entities import ExportSnapshot
 from nanodb.domain.errors import DomainError
-from nanodb.persistence.repositories import (
-    AnnotationRepository,
-    ImageRepository,
-    MeasurementRepository,
-)
+from nanodb.persistence.repositories import ImageRepository, MeasurementRepository
 from nanodb.services.export_builder import build_context_zip
 
 
 class ContextExportService:
-    schema_version = "1.1"
+    schema_version = "2.0"
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
@@ -35,20 +31,12 @@ class ContextExportService:
                 image_id,
                 export_order=True,
             )
-            # Display order is oldest-first; the export contract is ID order.
-            annotations = tuple(
-                sorted(
-                    AnnotationRepository(session).list_by_image(image_id),
-                    key=lambda shape: shape.id,
-                )
-            )
             snapshot = ExportSnapshot(
                 schema_version=self.schema_version,
                 exported_at=datetime.now(UTC),
                 image=image,
                 measurements=measurements,
                 expected_summary=build_expected_summary(measurements),
-                annotations=annotations,
             )
             validate_export_snapshot(snapshot)
             return build_context_zip(snapshot)

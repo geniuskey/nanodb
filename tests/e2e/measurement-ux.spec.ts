@@ -38,65 +38,62 @@ test("zooming rescales the image and keeps the saved overlay on it", async ({
   await expect(page.getByTestId("zoom-level")).toHaveText("100%");
 });
 
-// A drawn shape can be removed, and destructive actions are confirmed in the
-// app rather than by a browser dialog. Requirements: ANN-005, UIX-001, UIX-002.
-test("a drawn shape can be cancelled out of, then deleted", async ({ page }) => {
-  await registerSampleImage(page);
-
-  await page.getByTestId("tool-arrow").click();
-  const overlay = page.getByTestId("annotation-overlay");
-  const box = (await overlay.boundingBox())!;
-  await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.3);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width * 0.7, box.y + box.height * 0.6);
-  await page.mouse.up();
-  await expect(page.getByTestId("annotation-row")).toHaveCount(1);
-
-  // Cancelling leaves the shape in place.
-  await page.getByTestId("delete-annotation").click();
-  await expect(page.getByTestId("confirm-dialog")).toBeVisible();
-  await page.getByTestId("confirm-cancel").click();
-  await expect(page.getByTestId("confirm-dialog")).toHaveCount(0);
-  await expect(page.getByTestId("annotation-row")).toHaveCount(1);
-
-  await page.getByTestId("delete-annotation").click();
-  await page.getByTestId("confirm-accept").click();
-
-  await expect(page.getByTestId("annotation-empty")).toBeVisible();
-  await expect(page.getByTestId("status-banner")).toContainText("도형을 삭제했습니다");
-});
-
-// A saved measurement's note is editable while the value it rests on is not,
-// and a drawn shape reaches the exported context. Requirements: RES-007, ANN-008.
-test("edits a note and exports a bundle that carries the shape", async ({
+// A saved measurement can be removed, and destructive actions are confirmed in
+// the app rather than by a browser dialog. Requirements: RES-005, UIX-001,
+// UIX-002.
+test("a saved measurement can be cancelled out of, then deleted", async ({
   page,
 }) => {
   await registerSampleImage(page);
   await drawTwoPoints(page);
   await page.getByTestId("measurement-save").click();
+  await expect(page.getByTestId("saved-measurement-item")).toHaveCount(1);
+
+  // Cancelling leaves the measurement in place.
+  await page.getByTestId("delete-measurement").click();
+  await expect(page.getByTestId("confirm-dialog")).toBeVisible();
+  await page.getByTestId("confirm-cancel").click();
+  await expect(page.getByTestId("confirm-dialog")).toHaveCount(0);
+  await expect(page.getByTestId("saved-measurement-item")).toHaveCount(1);
+
+  await page.getByTestId("delete-measurement").click();
+  await page.getByTestId("confirm-accept").click();
+
+  await expect(page.getByTestId("saved-measurement-item")).toHaveCount(0);
+  await expect(page.getByTestId("status-banner")).toContainText(
+    "측정을 삭제했습니다",
+  );
+});
+
+// A measurement names itself on the image, its annotation stays editable while
+// the value it rests on does not, and both reach the exported context.
+// Requirements: ANN-002, ANN-003, ANN-005, RES-007, CTX-004.
+test("labels a measurement, edits it, and exports a bundle that carries it", async ({
+  page,
+}) => {
+  await registerSampleImage(page);
+  await drawTwoPoints(page);
+  await page.getByTestId("measurement-label-input").fill("홀 경계");
+  await page.getByTestId("measurement-save").click();
   const saved = page.getByTestId("saved-measurement-item");
   await expect(saved).toHaveCount(1);
   const valueBefore = await saved.locator("strong").textContent();
 
-  await page.getByTestId("edit-note").click();
+  // The label is drawn beside the line it names, so the figure and the number
+  // can never disagree about which feature was measured.
+  const caption = page.getByTestId("measurement-label");
+  await expect(caption).toHaveText("홀 경계");
+
+  await page.getByTestId("edit-annotation").click();
   await page.getByTestId("note-input").fill("경계 재확인");
   await page.getByTestId("note-save").click();
 
-  await expect(page.getByTestId("status-banner")).toContainText("메모를 수정했습니다");
+  await expect(page.getByTestId("status-banner")).toContainText(
+    "측정 라벨과 메모를 수정했습니다",
+  );
   await expect(saved).toContainText("경계 재확인");
-  // Editing the note does not touch the measured value.
+  // Editing the annotation does not touch the measured value.
   await expect(saved.locator("strong")).toHaveText(valueBefore!);
-
-  // Draw a labelled shape, then export.
-  await page.getByTestId("tool-circle").click();
-  const box = (await page.getByTestId("annotation-overlay").boundingBox())!;
-  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width * 0.65, box.y + box.height * 0.5);
-  await page.mouse.up();
-  await expect(page.getByTestId("annotation-row")).toHaveCount(1);
-  await page.getByTestId("annotation-name").fill("홀 경계");
-  await page.getByTestId("annotation-step").click();
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
@@ -107,7 +104,7 @@ test("edits a note and exports a bundle that carries the shape", async ({
   for await (const chunk of stream) chunks.push(chunk as Buffer);
   const archive = Buffer.concat(chunks);
 
-  // The ZIP is a real archive whose data.json carries the labelled shape.
+  // The ZIP is a real archive whose data.json carries the annotated measurement.
   const text = archive.toString("latin1");
   expect(text.slice(0, 2)).toBe("PK");
   const { execFileSync } = await import("node:child_process");
@@ -121,9 +118,10 @@ test("edits a note and exports a bundle that carries the shape", async ({
     execFileSync("unzip", ["-p", zipPath, "data.json"], { encoding: "utf-8" }),
   );
 
-  expect(data.schema_version).toBe("1.1");
-  expect(data.annotations).toHaveLength(1);
-  expect(data.annotations[0].kind).toBe("circle");
-  expect(data.annotations[0].measurement_name).toBe("홀 경계");
+  expect(data.schema_version).toBe("2.0");
+  expect(data.measurements).toHaveLength(1);
+  expect(data.measurements[0].label).toBe("홀 경계");
   expect(data.measurements[0].note).toBe("경계 재확인");
+  // The step describes the image once, rather than every figure on it.
+  expect(data.image.process_step).toBe("Gate Etch");
 });

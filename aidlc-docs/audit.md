@@ -1371,3 +1371,21 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: CONSTRUCTION - Code Generation Part 2 Step 24/26 complete; per-step Git checkpoint required; Step 25 next
 
 ---
+
+## NANoDB Core Code Generation Step 25 Started
+
+**Timestamp**: 2026-09-08T06:34:00Z
+**User Input**: "2"
+**AI Response**: "After pushing the Step 24 checkpoint, started Step 25: generate the minimal Playwright browser scenarios under tests/e2e/ and the test-traceability.md linking requirements/stories/design rules to generated tests (US-01~US-07)."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 25 in progress
+
+---
+
+## NANoDB Core Code Generation Step 25 Complete
+
+**Timestamp**: 2026-09-08T06:48:00Z
+**User Input**: "2"
+**AI Response**: "Generated the P0 browser scenarios and traceability. Added playwright.config.ts (chromium, base URL from E2E_BASE_URL default http://127.0.0.1:8000, acceptDownloads, no auto webServer because the stack is started separately), tests/e2e/helpers.ts (registerSampleImage and drawTwoPoints against stable data-testids), tests/e2e/measurement-flow.spec.ts (upload -> two clicks -> save -> reload and resize overlay restore -> select highlight -> context ZIP download filename, US-03~US-06), tests/e2e/failure-cases.spec.ts (registration client validation, export disabled without measurements, third-click guard), and a deterministic 400x300 PNG fixture at tests/e2e/fixtures/sample.png. npx playwright test --list discovered all 4 tests, confirming the config and specs compile; execution and final pass/fail are deferred to Build and Test. Added aidlc-docs/construction/nanodb-core/code/test-traceability.md mapping US-01~US-07, requirement/design-rule families (BR-IMG/MEA/RES/CTX, CAT, SUM, NFR-REL/PER/SEC/OBS) and browser scenarios to the generated backend/frontend/e2e tests, noting US-08 is out of Core scope and PostgreSQL integration tests require TEST_DATABASE_URL. The e2e TypeScript sits outside the frontend tsconfig so npm run typecheck is unaffected; the fixture is tracked."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 25/26 complete; per-step Git checkpoint required; Step 26 next
+
+---

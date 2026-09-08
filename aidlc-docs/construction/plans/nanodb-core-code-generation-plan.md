@@ -180,7 +180,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 25. Browser P0 scenario와 story traceability 생성 — US-01~US-07
 
-- [ ] `tests/e2e/`에 upload → two clicks → save → reload/resize overlay → export download의 최소 Playwright scenario와 주요 실패 scenario를 생성한다. `aidlc-docs/construction/nanodb-core/code/test-traceability.md`에 requirement/story/design rule과 생성된 test를 연결한다. test 실행과 최종 pass/fail 판정은 후속 Build and Test 단계에서 수행한다.
+- [x] `tests/e2e/`에 upload → two clicks → save → reload/resize overlay → export download의 최소 Playwright scenario와 주요 실패 scenario를 생성한다. `aidlc-docs/construction/nanodb-core/code/test-traceability.md`에 requirement/story/design rule과 생성된 test를 연결한다. test 실행과 최종 pass/fail 판정은 후속 Build and Test 단계에서 수행한다.
 
 ### Step 26. 생성 결과 일관성 검토와 완료 요약 — US-01~US-07
 

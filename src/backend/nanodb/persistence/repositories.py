@@ -350,6 +350,19 @@ class AnnotationRepository:
             _to_annotation(model) for model in self._session.scalars(statement)
         )
 
+    def delete(self, image_id: int, annotation_id: int) -> bool:
+        """Delete a single annotation scoped to its image.
+
+        Returns ``True`` when a matching annotation was removed. An annotation
+        that belongs to a different image is treated as not found so callers
+        cannot delete across images by guessing ids.
+        """
+        model = self._session.get(AnnotationModel, annotation_id)
+        if model is None or model.image_id != image_id:
+            return False
+        self._session.delete(model)
+        return True
+
     def delete_by_image(self, image_id: int) -> int:
         """Delete every annotation for an image; returns how many were removed."""
         count = 0

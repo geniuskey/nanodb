@@ -98,7 +98,6 @@ describe("ImageListPage", () => {
   });
 
   it("deletes an image after confirmation and drops it from the catalog", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     const fetchMock = vi.fn().mockImplementation((_input, init?: RequestInit) => {
       if (init?.method === "DELETE") {
         return Promise.resolve(new Response(null, { status: 204 }));
@@ -109,6 +108,11 @@ describe("ImageListPage", () => {
 
     renderWithRouter(<ImageListPage />);
     fireEvent.click(await screen.findByTestId("catalog-image-delete"));
+    // The dialog names the derived data that disappears with the image.
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(
+      "저장된 측정 2개가 함께 삭제됩니다",
+    );
+    fireEvent.click(screen.getByTestId("confirm-accept"));
 
     await waitFor(() =>
       expect(screen.queryByTestId("catalog-image-card")).not.toBeInTheDocument(),
@@ -116,10 +120,10 @@ describe("ImageListPage", () => {
     const deleteCall = fetchMock.mock.calls.find((call) => call[1]?.method === "DELETE");
     expect(String(deleteCall?.[0])).toBe("/api/images/9");
     expect(screen.getByText("등록된 이미지가 없습니다")).toBeInTheDocument();
+    expect(screen.getByTestId("status-banner")).toHaveTextContent("삭제했습니다");
   });
 
   it("keeps the image when the delete is not confirmed", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
     const fetchMock = vi.fn().mockImplementation(() =>
       Promise.resolve(jsonResponse([sampleImage])),
     );
@@ -127,7 +131,9 @@ describe("ImageListPage", () => {
 
     renderWithRouter(<ImageListPage />);
     fireEvent.click(await screen.findByTestId("catalog-image-delete"));
+    fireEvent.click(screen.getByTestId("confirm-cancel"));
 
+    expect(screen.queryByTestId("confirm-dialog")).not.toBeInTheDocument();
     expect(screen.getByTestId("catalog-image-card")).toBeInTheDocument();
     expect(fetchMock.mock.calls.some((call) => call[1]?.method === "DELETE")).toBe(false);
   });

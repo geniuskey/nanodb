@@ -79,6 +79,18 @@ class AnnotationService:
             session.commit()
             return annotation
 
+    def delete(self, image_id: int, annotation_id: int) -> None:
+        """Remove one shape. The original image and saved measurements are
+        untouched: a shape is a reference label, not measured data."""
+        with self._session_factory() as session:
+            if ImageRepository(session).find(image_id) is None:
+                raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
+            if not AnnotationRepository(session).delete(image_id, annotation_id):
+                raise DomainError(
+                    "ANNOTATION_NOT_FOUND", "Annotation was not found."
+                )
+            session.commit()
+
     def list_for_image(self, image_id: int) -> tuple[Annotation, ...]:
         with self._session_factory() as session:
             if ImageRepository(session).find(image_id) is None:

@@ -17,6 +17,8 @@ interface Props {
   draft: DraftShape | null;
   interactive: boolean;
   selectedId: number | null;
+  /** Select the shape's table row by clicking the shape itself (ANN-006). */
+  onSelect?: (id: number) => void;
   onPointerDown?: (event: ReactPointerEvent<SVGSVGElement>) => void;
   onPointerMove?: (event: ReactPointerEvent<SVGSVGElement>) => void;
   onPointerUp?: (event: ReactPointerEvent<SVGSVGElement>) => void;
@@ -40,6 +42,7 @@ export function AnnotationLayer({
   draft,
   interactive,
   selectedId,
+  onSelect,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -54,12 +57,22 @@ export function AnnotationLayer({
     className: string,
     key: string,
     number?: number,
+    id?: number,
   ) {
     const startR = toRenderedPoint(start, rendered, original);
     const endR = toRenderedPoint(end, rendered, original);
     const label = toRenderedPoint(labelPoint(kind, start, end), rendered, original);
+    // A saved shape stays clickable even when the layer itself is inert, so a
+    // shape and its row can be selected from either side. CSS limits the hit
+    // area to the stroke, keeping the image below clickable for measuring.
+    const selectable = id !== undefined && onSelect !== undefined;
     return (
-      <g key={key}>
+      <g
+        key={key}
+        data-annotation-id={id}
+        className={selectable ? "annotation-shape selectable" : "annotation-shape"}
+        onClick={selectable ? () => onSelect(id) : undefined}
+      >
         {kind === "arrow" ? (
           <line
             x1={startR.x}
@@ -120,6 +133,7 @@ export function AnnotationLayer({
           annotation.id === selectedId ? "selected" : "",
           `annotation-${annotation.id}`,
           index + 1,
+          annotation.id,
         ),
       )}
       {draft &&

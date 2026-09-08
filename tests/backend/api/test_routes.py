@@ -118,6 +118,7 @@ class FakeAnnotationService:
     def __init__(self) -> None:
         self.created: list[object] = []
         self.updates: list[tuple[int, int, object]] = []
+        self.deleted: list[tuple[int, int]] = []
 
     def create(self, image_id: int, value: object) -> Annotation:
         self.created.append(value)
@@ -132,6 +133,11 @@ class FakeAnnotationService:
             measurement_name=value.measurement_name,
             created_at=NOW,
         )
+
+    def delete(self, image_id: int, annotation_id: int) -> None:
+        if annotation_id != 7:
+            raise DomainError("ANNOTATION_NOT_FOUND", "Annotation was not found.")
+        self.deleted.append((image_id, annotation_id))
 
     def list_for_image(self, image_id: int) -> tuple[Annotation, ...]:
         if image_id != 1:
@@ -363,6 +369,23 @@ def test_update_annotation_forwards_label_fields() -> None:
     assert annotation_id == 7
     assert value.product is ProductType.DRAM
     assert value.step == "Litho"
+
+
+def test_delete_annotation_returns_no_content_and_forwards_ids() -> None:
+    client = build_client()
+
+    response = client.delete("/api/images/1/annotations/7")
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert client.app.state.annotation_service.deleted == [(1, 7)]
+
+
+def test_delete_missing_annotation_uses_not_found_envelope() -> None:
+    response = build_client().delete("/api/images/1/annotations/999")
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "ANNOTATION_NOT_FOUND"
 
 
 def test_update_missing_annotation_uses_not_found_envelope() -> None:

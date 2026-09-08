@@ -224,6 +224,19 @@ def update_annotation(
     return annotation_view(result)
 
 
+@router.delete(
+    "/images/{image_id}/annotations/{annotation_id}",
+    status_code=204,
+)
+def delete_annotation(
+    image_id: int,
+    annotation_id: int,
+    request: Request,
+) -> Response:
+    request.app.state.annotation_service.delete(image_id, annotation_id)
+    return Response(status_code=204)
+
+
 @router.get("/images/{image_id}/context-export")
 def context_export(image_id: int, request: Request) -> Response:
     content = request.app.state.context_export_service.build(image_id)

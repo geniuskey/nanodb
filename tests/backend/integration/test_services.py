@@ -356,6 +356,98 @@ def test_annotation_service_persists_and_guards_inputs(
     assert missing_annotation.value.code == "ANNOTATION_NOT_FOUND"
 
 
+def test_annotation_delete_is_scoped_to_its_image(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+) -> None:
+    repository = ImageRepository(db_session)
+    first = repository.create(
+        original_filename="first.png",
+        stored_filename="first.png",
+        image_type=ImageType.TEM,
+        product_id="P",
+        lot_id="L",
+        wafer_id="W",
+        calibration_nm_per_pixel=0.2,
+        pixel_width=1000,
+        pixel_height=800,
+    )
+    second = repository.create(
+        original_filename="second.png",
+        stored_filename="second.png",
+        image_type=ImageType.SEM,
+        product_id="P",
+        lot_id="L",
+        wafer_id="W2",
+        calibration_nm_per_pixel=0.2,
+        pixel_width=1000,
+        pixel_height=800,
+    )
+    db_session.commit()
+    _, factory = database_engine
+    service = AnnotationService(factory)
+    shape = service.create(
+        first.id,
+        AnnotationInput(kind=ShapeKind.ARROW, start=Point(10, 10), end=Point(40, 40)),
+    )
+
+    # Guessing the id from another image must not delete across images.
+    with pytest.raises(DomainError) as cross_image:
+        service.delete(second.id, shape.id)
+    assert cross_image.value.code == "ANNOTATION_NOT_FOUND"
+    assert [a.id for a in service.list_for_image(first.id)] == [shape.id]
+
+    service.delete(first.id, shape.id)
+    assert service.list_for_image(first.id) == ()
+
+    # Deleting it twice, or against a missing image, is reported distinctly.
+    with pytest.raises(DomainError) as missing_shape:
+        service.delete(first.id, shape.id)
+    assert missing_shape.value.code == "ANNOTATION_NOT_FOUND"
+    with pytest.raises(DomainError) as missing_image:
+        service.delete(999, shape.id)
+    assert missing_image.value.code == "IMAGE_NOT_FOUND"
+
+
+def test_annotation_delete_keeps_saved_measurements(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+) -> None:
+    image = ImageRepository(db_session).create(
+        original_filename="sample.png",
+        stored_filename="sample.png",
+        image_type=ImageType.TEM,
+        product_id="P",
+        lot_id="L",
+        wafer_id="W",
+        calibration_nm_per_pixel=0.2,
+        pixel_width=1000,
+        pixel_height=800,
+    )
+    db_session.commit()
+    _, factory = database_engine
+    measurement = MeasurementService(factory).create(
+        image.id,
+        MeasurementInput(
+            parameter_type=ParameterType.CD,
+            start=Point(100, 100),
+            end=Point(400, 500),
+            note=None,
+        ),
+    )
+    annotation_service = AnnotationService(factory)
+    shape = annotation_service.create(
+        image.id,
+        AnnotationInput(kind=ShapeKind.CIRCLE, start=Point(50, 50), end=Point(70, 50)),
+    )
+
+    annotation_service.delete(image.id, shape.id)
+
+    # A shape is a reference label: removing one leaves measured data intact.
+    stored = MeasurementService(factory).list_for_image(image.id)
+    assert [item.id for item in stored] == [measurement.id]
+
+
 def test_image_delete_cascades_annotations(
     database_engine: tuple[Engine, sessionmaker[Session]],
     db_session: Session,

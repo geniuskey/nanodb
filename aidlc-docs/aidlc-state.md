@@ -4,7 +4,7 @@
 
 - **Project Type**: Greenfield
 - **Start Date**: 2026-09-07T11:50:01Z
-- **Current Stage**: INCEPTION - Requirements Analysis (UI/UX completeness amendment, 2026-09-08): questions answered, requirement documents updated, awaiting approval. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
+- **Current Stage**: CONSTRUCTION - Measurement UX unit complete (MEA-012/013/014, UIX-001/002, ANN-005/006) with every gate green including browser e2e. The 2026-09-08 UI/UX requirements amendment was approved on the same day. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
 
 ## Workspace State
 
@@ -75,8 +75,11 @@
 - [x] Apply R1/R3/R4 requirement edits
 - [x] Apply R2 requirement edits per the answers
 - [x] Update README known limitations and demo flow
-- [ ] Refresh stale Construction artifacts (`frontend-components.md`, `frontend-components-summary.md`) — deferred to the Construction stage that implements the new P1 items
-- [ ] Implement the new P1 items (Workflow Planning decides the sequence)
+- [x] Requirements amendment approved 2026-09-08 ("4까지 진행. 승인")
+- [x] Implement priority 1-4: MEA-012/013/014, UIX-001/002, ANN-005/006 — see [measurement-ux-code-generation-plan.md](construction/plans/measurement-ux-code-generation-plan.md)
+- [ ] Refresh stale Construction artifacts (`frontend-components.md`, `frontend-components-summary.md`)
+- [ ] Remaining P1: ANN-008 (annotations in the context ZIP), RES-007 (note editing), CAT-008~009, UIX-008
+- [ ] P2 group (optional; not a demo gate)
 
 ### Applied requirement changes (2026-09-08)
 
@@ -168,9 +171,17 @@ See [contest-alignment-plan.md](inception/requirements/contest-alignment-plan.md
 - Code Generation Part 1 plan: [nanodb-core-code-generation-plan.md](construction/plans/nanodb-core-code-generation-plan.md)
 - The plan contains 26 ordered generation steps for US-01~US-07 and was approved on 2026-09-08.
 
+## Measurement UX Unit (2026-09-08)
+
+- Plan: [measurement-ux-code-generation-plan.md](construction/plans/measurement-ux-code-generation-plan.md) — 22/22 steps complete. Functional, NFR and Infrastructure Design were skipped with reasons recorded in the plan.
+- Delivered: `DELETE /api/images/{id}/annotations/{id}`; an in-app confirmation dialog replacing all three `window.confirm` sites; success announcements via `role="status"`; the calibration, original pixel size and registration time on the measurement screen; zoom and pan with a fixed step ladder and a "screen 1px = N original px" readout; per-shape delete; and shape-to-row selection in both directions.
+- Coordinate contract unchanged: zoom sets an explicit rendered width, and every conversion still goes through the rendered `<img>` rectangle, so stored coordinates stay in original pixels at any magnification.
+- Verified: ruff clean, mypy clean (27 files), pytest 97 passed against a local PostgreSQL 16 with no skips, vitest 47 passed, vite build succeeded, Playwright e2e 6 passed against the running app in Chromium.
+- Browser e2e ran for the first time in this session. It surfaced one stale assertion left from the earlier TIFF work (`PNG 또는 JPEG`), now corrected, and two layout defects found by screenshot (the zoomed viewer overflowing its grid column, and the annotation table's delete button wrapping) that were fixed before commit.
+
 ## Next Stage Assessment
 
-Requirements Analysis is complete for this amendment. On approval, Workflow Planning decides how the new P1 items are sequenced into Construction — the strongest user-value candidates are the measurement screen's calibration and scale display (MEA-012/014), zoom and pan (MEA-013), shape delete (ANN-005), annotations in the export (ANN-008), success feedback (UIX-002) and the in-app confirmation dialog (UIX-001). The P2 group stays optional and is not a demo gate.
+Priorities 1-4 are delivered and verified. The next candidates, in the order proposed at the review, are ANN-008 (annotations in the context ZIP, which changes the CTX contract and its reproducibility test), then RES-007 (note editing), CAT-008~009 (keep results during a filter refetch, show the result count) and UIX-008 (consistent Korean copy). The stale Construction artifacts should be refreshed alongside whichever unit comes next. The P2 group stays optional and is not a demo gate.
 
 ## Execution Plan Summary
 

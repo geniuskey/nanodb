@@ -136,5 +136,9 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(value),
     }),
+  deleteAnnotation: (imageId: number, annotationId: number) =>
+    requestVoid(`/api/images/${imageId}/annotations/${annotationId}`, {
+      method: "DELETE",
+    }),
   downloadContext: contextDownload,
 };

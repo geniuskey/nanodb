@@ -1653,3 +1653,23 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: INCEPTION - Requirements Analysis Step 7-8 complete; awaiting approval before Workflow Planning
 
 ---
+
+## Measurement UX — Code Generation (Priority 1-4)
+**Timestamp**: 2026-09-08T10:58:00Z
+**User Input**: "4까지 진행. 승인"
+**AI Response**: "승인 순서 ①~④를 구현했다. 계획: construction/plans/measurement-ux-code-generation-plan.md (22단계, 전부 완료). Functional/NFR/Infra Design은 새 도메인 개념·기술스택·배포 변화가 없어 생략하고 사유를 계획서에 기록했다.
+
+백엔드(ANN-005): AnnotationRepository.delete(image_id, annotation_id)->bool을 이미지 스코프로 추가(다른 이미지의 id는 not found 취급해 교차 삭제 차단), AnnotationService.delete(이미지 없으면 IMAGE_NOT_FOUND, 도형 없으면 ANNOTATION_NOT_FOUND, 성공 시 commit), DELETE /api/images/{image_id}/annotations/{annotation_id} -> 204. errors.py의 NOT_FOUND 접미사 매핑을 그대로 사용.
+
+프런트 공통(UIX-001, UIX-002): ui/ConfirmDialog.tsx 신설 — role=dialog + aria-modal, 열릴 때 확인 버튼으로 포커스 이동, 닫힐 때 호출자에게 포커스 복귀, Esc 취소, Tab 순환 트랩, 삭제될 파생 데이터 건수를 본문에 명시. ui/StatusBanner.tsx 신설 — 쓰기 성공을 role=status로 알림(실패는 기존 role=alert 유지). window.confirm 3곳(측정 삭제, 이미지 삭제 상세·목록)을 전부 대체.
+
+측정 화면(MEA-012/013/014, ANN-005/006): 이미지 정보 패널에 보정값·원본 픽셀 크기·등록 시각 상시 표시. 뷰어를 스크롤 컨테이너(.image-viewport)로 바꾸고 fitScale=min(vw/w, vh/h, 1)에 배율을 곱해 이미지 표시 폭을 명시적으로 계산 — 좌표 변환은 기존 toOriginalPoint(렌더 rect 기준) 경로를 그대로 쓰므로 배율이 바뀌어도 원본 좌표 계약이 유지된다. 배율 단계 [1, 1.5, 2, 3, 4, 6, 8]과 축소/확대/맞춤 버튼, 현재 배율과 '화면 1px ≈ 원본 N.NNpx' 표시(원본보다 축소된 상태에서는 '원본 1px 단위로는 지정할 수 없습니다'를 그대로 노출). 도형 행별 삭제 버튼과 확인 대화상자, AnnotationLayer에 onSelect를 추가해 도형 클릭으로 행 선택(CSS pointer-events: stroke로 히트 영역을 획으로 제한해 측정 클릭을 뺏지 않음). 측정·도형 저장/삭제와 ZIP 다운로드에 성공 알림.
+
+레이아웃 결함 2건을 구현 중 스크린샷으로 발견해 함께 수정: 확대 시 뷰어가 grid 열을 밀어내 사이드바를 침범하던 문제(.viewer-panel에 minmax(0,1fr)·min-width:0), 도형 표 삭제 버튼이 좁은 사이드바에서 두 줄로 깨지던 문제.
+
+검증(전부 실제 실행): ruff 통과, mypy 27파일 이상 없음, pytest 97 passed(로컬 PostgreSQL 16 기동해 통합 테스트 skip 없이 실행), vitest 47 passed, vite build 성공, Playwright e2e 6 passed(실제 앱+PostgreSQL+Chromium). e2e는 이번에 처음 실제 실행했고, 그 과정에서 TIFF 등록 추가 시점부터 낡아 있던 기존 단언 1건('PNG 또는 JPEG')을 현재 문구로 고쳤다. 신규 e2e 2건은 확대가 좌표계를 깨지 않음(저장 측정 선이 이미지와 같은 비율로 확대되며 같은 위치 유지)과 도형 삭제의 취소·확인 경로를 검증한다.
+
+미포함: ⑤ ANN-008(도형의 ZIP 포함), RES-007, CAT-008~009, UIX-008, P2 전체."
+**Context**: CONSTRUCTION - Measurement UX unit complete; all gates green including browser e2e
+
+---

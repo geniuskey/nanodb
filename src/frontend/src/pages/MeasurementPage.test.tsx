@@ -60,6 +60,21 @@ async function preparedImage() {
   return image;
 }
 
+/** Give the scroll viewport a size so the fit scale can be computed. */
+function stubViewport(width: number, height: number) {
+  const viewport = screen.getByLabelText(/이미지 뷰어/);
+  Object.defineProperty(viewport, "getBoundingClientRect", {
+    value: () => ({ left: 0, top: 0, width, height }),
+    configurable: true,
+  });
+  fireEvent(window, new Event("resize"));
+}
+
+/** Accept the in-app confirmation dialog (UIX-001). */
+async function acceptConfirm() {
+  await userEvent.click(await screen.findByTestId("confirm-accept"));
+}
+
 // Drag a shape across the annotation overlay. jsdom's pointer-capture rejects
 // unknown pointer ids, so neutralise it before dispatching pointer events.
 function dragShape(from: { x: number; y: number }, to: { x: number; y: number }) {
@@ -119,7 +134,6 @@ describe("MeasurementPage", () => {
   });
 
   it("removes a saved measurement after confirmation and disables export", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse(detail))
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
@@ -128,29 +142,59 @@ describe("MeasurementPage", () => {
     expect(screen.getByTestId("saved-measurement-item")).toBeInTheDocument();
 
     await userEvent.click(screen.getByTestId("delete-measurement"));
+    expect(screen.getByTestId("confirm-dialog")).toBeInTheDocument();
+    await acceptConfirm();
 
     await waitFor(() =>
       expect(screen.queryByTestId("saved-measurement-item")).not.toBeInTheDocument(),
     );
+    expect(screen.getByTestId("status-banner")).toHaveTextContent("측정을 삭제했습니다");
+    expect(screen.queryByTestId("confirm-dialog")).not.toBeInTheDocument();
     const [path, init] = fetchMock.mock.calls[1];
     expect(String(path)).toBe("/api/images/1/measurements/1");
     expect(init).toMatchObject({ method: "DELETE" });
     expect(screen.getByTestId("context-export-button")).toBeDisabled();
   });
 
-  it("keeps the measurement when deletion is not confirmed", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+  it("keeps the measurement when the confirmation is cancelled", async () => {
     const fetchMock = renderPage();
     await preparedImage();
 
     await userEvent.click(screen.getByTestId("delete-measurement"));
+    await userEvent.click(screen.getByTestId("confirm-cancel"));
 
+    expect(screen.queryByTestId("confirm-dialog")).not.toBeInTheDocument();
     expect(screen.getByTestId("saved-measurement-item")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1); // only the initial getImage
   });
 
+  it("cancels the confirmation with Escape and deletes nothing", async () => {
+    const fetchMock = renderPage();
+    await preparedImage();
+
+    await userEvent.click(screen.getByTestId("delete-measurement"));
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByTestId("confirm-dialog")).not.toBeInTheDocument();
+    expect(screen.getByTestId("saved-measurement-item")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("names the cascade before deleting an image", async () => {
+    renderPage(vi.fn().mockResolvedValue(jsonResponse({
+      ...detail,
+      annotations: [createdAnnotation],
+    })));
+    await preparedImage();
+
+    await userEvent.click(screen.getByTestId("detail-image-delete"));
+
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(
+      "저장된 측정 1개와 도형 1개가 함께 삭제됩니다",
+    );
+  });
+
   it("surfaces a delete failure without dropping the measurement", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse(detail))
       .mockResolvedValueOnce(
@@ -160,13 +204,13 @@ describe("MeasurementPage", () => {
     await preparedImage();
 
     await userEvent.click(screen.getByTestId("delete-measurement"));
+    await acceptConfirm();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("삭제하지 못했습니다");
     expect(screen.getByTestId("saved-measurement-item")).toBeInTheDocument();
   });
 
   it("deletes the image and returns to the catalog", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse(detail))
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
@@ -182,6 +226,7 @@ describe("MeasurementPage", () => {
     await screen.findByTestId("measurement-image");
 
     await userEvent.click(screen.getByTestId("detail-image-delete"));
+    await acceptConfirm();
 
     expect(await screen.findByText("catalog")).toBeInTheDocument();
     const [path, init] = fetchMock.mock.calls[1];
@@ -203,6 +248,7 @@ describe("MeasurementPage", () => {
     await waitFor(() => expect(screen.getAllByTestId("saved-measurement-item")).toHaveLength(2));
     expect(screen.getAllByTestId("saved-measurement-item")[0]).toHaveTextContent("101.00nm");
     expect(screen.queryByTestId("measurement-preview")).not.toBeInTheDocument();
+    expect(screen.getByTestId("status-banner")).toHaveTextContent("CD 101.00nm 측정을 저장했습니다");
   });
 
   it("keeps a valid draft visible when server save fails", async () => {
@@ -371,6 +417,88 @@ describe("MeasurementPage", () => {
     expect(String(path)).toBe("/api/images/1/annotations/10");
     expect(init).toMatchObject({ method: "PATCH" });
     expect(JSON.parse(init.body)).toMatchObject({ step: "ETCH" });
+  });
+
+  it("shows the calibration, original size and registration time while measuring", async () => {
+    renderPage();
+    await preparedImage();
+
+    const facts = screen.getByTestId("image-facts");
+    expect(facts).toHaveTextContent("0.2 nm/pixel");
+    expect(facts).toHaveTextContent("1000 × 800 px");
+  });
+
+  it("scales the image with the zoom control", async () => {
+    renderPage();
+    const image = await preparedImage();
+    stubViewport(800, 600);
+
+    // Fit scale is limited by height: 600/800 = 0.75 of 1000px.
+    expect(image).toHaveStyle({ width: "750px" });
+    expect(screen.getByTestId("zoom-level")).toHaveTextContent("100%");
+    expect(screen.getByTestId("zoom-fit")).toBeDisabled();
+
+    await userEvent.click(screen.getByTestId("zoom-in"));
+
+    expect(screen.getByTestId("zoom-level")).toHaveTextContent("150%");
+    expect(image).toHaveStyle({ width: "1125px" });
+    expect(screen.getByTestId("zoom-fit")).toBeEnabled();
+  });
+
+  it("states that original-pixel accuracy is unreachable while shrunk", async () => {
+    renderPage();
+    const image = await screen.findByTestId("measurement-image");
+    Object.defineProperty(image, "getBoundingClientRect", {
+      value: () => ({ left: 0, top: 0, width: 500, height: 400 }),
+    });
+    fireEvent.load(image);
+
+    // 1000 original px shown across 500 screen px: one click covers 2 px.
+    expect(screen.getByTestId("viewer-scale")).toHaveTextContent("원본 2.00px");
+    expect(screen.getByTestId("viewer-scale")).toHaveTextContent(
+      "원본 1px 단위로는 지정할 수 없습니다",
+    );
+  });
+
+  it("deletes a shape after confirmation and leaves measurements alone", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        ...detail,
+        annotations: [{ ...createdAnnotation, id: 7 }],
+      }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    renderPage(fetchMock);
+    await preparedImage();
+    expect(await screen.findByTestId("annotation-row")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("delete-annotation"));
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent("1번 도형을 삭제할까요?");
+    await acceptConfirm();
+
+    await waitFor(() => expect(screen.getByTestId("annotation-empty")).toBeInTheDocument());
+    const [path, init] = fetchMock.mock.calls[1];
+    expect(String(path)).toBe("/api/images/1/annotations/7");
+    expect(init).toMatchObject({ method: "DELETE" });
+    expect(screen.getByTestId("saved-measurement-item")).toBeInTheDocument();
+  });
+
+  it("selects a shape's row by clicking the shape", async () => {
+    renderPage(vi.fn().mockResolvedValue(jsonResponse({
+      ...detail,
+      annotations: [
+        { ...createdAnnotation, id: 7 },
+        { ...createdAnnotation, id: 8, kind: "circle" },
+      ],
+    })));
+    await preparedImage();
+    const rows = await screen.findAllByTestId("annotation-row");
+    expect(rows[1]).not.toHaveClass("active");
+
+    const shape = document.querySelector('g[data-annotation-id="8"]');
+    fireEvent.click(shape!);
+
+    expect(screen.getAllByTestId("annotation-row")[1]).toHaveClass("active");
+    expect(document.querySelector('g[data-annotation-id="8"] circle')).toHaveClass("selected");
   });
 
   it("rejects a successful response that is not a ZIP", async () => {

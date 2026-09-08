@@ -140,7 +140,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 15. Image Registration feature와 frontend unit test 생성 — US-03
 
-- [ ] preview와 metadata form, 20MB·필수 문자열·SEM/TEM·양수 보정 선행 검증, 중복 submit 방지, 입력 유지 error, 성공 detail navigation을 구현하고 unit test를 생성한다. client validation이 server validation을 대체하지 않게 한다.
+- [x] preview와 metadata form, 20MB·필수 문자열·SEM/TEM·양수 보정 선행 검증, 중복 submit 방지, 입력 유지 error, 성공 detail navigation을 구현하고 unit test를 생성한다. client validation이 server validation을 대체하지 않게 한다.
 
 ### Step 16. Measurement viewer, coordinate adapter와 SVG overlay 생성 — US-04, US-05
 

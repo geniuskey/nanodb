@@ -1157,6 +1157,15 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 
 ---
 
+## NANoDB Core Code Generation Step 15 Complete
+
+**Timestamp**: 2026-09-08T04:14:39Z
+**User Input**: "step 마다 git push 하고 다음 작업 시작"
+**AI Response**: "Implemented Image Registration preview and metadata form, missing/20MB/positive-calibration validation, multipart API submission, duplicate-submit prevention, retained-input server errors and success navigation. Added three component tests; all 10 frontend tests, TypeScript and production build passed."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 15/26 complete; per-step Git checkpoint required
+
+---
+
 ## Per-Step Git Checkpoint Policy Requested
 
 **Timestamp**: 2026-09-08T04:02:41Z

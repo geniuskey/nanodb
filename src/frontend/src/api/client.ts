@@ -1,4 +1,4 @@
-import type { ApiErrorEnvelope, ImageListView, SummaryView } from "./types";
+import type { ApiErrorEnvelope, ImageListView, ImageView, SummaryView } from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -10,8 +10,11 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string): Promise<T> {
-  const response = await fetch(path, { headers: { Accept: "application/json" } });
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, {
+    ...init,
+    headers: { Accept: "application/json", ...init?.headers },
+  });
   if (!response.ok) {
     let error: ApiErrorEnvelope = {
       code: "REQUEST_FAILED",
@@ -30,4 +33,6 @@ async function request<T>(path: string): Promise<T> {
 export const api = {
   getSummary: () => request<SummaryView>("/api/summary"),
   listImages: () => request<ImageListView[]>("/api/images"),
+  registerImage: (form: FormData) =>
+    request<ImageView>("/api/images", { method: "POST", body: form }),
 };

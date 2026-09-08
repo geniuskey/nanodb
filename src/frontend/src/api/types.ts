@@ -21,6 +21,8 @@ export interface ImageListView {
   measurement_count: number;
 }
 
+export type ImageView = Omit<ImageListView, "measurement_count">;
+
 export interface ApiErrorEnvelope {
   code: string;
   message: string;

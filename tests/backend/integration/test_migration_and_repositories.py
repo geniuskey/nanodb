@@ -88,6 +88,49 @@ def test_aggregate_list_and_measurement_order_are_deterministic(
     assert [measurement.id for measurement in export] == [1, 2]
 
 
+def test_list_filters_by_partial_text_and_image_type(db_session: Session) -> None:
+    images = ImageRepository(db_session)
+    images.create(
+        original_filename="alpha.png",
+        stored_filename="stored-alpha.png",
+        image_type=ImageType.SEM,
+        product_id="PRODUCT-42",
+        lot_id="LOT-A",
+        wafer_id="WAFER-1",
+        calibration_nm_per_pixel=0.2,
+        pixel_width=100,
+        pixel_height=100,
+    )
+    images.create(
+        original_filename="beta.png",
+        stored_filename="stored-beta.png",
+        image_type=ImageType.TEM,
+        product_id="PRODUCT-99",
+        lot_id="LOT-B",
+        wafer_id="WAFER-2",
+        calibration_nm_per_pixel=0.2,
+        pixel_width=100,
+        pixel_height=100,
+    )
+    db_session.commit()
+
+    # Case-insensitive partial match against product/lot/wafer/filename.
+    by_product = images.list_with_measurement_count(query="product-42")
+    assert [item.image.original_filename for item in by_product] == ["alpha.png"]
+
+    # Type filter narrows to a single kind.
+    tem_only = images.list_with_measurement_count(image_type=ImageType.TEM)
+    assert [item.image.original_filename for item in tem_only] == ["beta.png"]
+
+    # Blank query keeps the whole catalog visible.
+    assert len(images.list_with_measurement_count(query="   ")) == 2
+
+    # Combined filters intersect (no SEM image matches LOT-B).
+    assert images.list_with_measurement_count(
+        query="LOT-B", image_type=ImageType.SEM
+    ) == ()
+
+
 def test_committed_data_is_visible_from_a_fresh_session(
     database_engine: tuple[Engine, sessionmaker[Session]],
     db_session: Session,

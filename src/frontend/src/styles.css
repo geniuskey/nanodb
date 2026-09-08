@@ -201,6 +201,11 @@ h2 { letter-spacing: -0.02em; font-size: 1.5rem; margin: 0 0 6px; }
 
 /* ---------- Image list / register / measurement ---------- */
 .page-heading { display: flex; justify-content: space-between; align-items: center; }
+.catalog-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 24px; }
+.catalog-search { flex: 1; min-width: 220px; padding: 12px 14px; border: 1px solid #b7bdc8; border-radius: 10px; font: inherit; }
+.type-filter { display: inline-flex; gap: 6px; }
+.chip { padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-muted); font-weight: 700; cursor: pointer; }
+.chip.active { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
 .image-grid { grid-template-columns: repeat(2, 1fr); }
 .image-card { display: grid; grid-template-columns: 180px 1fr; gap: 22px; text-decoration: none; }
 .image-card img { width: 180px; height: 150px; object-fit: contain; background: #101718; border-radius: 10px; }

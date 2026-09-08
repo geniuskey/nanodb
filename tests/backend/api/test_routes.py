@@ -37,13 +37,20 @@ def sample_image() -> Image:
 class FakeImageService:
     def __init__(self) -> None:
         self.registration = None
+        self.list_calls: list[tuple[str | None, ImageType | None]] = []
 
     def register(self, stream: BytesIO, registration: object) -> Image:
         assert stream.read(1) == b"x"
         self.registration = registration
         return sample_image()
 
-    def list_images(self) -> tuple[ImageListItem, ...]:
+    def list_images(
+        self,
+        *,
+        query: str | None = None,
+        image_type: ImageType | None = None,
+    ) -> tuple[ImageListItem, ...]:
+        self.list_calls.append((query, image_type))
         return (ImageListItem(sample_image(), 0),)
 
     def get_image(self, image_id: int) -> Image:
@@ -106,6 +113,23 @@ def test_summary_and_catalog_do_not_expose_stored_filename() -> None:
     assert catalog.json()[0]["measurement_count"] == 0
     assert "stored_filename" not in catalog.text
     assert summary.headers["x-correlation-id"]
+
+
+def test_catalog_forwards_search_and_type_filters_to_service() -> None:
+    client = build_client()
+
+    response = client.get("/api/images", params={"q": "lot42", "image_type": "SEM"})
+
+    assert response.status_code == 200
+    assert client.app.state.image_service.list_calls == [("lot42", ImageType.SEM)]
+
+
+def test_catalog_without_filters_forwards_none() -> None:
+    client = build_client()
+
+    client.get("/api/images")
+
+    assert client.app.state.image_service.list_calls == [(None, None)]
 
 
 def test_multipart_registration_returns_safe_image_view() -> None:

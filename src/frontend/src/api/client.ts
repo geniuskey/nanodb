@@ -2,11 +2,17 @@ import type {
   ApiErrorEnvelope,
   ImageDetailView,
   ImageListView,
+  ImageType,
   ImageView,
   MeasurementCreateInput,
   MeasurementView,
   SummaryView,
 } from "./types";
+
+export interface ImageListQuery {
+  q?: string;
+  imageType?: ImageType;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -67,7 +73,13 @@ async function contextDownload(imageId: number): Promise<Blob> {
 
 export const api = {
   getSummary: () => request<SummaryView>("/api/summary"),
-  listImages: () => request<ImageListView[]>("/api/images"),
+  listImages: (filter?: ImageListQuery) => {
+    const search = new URLSearchParams();
+    if (filter?.q?.trim()) search.set("q", filter.q.trim());
+    if (filter?.imageType) search.set("image_type", filter.imageType);
+    const qs = search.toString();
+    return request<ImageListView[]>(`/api/images${qs ? `?${qs}` : ""}`);
+  },
   getImage: (imageId: number) => request<ImageDetailView>(`/api/images/${imageId}`),
   createMeasurement: (imageId: number, value: MeasurementCreateInput) =>
     request<MeasurementView>(`/api/images/${imageId}/measurements`, {

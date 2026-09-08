@@ -1,10 +1,14 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { jsonResponse, renderWithRouter } from "../test/helpers";
 import { ImageListPage } from "./ImageListPage";
 
 afterEach(() => vi.unstubAllGlobals());
+
+function urlsOf(fetchMock: ReturnType<typeof vi.fn>): string[] {
+  return fetchMock.mock.calls.map((call) => String(call[0]));
+}
 
 describe("ImageListPage", () => {
   it("shows an explicit empty state and registration action", async () => {
@@ -48,5 +52,42 @@ describe("ImageListPage", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("불러오지 못했습니다");
     expect(screen.queryByText("등록된 이미지가 없습니다")).not.toBeInTheDocument();
+  });
+
+  it("passes the search text as a q query parameter", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse([])));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithRouter(<ImageListPage />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+
+    fireEvent.change(screen.getByTestId("image-search-input"), {
+      target: { value: "lot42" },
+    });
+
+    await waitFor(() =>
+      expect(urlsOf(fetchMock).some((url) => url.includes("q=lot42"))).toBe(true),
+    );
+  });
+
+  it("narrows by image type via the image_type query parameter", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse([])));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithRouter(<ImageListPage />);
+    fireEvent.click(await screen.findByTestId("filter-sem"));
+
+    await waitFor(() =>
+      expect(urlsOf(fetchMock).some((url) => url.includes("image_type=SEM"))).toBe(true),
+    );
+  });
+
+  it("distinguishes a filtered empty result from an empty catalog", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => Promise.resolve(jsonResponse([]))));
+
+    renderWithRouter(<ImageListPage />);
+    fireEvent.click(await screen.findByTestId("filter-tem"));
+
+    expect(await screen.findByText("조건에 맞는 이미지가 없습니다")).toBeInTheDocument();
   });
 });

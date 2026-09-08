@@ -1593,3 +1593,9 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: Post-CONSTRUCTION home-tab v2 merge (docs + real-data re-implementation); awaiting commit decision
 
 ---
+
+## Phase 2 Unit 1 — Image Search & Filter
+**Timestamp**: 2026-09-08T12:20:00Z
+**User Input**: "아냐 계속 구현하자. 다음 구현 시작. 아직 미완성부분이 너무 많아" / (AskUserQuestion 답변) "다 필요한 것이야. 순차적으로 구현해줘"
+**AI Response**: "Phase 2를 위험도·의존성 순으로 4개 유닛(검색·필터 → 파라미터 평균 확장 → 측정 삭제 → 이미지 삭제)으로 나눠 순차 구현하기로 하고, 유닛 1(이미지 검색·필터)을 완결했다. 서버사이드 필터로 구현. 백엔드: ImageRepository.list_with_measurement_count(query, image_type) — 파일명·Product·Lot·Wafer ilike 부분 일치(or_) + SEM/TEM where, 공백 query는 전체 반환. ImageService.list_images(query, image_type) 위임. routes.py GET /api/images에 q(max_length=200)·image_type 쿼리 파라미터 추가. 프런트: client.listImages(filter?) URLSearchParams로 q·image_type 구성(공백 트림, 빈 값 생략). ImageListPage에 검색 input(250ms 디바운스: queryInput→activeQuery)과 SEM/TEM/전체 chip 필터, 필터 적용 시 빈 결과는 '조건에 맞는 이미지가 없습니다'로 구분(무조건 empty와 분리). styles.css .catalog-toolbar/.catalog-search/.type-filter/.chip 추가. 테스트: test_routes에 필터 forwarding 2건(FakeImageService.list_images가 kwargs 기록) + 통합 test에 부분일치·타입·공백·교집합 필터 1건(Postgres skip). 프런트 ImageListPage.test에 q 파라미터·image_type 파라미터·필터드 빈 상태 3건. 검증: 백엔드 59 passed/9 Postgres-skipped, ruff·mypy clean; 프런트 vitest 26 passed; build 성공."
+**Context**: CONSTRUCTION Phase 2 - Unit 1 (search/filter) complete; committing per-unit

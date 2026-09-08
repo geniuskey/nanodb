@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, Request, UploadFile
+from fastapi import APIRouter, File, Form, Query, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 from sqlalchemy import text
 
@@ -77,13 +77,20 @@ def register_image(
 
 
 @router.get("/images", response_model=list[ImageListView])
-def list_images(request: Request) -> list[ImageListView]:
+def list_images(
+    request: Request,
+    q: Annotated[str | None, Query(max_length=200)] = None,
+    image_type: Annotated[ImageType | None, Query()] = None,
+) -> list[ImageListView]:
     return [
         ImageListView(
             **image_view(item.image).model_dump(),
             measurement_count=item.measurement_count,
         )
-        for item in request.app.state.image_service.list_images()
+        for item in request.app.state.image_service.list_images(
+            query=q,
+            image_type=image_type,
+        )
     ]
 
 

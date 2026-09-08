@@ -94,9 +94,17 @@ class ImageService:
         finally:
             session.close()
 
-    def list_images(self) -> tuple[ImageListItem, ...]:
+    def list_images(
+        self,
+        *,
+        query: str | None = None,
+        image_type: ImageType | None = None,
+    ) -> tuple[ImageListItem, ...]:
         with self._session_factory() as session:
-            return ImageRepository(session).list_with_measurement_count()
+            return ImageRepository(session).list_with_measurement_count(
+                query=query,
+                image_type=image_type,
+            )
 
     def get_image(self, image_id: int) -> Image:
         with self._session_factory() as session:

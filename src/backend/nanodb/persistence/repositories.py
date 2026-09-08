@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
 from nanodb.domain.calculations import MeasurementCalculation
@@ -97,13 +97,36 @@ class ImageRepository:
     def count(self) -> int:
         return self._session.scalar(select(func.count(ImageModel.id))) or 0
 
-    def list_with_measurement_count(self) -> tuple[ImageListItem, ...]:
+    def list_with_measurement_count(
+        self,
+        *,
+        query: str | None = None,
+        image_type: ImageType | None = None,
+    ) -> tuple[ImageListItem, ...]:
+        """List images newest-first, optionally filtered.
+
+        ``query`` is a case-insensitive partial match against original filename,
+        product, lot and wafer. ``image_type`` narrows to SEM or TEM. A blank
+        query matches everything so the catalog stays visible while typing.
+        """
         statement: Select[tuple[ImageModel, int]] = (
             select(ImageModel, func.count(MeasurementModel.id))
             .outerjoin(MeasurementModel, MeasurementModel.image_id == ImageModel.id)
             .group_by(ImageModel.id)
             .order_by(ImageModel.created_at.desc(), ImageModel.id.desc())
         )
+        if image_type is not None:
+            statement = statement.where(ImageModel.image_type == image_type.value)
+        if query and query.strip():
+            pattern = f"%{query.strip()}%"
+            statement = statement.where(
+                or_(
+                    ImageModel.original_filename.ilike(pattern),
+                    ImageModel.product_id.ilike(pattern),
+                    ImageModel.lot_id.ilike(pattern),
+                    ImageModel.wafer_id.ilike(pattern),
+                )
+            )
         return tuple(
             ImageListItem(_to_image(model), int(count))
             for model, count in self._session.execute(statement).all()

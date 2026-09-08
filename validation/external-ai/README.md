@@ -21,9 +21,10 @@ whatever the runs show is what gets recorded.
 
 Both arms ask the external tool to perform the task in the export's `task.md`:
 read `data.json` and write a CSV with columns `parameter_type,count,mean_nm`,
-including only parameter types that have measurements, ordered CD, Depth,
-Thickness, with means computed at stored precision and `mean_nm` displayed
-half-up to two decimal places.
+using the `measurements` array only and ignoring `annotations` (labels that
+carry no nm value), including only parameter types that have measurements,
+ordered CD, Depth, Thickness, with means computed at stored precision and
+`mean_nm` displayed half-up to two decimal places.
 
 ## Files
 
@@ -31,11 +32,13 @@ half-up to two decimal places.
 | --- | --- |
 | `prompts/manual-prompt.md` | Baseline arm: hand-written explanation to paste into the tool. |
 | `prompts/context-prompt.md` | Context arm: instructions for attaching the exported files. |
-| `schema-version.txt` | Input schema version (`1.0`) the exports are expected to carry. |
+| `schema-version.txt` | Input schema version (`1.1`) the exports are expected to carry. |
 | `generated/summarize_measurements.py` | Example generated solution, replaced by the actual generated code per run. |
 | `compare_summary.py` | Offline runner comparing a summary CSV against `checks.json`. |
 | `results/run-log-template.md` | Per-run recording format (prep time, follow-ups, verdict, verbatim output). |
-| `results/metrics.csv` | Aggregated metrics across recorded runs (header only until runs exist). |
+| `results/metrics.csv` | Aggregated metrics across recorded runs. |
+| `results/run-<date>-<arm>.md` | Recorded run logs, with verbatim runner output. |
+| `exports/<date>-image-<id>/` | Preserved exports the recorded runs ran against. |
 
 All Python here uses the standard library only, imports nothing from the NANoDB
 application, and performs no network access.
@@ -67,6 +70,39 @@ application, and performs no network access.
 5. Copy `results/run-log-template.md` to `results/run-<date>-<arm>.md`, fill in
    every field, and paste the runner's verbatim output. Add one aggregation row
    to `results/metrics.csv`.
+
+## Recorded runs
+
+| Run | Arm | Tool | Prep time | Follow-ups | Checks | Verdict |
+| --- | --- | --- | --- | ---: | ---: | --- |
+| [`2026-09-08-context-1`](results/run-2026-09-08-context-1.md) | context | claude-opus-5 via Claude Code | `unmeasured` | 0 | 3/3 | `pass` |
+| [`2026-09-08-manual-1`](results/run-2026-09-08-manual-1.md) | manual | claude-opus-5 via Claude Code | `unmeasured` | 0 | 2/3 | `fail` |
+
+Both runs used the same image (id 1) and the same task. The export they ran
+against is preserved under [`exports/2026-09-08-image-1/`](exports/2026-09-08-image-1/)
+so the verdicts reproduce without a running app.
+
+**What these two runs do and do not show.**
+
+The manual arm failed on one of three parameter types. The cause is double
+rounding, not a coding mistake: the app UI renders `value_nm` to two decimal
+places, the operator transcribes those displayed values, and the mean of rounded
+values can land on the other side of a rounding boundary from the rounded mean of
+stored values. Here Thickness gave `11.18` against an expected `11.17`, while CD
+and Depth happened to survive the same transcription. The context arm never
+touches the question, because it reads stored precision straight out of
+`data.json`.
+
+That is a real and reproducible failure mode of hand-transcribed context. It is
+**not** evidence that hand-written explanations are worse in general, and it is
+not a performance or token claim. Two further limits are recorded in the logs and
+repeated here so they are not lost:
+
+- **Preparation time is `unmeasured`.** No human was timed. EVL-006's
+  headline comparison — how long a person spends preparing each arm — still
+  needs a human-operated run, and no number here should be read as one.
+- **The two arms are not independent.** The same model ran both, in one session.
+  The verdicts are genuine; the pair is not a controlled A/B trial.
 
 ## Verdict meaning
 

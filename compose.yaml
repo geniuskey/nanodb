@@ -33,7 +33,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://nanodb:nanodb@db:5432/nanodb}
+      DATABASE_URL: ${APP_DATABASE_URL:-postgresql+psycopg://nanodb:nanodb@db:5432/nanodb}
     command: ["alembic", "upgrade", "head"]
     restart: "no"
 
@@ -45,7 +45,7 @@ services:
       migrate:
         condition: service_completed_successfully
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://nanodb:nanodb@db:5432/nanodb}
+      DATABASE_URL: ${APP_DATABASE_URL:-postgresql+psycopg://nanodb:nanodb@db:5432/nanodb}
       UPLOAD_ROOT: /data/uploads
       NANODB_PROFILE: ${NANODB_PROFILE:-demo}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}

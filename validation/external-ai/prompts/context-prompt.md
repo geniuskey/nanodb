@@ -6,8 +6,9 @@ ZIP is produced from an image detail page via `GET /api/images/{id}/context-expo
 and contains exactly four UTF-8 files:
 
 - `context.md` — the coordinate system, calculation rules and data caveats.
-- `data.json` — the selected image and all of its saved measurements
-  (`schema_version` `1.0`).
+- `data.json` — the selected image, all of its saved measurements and any saved
+  annotations (`schema_version` `1.1`). Annotations are drawn labels with no nm
+  value and must not be counted in the summary.
 - `task.md` — the development task to perform.
 - `checks.json` — the ground truth used only for later verification.
 

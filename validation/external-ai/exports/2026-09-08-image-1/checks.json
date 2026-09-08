@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.1",
+  "tolerance_nm": 1e-06,
+  "expected_summary": [
+    {
+      "parameter_type": "CD",
+      "count": 3,
+      "mean_nm": 30.320916666666665
+    },
+    {
+      "parameter_type": "Depth",
+      "count": 2,
+      "mean_nm": 72.54987499999999
+    },
+    {
+      "parameter_type": "Thickness",
+      "count": 2,
+      "mean_nm": 11.173625
+    }
+  ],
+  "synthetic_calculation": {
+    "image_size_px": [
+      1000,
+      800
+    ],
+    "start": [
+      100,
+      100
+    ],
+    "end": [
+      400,
+      500
+    ],
+    "calibration_nm_per_pixel": 0.2,
+    "expected_distance_px": 500,
+    "expected_value_nm": 100,
+    "purpose": "coordinate arithmetic only; not image boundary ground truth"
+  }
+}

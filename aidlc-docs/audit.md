@@ -1838,3 +1838,59 @@ UIX-009: 목록과 홈 KPI의 첫 조회에 결과와 같은 모양의 자리 �
 **Context**: CONSTRUCTION - Code Generation: annotation redefined as measurement labelling; requirement documents corrected
 
 ---
+
+## New Request: TEM Segmentation Toolkit (4 scripts)
+**Timestamp**: 2026-09-09T00:00:00Z
+**User Input**: "TEM segmentation 그리기 / 관련 추가 요구사항을 어떻게 적용할 수 있을지 검토하고 반영 해야해. 모순되거나 내 허락이 필요하면 꼭 물어보고 ai-dlc 지켜가며 해야해. 1. 배치 세그멘테이션 [폴더 통째 배치 세그멘테이션 스크립트, nm/pixel 매칭, 이미지별 출력 폴더+라벨맵+리포트, 요약 CSV, 실패 계속 진행, 원본 불변]. 2. 영역 기준 자동 계측 [라벨맵→폭(CD)/높이/간격/바닥곡률(원피팅 반지름)/측벽각도(직선피팅), skimage 연결요소, 최소자승 결정론, px+실단위 병기, 경계접촉 플래그, 최소면적 필터, JSON+오버레이, 대표 1장 먼저]. 3. 픽셀 단위 분류기 학습 [ilastik식, 표준 필터뱅크 gaussian/sobel/hessian 다중스케일 1~16, 랜덤포레스트, 퍼센타일 정규화, 픽셀 샘플링 수 인자, 특징 중요도, holdout 일반화/재현 분리]. 4. self-training 자동 개선 [의사라벨 루프, 확신도 임계값 0.9+, 검증 이미지 격리, 반복별 CSV, 정확도 하락 경고/중단, 반복-정확도 그래프, 0.9/0.95/0.99 비교]."
+**AI Response**: "요청을 Requirements Analysis 단계에서 기존 산출물과 대조. 세 가지 블로킹 사실 확인: (1) 4개 요구사항은 constraints.md 4·6·7·9절이 앱 기능에서 명시적으로 제외한 영역(AI segmentation, 자동 계측, 곡률/반경 계산, CD 자동 산출)과 직접 모순된다. (2) 프로젝트의 P0 논지에는 이 스크립트류가 들어갈 자연스러운 자리가 있다 — validation/external-ai/(컨텍스트 내보내기→외부 AI가 계측 코드 생성→검증). 단 기존 external-ai 스크립트는 stdlib 전용·오프라인·무네트워크 규칙이고 data.json(2점 측정)만 다루며 세그멘테이션 라벨맵을 다루지 않는다. (3) 의존성 부재: 현재 파이썬 의존성은 Pillow뿐이며 numpy/scipy/scikit-image/scikit-learn/matplotlib이 없다. 학습용 라벨(마스크) 데이터도 없다(TEM 원본 12장 + metadata.csv만 존재). 따라서 사용자 지시대로 진행 전 결정 게이트로 질문 제기."
+**Context**: INCEPTION - Requirements Analysis: contradiction and placement decision gate raised before any implementation
+
+---
+
+## Decision + First Integration: segment_tem_demo.py
+**Timestamp**: 2026-09-09T00:10:00Z
+**User Input**: "segment_tem_demo.py 부터 프로젝트에 선 적용 후 이전 요청했던 것을 integration 해야 뭔가 될것 같아... 한번 코드 보고 이거부터 합쳐줘." (전체 스크립트 코드 첨부: multi-Otsu 음영 세그멘테이션 데모, 학습 데이터 불필요, 출력 var/segmentation/<name>/)
+**AI Response**: "결정 게이트 해소: 사용자가 학습 불필요한 고전 영상처리 데모(segment_tem_demo.py)를 먼저 합치고 그 위에 4개 요구사항을 integration하기로 함. 이 데모는 앱 런타임 밖 오프라인 스크립트이므로 constraints(앱 기능 제외)와 충돌하지 않음. 곡률/반경 없음(요구사항 2 이슈는 후속). 조치: (1) 의존성을 [dependency-groups]의 segmentation 그룹으로 격리 추가 — numpy>=2, scipy>=1.13, scikit-image>=0.24, matplotlib>=3.9 (uv add로 lock 갱신; tifffile 포함). Docker는 uv sync --frozen --no-dev라 앱 이미지에 미포함. (2) scripts/segment_tem_demo.py로 배치(이 repo의 오프라인 TEM 유틸 관례: tem_metadata.py/verify_tem_samples.py/prepare_demo_samples.py). docstring 예시 경로를 test/ -> scripts/로 정정. 긴 줄을 ruff line-length 88에 맞게 정리(로직 불변). (3) 검증: ruff check . 통과, data/samples/tem/images/tem_007.tif --classes 5 실행 성공(metadata.csv에서 nm/pixel 매칭되어 area_nm2 산출), 산출물 6종(panel.png, segmentation_map.png, boundary_overlay.png, label_index.png, labels.npy, report.json) var/segmentation/tem_007/에 생성(gitignore됨). mypy는 nanodb 패키지 범위라 scripts/ 미검사 — 게이트 그린 유지. 남은 결정(4개 통합 시): 배치 성격(외부AI검증 vs 독립툴킷), 요구사항 2 곡률/반경 처리, 요구사항 3·4 학습 라벨 데이터 확보."
+**Context**: INCEPTION -> CONSTRUCTION: first offline segmentation demo integrated and verified; integration of the 4 requirements pending decisions
+
+---
+
+## Integration Decisions for the 4 Requirements
+**Timestamp**: 2026-09-09T00:20:00Z
+**User Input**: "1. (b) 2. 스크립트에서 오토로 곡률 반경을 계산해주지만, 수동으로 미세 조정 가능은 하게 해야해. 3. 확보 전에는 임시 라벨로 넣고 추후 수정 가능하게 해."
+**AI Response**: "결정 확정: (1) 4개를 독립 TEM 분석 툴킷(scripts/tem/ 패키지)으로 구성 — 앱 런타임 밖, constraints는 앱 기능만 규율하므로 위반 없음. (2) 요구사항 2의 곡률/반경은 자동 계산하되 수동 미세조정 인자를 제공(곡률 원 피팅에 쓰는 하단 경계점 비율/오프셋, 측벽 각도 피팅 대역 등을 CLI 인자로 노출; 앱 아닌 오프라인 스크립트임을 파일에 명시). (3) 요구사항 3·4의 라벨 부재는 multi-Otsu 세그멘테이션 결과를 임시 라벨로 부트스트랩하고, 사용자가 제공하는 마스크 파일로 덮어쓸 수 있는 라벨 디렉터리 규약을 두어 추후 수정 가능하게 함. 조치 시작: scikit-learn을 segmentation 의존성 그룹에 추가, scripts/tem/ 공용 모듈 + 요구사항 1(배치)·2(계측) 우선 구현 후 대표 1장 검증, 이어서 3(분류기)·4(self-training)."
+**Context**: CONSTRUCTION - Code Generation: standalone TEM analysis toolkit (scripts/tem/) build authorized
+
+---
+
+## Requirements 1 & 2 Implemented and Verified
+**Timestamp**: 2026-09-09T00:40:00Z
+**User Input**: (없음 — 승인된 계획 실행)
+**AI Response**: "scripts/tem/{common.py, segment_batch.py, measure.py} 작성. 요구사항 1(배치): data/samples/tem/images 12장 전부 성공(0 실패), 이미지별 var/tem/segmentation/<id>/{labels.npy, report.json} + 요약 CSV(sample_id, group=device, class_*_frac, thresholds) 생성. 요구사항 2(계측): 라벨맵→CD(행별 폭 배열+중앙값)/높이(bbox)/간격(무게중심 x 순서 인접거리)/바닥곡률(최소자승 원)/측벽각도(최소자승 직선), px+nm 병기, 경계접촉 플래그+대표값 제외, 최소면적 필터, JSON+오버레이. 자동 계산+수동 미세조정 인자(--curvature-frac, --sidewall-band, --max-radius-factor) 제공. 대표 1장(tem_009 label 2 GAA 나노시트) 오버레이로 검증: 값 타당(CD 중앙값 10nm, 높이 37nm, 20nm 스케일바 대비 합리적). 오버레이가 버그 노출→수정: 바닥 경계점이 거의 일직선일 때 최소자승 원 반지름이 폭발하는 문제를, 반지름>영역폭*factor(기본 3.0)이면 '평평'으로 처리하고 비경계 영역만 도형 렌더링하도록 가드 추가. 검증: ruff check scripts/tem/ 통과. skimage 0.26 deprecation(min_size/area_threshold)→max_size로 교체. 요구사항 3·4는 미착수(라벨 부재→multi-Otsu 임시 라벨 부트스트랩 예정)."
+**Context**: CONSTRUCTION - Code Generation: batch segmentation + area-based measurement done and validated on a representative image; requirement 2's 'confirm then scale' checkpoint reached
+
+---
+
+## Approval to Build Requirements 3 & 4
+**Timestamp**: 2026-09-09T00:55:00Z
+**User Input**: "응 좋아"
+**AI Response**: "요구사항 3(scripts/tem/classifier.py)·4(scripts/tem/self_training.py) 구축. 3: 필터뱅크(가우시안/소벨/헤시안 고윳값, 스케일 1·2·4·8·16) + 랜덤포레스트, 퍼센타일 정규화, --samples 픽셀 샘플링, 특징 중요도 출력, --holdout로 학습 제외 후 일반화 정확도 별도 측정, 표에 train/holdout 구분. 라벨 부재→resolve_labels가 var/tem/labels/<stem>.npy(사람 마스크) 우선, 없으면 var/tem/segmentation/<stem>/labels.npy(multi-Otsu 임시 라벨) 대체. 실행(holdout tem_009 tem_012, samples 8000, trees 150): 중요도 상위=gaussian s1~4(임시 라벨이 음영 기반이라 타당), 재현(train) 평균 0.9701 vs 일반화(holdout) 평균 0.8177(tem_009 0.68/tem_012 0.95)로 명확히 분리. 4: classifier 재사용 self-training 루프 — 검증 이미지(val) 처음부터 격리, 확신도>=임계값 픽셀만 의사라벨 추가, 반복별 CSV(val_accuracy, added_pseudo_pixels, frac_above_threshold, train_pixels), 정확도 하락 시 경고+--stop-on-drop, 반복-정확도 그래프 PNG. threshold 0.9 실행: val_acc 0.9539→0.9544→0.9543→0.9545(임시 라벨 자기일관성이라 거의 평탄). 0.95/0.99 비교 실행 중. ruff scripts/tem/ 전체 통과."
+**Context**: CONSTRUCTION - Code Generation: pixel classifier + self-training loop implemented; threshold comparison in progress
+
+---
+
+## Requirement 4 Threshold Comparison Complete
+**Timestamp**: 2026-09-09T01:10:00Z
+**User Input**: (없음 — 승인된 계획 실행)
+**AI Response**: "self-training을 임계값 0.9/0.95/0.99로 각각 4회 반복 실행, 실제 수치로 비교(추측 아님). val_accuracy 궤적 — 0.9: 0.9539→0.9544→0.9543→0.9545(iter2 미세 하락 경고 1회), 0.95: 0.9539→0.9541→0.9542→0.9544(단조 증가, 경고 없음), 0.99: 0.9539→0.9547→0.9546→0.9542(iter1에서 전체 최고 0.9547, 이후 하락, iter2/3 경고). 임계 통과 비율(frac): 0.9=0.87, 0.95=0.81, 0.99=0.59로 임계값이 높을수록 채택 픽셀 급감. 결론: 0.95가 가장 안정적(단조 개선, 하락 경고 0). 0.99는 단일 최고점을 찍지만 노이즈가 크고 이후 하락. 0.9는 픽셀을 가장 많이 흡수하나 평탄+미세 흔들림. 단, 세 값의 차이가 ~0.0005로 매우 작은데, 이는 정확도 기준이 multi-Otsu 임시 라벨(자기일관성 상한)이기 때문. 실제 인간 마스크(var/tem/labels/<stem>.npy 덮어쓰기)로 교체하면 차이가 유의미해진다. 산출물: var/tem/self_training/{metrics_t09,t095,t099}.csv, {accuracy_t09,t095,t099}.png. ruff scripts/tem/ 전체 통과. 요구사항 1~4 모두 구현·실행·검증 완료."
+**Context**: CONSTRUCTION - Code Generation: all 4 TEM toolkit requirements implemented, executed, lint-clean
+
+---
+
+## Requirement 2 Scaled to All Images
+**Timestamp**: 2026-09-09T01:25:00Z
+**User Input**: "1, 2 순서대로"
+**AI Response**: "measure.py 계측 함수를 재사용하는 배치 러너 scripts/tem/measure_batch.py 추가. 세그멘테이션된 12장 전부 × 클래스 0~3 = 48행 계측 성공(실패 0). 원본 미변경, var/tem/measure/<stem>/{measurements.json, overlay.png} + 통합 summary.csv(sample_id, group, label, nm_per_pixel, regions_total/used/clipped, cd_median_px/nm, height_median_px/nm). 실패 시 건너뛰고 사유 출력하는 내결함성 루프. ruff 통과. 다음: 커밋."
+**Context**: CONSTRUCTION - Code Generation: requirement 2 measurement scaled from representative to all images
+
+---

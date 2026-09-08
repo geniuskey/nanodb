@@ -156,7 +156,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 19. Frontend components summary 생성 — US-02~US-06
 
-- [ ] `aidlc-docs/construction/nanodb-core/code/frontend-components-summary.md`에 route, feature state, coordinate/overlay 계약, 접근성, `data-testid`와 frontend test mapping을 기록한다.
+- [x] `aidlc-docs/construction/nanodb-core/code/frontend-components-summary.md`에 route, feature state, coordinate/overlay 계약, 접근성, `data-testid`와 frontend test mapping을 기록한다.
 
 ### Step 20. Demo derivative, preflight와 reset tooling 생성 — US-01
 

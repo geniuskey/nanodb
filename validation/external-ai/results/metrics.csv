@@ -1,1 +1,3 @@
 run_id,date_utc,arm,external_tool,preparation_time_minutes,follow_up_requests,checks_passed,checks_total,verdict
+2026-09-08-context-1,2026-09-08T12:41:51Z,context,claude-opus-5 via Claude Code,unmeasured,0,3,3,pass
+2026-09-08-manual-1,2026-09-08T12:41:51Z,manual,claude-opus-5 via Claude Code,unmeasured,0,2,3,fail

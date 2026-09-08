@@ -13,7 +13,7 @@ the `unverified` verdict — never guess a `pass`.
 - **Operator**: <who ran it>
 - **External tool / model**: <name and version, recorded by the operator>
 - **Export used**: <image id / export filename, or "hand-authored" for manual arm>
-- **Input schema version**: 1.0 (see `../schema-version.txt`)
+- **Input schema version**: 1.1 (see `../schema-version.txt`)
 
 ## Preparation
 

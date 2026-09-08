@@ -1,0 +1,30 @@
+{
+  "verdict": "fail",
+  "reason": "Thickness mean_nm 11.18 != 11.17 (tolerance 1e-06)",
+  "findings": [
+    {
+      "parameter_type": "CD",
+      "status": "pass",
+      "expected_count": 3,
+      "actual_count": 3,
+      "expected_mean_nm": 30.32,
+      "actual_mean_nm": 30.32
+    },
+    {
+      "parameter_type": "Depth",
+      "status": "pass",
+      "expected_count": 2,
+      "actual_count": 2,
+      "expected_mean_nm": 72.55,
+      "actual_mean_nm": 72.55
+    },
+    {
+      "parameter_type": "Thickness",
+      "status": "fail",
+      "expected_count": 2,
+      "actual_count": 2,
+      "expected_mean_nm": 11.17,
+      "actual_mean_nm": 11.18
+    }
+  ]
+}

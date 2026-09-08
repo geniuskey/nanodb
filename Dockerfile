@@ -17,6 +17,9 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.ts ./
 COPY src/frontend ./src/frontend
+# App.tsx and HomePage.tsx import the horizontal logo from the repo-root
+# assets/logo/, so it must be present at the same relative depth to resolve.
+COPY assets/logo ./assets/logo
 # vite root is src/frontend and outDir is ../../dist/frontend -> /build/dist/frontend
 RUN npm run build
 

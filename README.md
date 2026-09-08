@@ -14,7 +14,7 @@
 
 NANoDB는 반도체 SEM/TEM 이미지와 측정 근거를 축적하고, 이를 AI 기반 분석 소프트웨어 개발에 필요한 컨텍스트와 검증 데이터로 재사용하는 경량 웹 애플리케이션입니다. 이름은 `Nano Assets, Never orphaned Database`에서 왔으며, 데이터와 맥락이 담당자나 도구의 변화 속에서도 흩어지지 않게 하는 것을 지향합니다.
 
-> 현재 저장소에는 MVP 요구사항, AI-DLC 워크플로우, 로고와 검증된 샘플 데이터에 더해 NANoDB Core 웹 애플리케이션(FastAPI backend, React frontend, PostgreSQL 스키마·migration, demo·검증 tooling)과 계층별 테스트가 생성되어 있습니다. backend unit·API·contract test, frontend unit test, lint·typecheck·demo preflight 등 native 환경에서 실행 가능한 게이트는 통과했으며(2026-09-08 기준), PostgreSQL integration test·브라우저 e2e·컨테이너 스택 기동은 Docker/PostgreSQL 환경에서 실행·판정하도록 남겨두었습니다.
+> 현재 저장소에는 MVP 요구사항, AI-DLC 워크플로우, 로고와 검증된 샘플 데이터에 더해 NANoDB Core 웹 애플리케이션(FastAPI backend, React frontend, PostgreSQL 스키마·migration, demo·검증 tooling)과 계층별 테스트가 생성되어 있습니다. 2026-09-08 기준 Docker/PostgreSQL 환경에서 컨테이너 스택 기동과 전체 게이트(backend 104 passed·skip 없음, frontend 66 passed, Playwright e2e 7 passed, lint·typecheck·preflight)를 실행해 통과했습니다.
 
 ## MVP에서 보여줄 것
 
@@ -86,6 +86,16 @@ make up                     # docker compose up --build --wait
 make demo
 ```
 
+`make`가 없는 환경(예: 기본 Windows)에서는 Makefile이 감싸는 명령을 그대로 실행하면 됩니다.
+
+```bash
+docker compose up --build --wait
+```
+
+호스트의 5432 포트가 이미 사용 중이면 `.env`에서 `DB_PORT`를 비어 있는 포트로 바꾸고
+`DATABASE_URL`의 포트도 같이 맞춥니다. 컨테이너끼리는 Compose 네트워크의 `db:5432`로
+통신하므로 `DB_PORT` 변경은 host 쪽 접근에만 영향을 줍니다.
+
 앱은 `http://127.0.0.1:8000`(loopback)에서 제공됩니다. 이미지 바이너리는 host의
 `./var/uploads`에 bind mount되고, DB 데이터는 named volume에 유지됩니다. 스택 제어는
 `make stop`, `make down`, 파괴적 초기화는 `make clean`(DB volume 포함 제거)입니다.
@@ -149,6 +159,25 @@ skip됩니다.
 `pass`/`fail`/`unverified` 그대로 기록합니다. 이 도구는 앱 런타임에 연결되지 않고 모델을
 자동 호출하지 않습니다. 향상이나 토큰 절감을 미리 주장하지 않습니다.
 
+2026-09-08 기준 두 arm을 실제로 실행해 기록했습니다. 같은 이미지(id 1)·같은 과제이며,
+실행에 사용한 export는 [`validation/external-ai/exports/2026-09-08-image-1/`](validation/external-ai/exports/2026-09-08-image-1/)에
+보존해 앱 없이도 재현됩니다.
+
+| Run | Arm | 검증 | 판정 |
+| --- | --- | ---: | --- |
+| [`2026-09-08-context-1`](validation/external-ai/results/run-2026-09-08-context-1.md) | context | 3/3 | `pass` |
+| [`2026-09-08-manual-1`](validation/external-ai/results/run-2026-09-08-manual-1.md) | manual | 2/3 | `fail` |
+
+manual arm의 실패 원인은 생성 코드의 버그가 아니라 이중 반올림입니다. 화면은 `value_nm`을
+소수점 두 자리로 표시하므로(`toFixed(2)`) 사람이 옮겨 적은 값의 평균이 저장 정밀도 평균의
+반올림과 어긋날 수 있습니다. 여기서는 Thickness가 `11.18`로 나와 기대값 `11.17`과 달랐고,
+CD·Depth는 같은 전사에도 우연히 일치했습니다.
+
+이 결과는 손으로 옮겨 적는 방식에 실재하는 실패 양상을 보여줄 뿐, 수작업 설명이 일반적으로
+더 나쁘다는 근거가 아닙니다. 또한 **준비 시간은 `unmeasured`입니다**. 두 arm 모두 사람이
+시간을 재며 수행하지 않았고 같은 모델이 한 세션에서 실행했으므로, 독립적인 A/B 시험이
+아닙니다. EVL-006이 요구하는 준비 시간 비교는 사람이 직접 수행하는 run이 따로 필요합니다.
+
 ## 알려진 제한
 
 - 인증·권한은 이번 범위 밖입니다.
@@ -158,7 +187,7 @@ skip됩니다.
 - 자동 계측·윤곽 검출은 없습니다. 측정은 수동 두 점 방식의 미검토 참고값입니다.
 - 앱은 단일 호스트 로컬 파일 저장을 사용하며 multi-instance·객체 저장소·HA는 범위 밖입니다.
 - 앱 내부 AI 호출·코드 실행 기능은 없습니다.
-- native unit·정적 게이트(backend·frontend unit test, lint, typecheck, preflight)는 통과했습니다. 컨테이너 이미지·스택 기동과 PostgreSQL integration·브라우저 e2e test는 Docker/PostgreSQL 환경에서 실행·판정합니다.
+- 모든 게이트를 Docker/PostgreSQL 환경에서 실행·통과했습니다(2026-09-08): 컨테이너 스택 기동, backend 104 passed(PostgreSQL integration 포함, skip 없음), frontend 66 passed, Playwright e2e 7 passed, lint·typecheck green.
 - 배포·API 상세는 [deployment.md](aidlc-docs/construction/nanodb-core/code/deployment.md),
   [api-reference.md](aidlc-docs/construction/nanodb-core/code/api-reference.md)를 참고하세요.
 
@@ -304,9 +333,10 @@ NANoDB는 AI로 분석 코드를 만들 때 반복하는 데이터 형식·좌�
 - [x] 개발 컨텍스트 ZIP 구현
 - [x] demo 준비·검증 tooling과 배포 artifact 생성
 - [x] 외부 AI 생성 코드 검증 자산 생성
-- [x] Build and Test: native unit·정적 게이트 통과 (backend 57 passed·7 skipped, frontend 23 passed, lint·typecheck·preflight green, 2026-09-08)
-- [ ] Docker/PostgreSQL 환경에서 integration·브라우저 e2e·컨테이너 스택 최종 통과 판정
-- [ ] 설명 준비 시간·수정 요청·검증 결과 실제 비교 기록
+- [x] Build and Test: 전체 게이트 통과 (backend 104 passed·skip 없음, frontend 66 passed, e2e 7 passed, lint·typecheck·preflight green, 2026-09-08)
+- [x] Docker/PostgreSQL 환경에서 integration·브라우저 e2e·컨테이너 스택 최종 통과 판정
+- [x] 외부 AI 개발 데모 2개 arm 실행·기록 (context `pass` 3/3, manual `fail` 2/3)
+- [ ] 설명 준비 시간 비교는 사람이 직접 수행하는 run이 필요 (현재 `unmeasured`)
 
 ## License
 

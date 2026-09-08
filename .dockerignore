@@ -24,7 +24,11 @@ data/
 # Docs, tests, tooling and references not needed at runtime
 aidlc-docs/
 references/
+# The frontend build imports the horizontal logo from assets/logo/, so that one
+# directory is re-included; it is consumed by the frontend build stage only and
+# never reaches the runtime image, which copies just dist/frontend.
 assets/
+!assets/logo/
 tests/
 scripts/
 validation/

@@ -1776,3 +1776,33 @@ UIX-009: 목록과 홈 KPI의 첫 조회에 결과와 같은 모양의 자리 �
 **Context**: CONSTRUCTION - post-merge correction of a claim I carried over without checking
 
 ---
+## Container Stack Verification and US-07 External AI Demo Runs
+**Timestamp**: 2026-09-08T12:46:00Z
+**User Input**: "남은 일은 두 가지입니다. **Docker 되는 환경에서 `make up` 한 번** — compose config와 이미지 태그는 확인해 뒀으니 실패한다면 빌드 단계일 겁니다. 그리고 **외부 AI 개발 데모(US-07, EVL-006~008)** — 프롬프트·생성 코드·실행 명령·통과/실패 기록은 수작업이고, 요구사항도 이를 앱 완료와 분리해 두고 있습니다. 이 일들을 해결해줘"
+**AI Response**: "두 가지를 모두 실행했다.
+
+작업 브랜치: 이 checkout의 main에는 앱 코드가 없어 origin/claude/project-review-ui-ux-xi6vuy(main보다 45 커밋 앞, feat/home-v2·feat/home-pdf-redesign를 모두 포함하는 superset)를 work 브랜치로 받아 진행했다.
+
+1) 컨테이너 스택. 사용자의 예측대로 빌드 단계에서 실패했고, 원인은 두 개였다.
+   - frontend 빌드 실패: App.tsx와 HomePage.tsx가 repo root의 assets/logo/ 로고를 import하는데 .dockerignore가 assets/를 통째로 제외하고 Dockerfile도 복사하지 않아 'Module not found'로 죽었다. .dockerignore에 !assets/logo/를 넣고 frontend stage에 COPY assets/logo를 추가했다. runtime stage는 dist/frontend만 복사하므로 최종 이미지에는 들어가지 않는다.
+   - 문서화된 quick start가 깨져 있었다: compose.yaml이 ${DATABASE_URL:-...}을 쓰는데 .env.example의 DATABASE_URL은 host용 127.0.0.1이라, cp .env.example .env 후 make up 하면 migrate/app 컨테이너가 자기 자신에게 접속을 시도한다. docker compose config로 확인했다. 컨테이너용 변수를 APP_DATABASE_URL로 분리하고(기본값 db:5432) .env.example에 용도를 명시했다.
+   - 이 환경에는 make가 없어 Makefile이 감싸는 docker compose up --build --wait를 그대로 실행했다. host 5432는 무관한 프로젝트 컨테이너가 점유 중이라 건드리지 않고 .env에서 DB_PORT=5442로 우회했다. README에 두 사항을 적었다.
+   - 결과: db healthy, migrate 3개 migration 성공 후 완료, app healthy, /api/health/ready 200, frontend 200.
+
+2) 게이트. PostgreSQL이 실제로 뜬 상태라 그동안 skip되던 것들을 모두 돌렸다. backend 104 passed(skip 0, 이전 57 passed/7 skipped), frontend 66 passed, Playwright e2e 7 passed, ruff·mypy·tsc green. 남아 있던 '컨테이너 스택 미검증' 항목이 해소됐다.
+
+3) US-07 데모. 실행 중인 앱에 측정 7건(CD 3, Depth 2, Thickness 2)을 API로 만들고 image 1의 실제 export ZIP을 받아 두 arm을 실행했다.
+   - context arm: pass 3/3.
+   - manual arm: fail 2/3. Thickness 11.18 vs 기대 11.17.
+   실패 원인은 생성 코드 버그가 아니라 이중 반올림이다. UI가 value_nm을 toFixed(2)로 표시하므로 사람이 옮겨 적은 값의 평균(11.175 → 11.18)이 저장 정밀도 평균의 반올림(11.173625 → 11.17)과 어긋난다. CD·Depth는 같은 전사에도 우연히 일치했다.
+
+정직하게 남기는 사항:
+   - 준비 시간은 두 arm 모두 unmeasured로 기록했다. 사람이 시간을 재며 수행하지 않았으므로 EVL-006의 준비 시간 비교는 아직 미완이며, 숫자를 지어내지 않았다.
+   - 두 arm을 같은 모델이 한 세션에서 실행했으므로 독립적인 A/B 시험이 아니다. 이 한계를 두 run log와 README 양쪽에 적었다.
+   - manual arm의 실패는 손 전사 방식의 실재하는 실패 양상일 뿐, 수작업 설명이 일반적으로 더 나쁘다는 근거가 아니다. 저장 정밀도를 붙여넣었다면 통과했을 가능성이 높다고 함께 적었다.
+   - 발견해서 고친 drift: validation 자산이 입력 schema를 1.0으로 적고 있었으나 실제 export는 1.1이다(schema-version.txt, validation README, context-prompt.md, run-log-template.md 정정). 1.1에서 추가된 annotations를 요약에서 제외해야 한다는 점도 프롬프트에 반영했다.
+   - 재현성을 위해 실행에 쓴 export 4개 파일을 validation/external-ai/exports/2026-09-08-image-1/에 보존했고, 보존본으로 다시 돌려 pass를 확인했다.
+   - data/demo/manifest.csv는 converted_at 타임스탬프만 바뀌고 derivative SHA-256은 동일해 되돌렸다."
+**Context**: CONSTRUCTION - Build and Test: container stack verified, US-07 both arms executed and recorded
+
+---

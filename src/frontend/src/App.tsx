@@ -4,10 +4,7 @@ import logo from "../../../assets/logo/nanodb_logo_horizontal.svg";
 import { HomePage } from "./pages/HomePage";
 import { ImageListPage } from "./pages/ImageListPage";
 import { ImageRegisterPage } from "./pages/ImageRegisterPage";
-
-function PendingPage({ title }: { title: string }) {
-  return <main><p className="eyebrow">구현 준비 중</p><h1>{title}</h1><p>승인된 다음 Code Generation Step에서 구현됩니다.</p></main>;
-}
+import { MeasurementPage } from "./pages/MeasurementPage";
 
 function Shell() {
   return (
@@ -22,5 +19,5 @@ function Shell() {
 }
 
 export function App() {
-  return <Routes><Route element={<Shell />}><Route index element={<HomePage />} /><Route path="images" element={<ImageListPage />} /><Route path="images/new" element={<ImageRegisterPage />} /><Route path="images/:imageId" element={<PendingPage title="측정 화면" />} /></Route></Routes>;
+  return <Routes><Route element={<Shell />}><Route index element={<HomePage />} /><Route path="images" element={<ImageListPage />} /><Route path="images/new" element={<ImageRegisterPage />} /><Route path="images/:imageId" element={<MeasurementPage />} /></Route></Routes>;
 }

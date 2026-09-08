@@ -144,7 +144,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 16. Measurement viewer, coordinate adapter와 SVG overlay 생성 — US-04, US-05
 
-- [ ] 실제 rendered image rectangle 기준 click-to-original 변환, letterbox 거부, 두 점 draft/preview/reset, 저장 measurement 선택·강조, resize/reload 복원, 소수점 둘째 자리 표시와 server result 반영을 구현한다. 모든 주요 interaction에 목적 기반의 stable `data-testid`를 둔다.
+- [x] 실제 rendered image rectangle 기준 click-to-original 변환, letterbox 거부, 두 점 draft/preview/reset, 저장 measurement 선택·강조, resize/reload 복원, 소수점 둘째 자리 표시와 server result 반영을 구현한다. 모든 주요 interaction에 목적 기반의 stable `data-testid`를 둔다.
 
 ### Step 17. Measurement와 coordinate frontend unit test 생성 — US-04, US-05
 

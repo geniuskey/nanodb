@@ -23,6 +23,36 @@ export interface ImageListView {
 
 export type ImageView = Omit<ImageListView, "measurement_count">;
 
+export type ParameterType = "CD" | "Depth" | "Thickness";
+
+export interface MeasurementView {
+  id: number;
+  image_id: number;
+  parameter_type: ParameterType;
+  start_x: number;
+  start_y: number;
+  end_x: number;
+  end_y: number;
+  distance_px: number;
+  calibration_nm_per_pixel: number;
+  value_nm: number;
+  note: string | null;
+  measurement_method: "manual_two_point";
+  reference_status: "unreviewed";
+  created_at: string;
+}
+
+export interface ImageDetailView extends ImageView {
+  measurements: MeasurementView[];
+}
+
+export interface MeasurementCreateInput {
+  parameter_type: ParameterType;
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+  note: string | null;
+}
+
 export interface ApiErrorEnvelope {
   code: string;
   message: string;

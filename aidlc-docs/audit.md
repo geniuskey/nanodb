@@ -1166,6 +1166,33 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 
 ---
 
+## NANoDB Core Code Generation Step 16 Started
+
+**Timestamp**: 2026-09-08T04:15:24Z
+**User Input**: "step 마다 git push 하고 다음 작업 시작"
+**AI Response**: "After pushing Step 15, started Step 16 with the Measurement detail API contract and original-to-rendered coordinate adapter. The Step 16 checkbox remains open and its changes will be committed and pushed only after the full viewer and overlay scope is complete."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 16 in progress
+
+---
+
+## NANoDB Core Code Generation Step 16 Continued
+
+**Timestamp**: 2026-09-08T04:21:14Z
+**User Input**: "계속해줘"
+**AI Response**: "Step 16의 좌표 adapter와 API type 작업을 재개하고 Measurement 상세 화면, draft/preview/reset, server 저장 결과, resize/reload overlay 복원과 선택 강조 구현을 계속한다."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 16 in progress
+
+---
+
+## NANoDB Core Code Generation Step 16 Complete
+
+**Timestamp**: 2026-09-08T04:23:55Z
+**User Input**: "계속해줘"
+**AI Response**: "Implemented the Measurement detail page, typed detail and create API contracts, rendered-image click to original-coordinate conversion, out-of-image rejection, two-point draft and preview, explicit reset, third-click protection, server-result insertion, resize/reload overlay reconstruction, saved-measurement selection and stable interaction test IDs. TypeScript, existing frontend tests and production build passed."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 16/26 complete; per-step Git checkpoint required
+
+---
+
 ## Per-Step Git Checkpoint Policy Requested
 
 **Timestamp**: 2026-09-08T04:02:41Z

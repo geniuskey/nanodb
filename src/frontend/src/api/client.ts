@@ -1,4 +1,12 @@
-import type { ApiErrorEnvelope, ImageListView, ImageView, SummaryView } from "./types";
+import type {
+  ApiErrorEnvelope,
+  ImageDetailView,
+  ImageListView,
+  ImageView,
+  MeasurementCreateInput,
+  MeasurementView,
+  SummaryView,
+} from "./types";
 
 export class ApiError extends Error {
   constructor(
@@ -33,6 +41,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   getSummary: () => request<SummaryView>("/api/summary"),
   listImages: () => request<ImageListView[]>("/api/images"),
+  getImage: (imageId: number) => request<ImageDetailView>(`/api/images/${imageId}`),
+  createMeasurement: (imageId: number, value: MeasurementCreateInput) =>
+    request<MeasurementView>(`/api/images/${imageId}/measurements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    }),
   registerImage: (form: FormData) =>
     request<ImageView>("/api/images", { method: "POST", body: form }),
 };

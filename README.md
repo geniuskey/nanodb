@@ -63,6 +63,8 @@ Playwright가 자동 캡처한 실제 동작 화면입니다(캡처 시각 2026-
 - Node.js 22.17.1과 npm
 - PostgreSQL 16 (로컬 설치 또는 아래 Compose 스택)
 - 컨테이너 실행 시 Docker와 Docker Compose v2
+- `make`는 편의용입니다. 없으면 [5. `make` 없이 실행](#5-make-없이-실행-windows-powershell-등)의
+  대응 명령을 그대로 쓰면 되고, 별도로 설치하지 않아도 됩니다.
 
 ## 빠른 시작
 
@@ -76,6 +78,15 @@ make install                # uv sync --frozen + npm ci
 make build-frontend         # dist/frontend 생성
 ```
 
+Windows PowerShell에는 `cp .env.example .env` 대신 `Copy-Item .env.example .env`를
+쓰고, `make` 대신 아래 [5. `make` 없이 실행](#5-make-없이-실행-windows-powershell-등)의
+명령을 씁니다.
+
+`.venv/`가 이미 있는데 `uv`가 `failed to remove file ... .venv\lib64`로 멈추면, 다른
+OS(컨테이너·WSL)에서 만들어진 venv가 작업 트리에 남은 것입니다. `.venv/`를 통째로 지우고
+`make install`을 다시 실행하면 됩니다. `.venv/`는 git·docker 양쪽에서 제외되므로 지워도
+안전합니다.
+
 ### 2. 컨테이너 스택으로 실행 (권장)
 
 `db → migrate → app` 순서로 기동하고, migration이 성공한 뒤에만 앱이 시작됩니다.
@@ -86,7 +97,9 @@ make up                     # docker compose up --build --wait
 make demo
 ```
 
-`make`가 없는 환경(예: 기본 Windows)에서는 Makefile이 감싸는 명령을 그대로 실행하면 됩니다.
+`make`가 없는 환경(예: 기본 Windows)에서는 Makefile이 감싸는 명령을 그대로 실행하면
+됩니다. `make up`에 해당하는 명령은 다음 하나이고, 나머지 target은
+[5. `make` 없이 실행](#5-make-없이-실행-windows-powershell-등)의 대응표를 참고하세요.
 
 ```bash
 docker compose up --build --wait
@@ -109,6 +122,17 @@ make migrate                # alembic upgrade head
 make dev                    # uvicorn --reload on 127.0.0.1:8000
 ```
 
+**주의:** 앱과 demo 스크립트는 `.env`를 읽지만(`Settings`의 `env_file`), alembic은
+`alembic/env.py`에서 프로세스 환경변수 `DATABASE_URL`만 봅니다. `.env`에만 값을 적어 두면
+alembic은 `alembic.ini`의 기본값 `127.0.0.1:5432`로 붙습니다. 위 2번 안내대로 `DB_PORT`를
+바꿨다면 migration에는 `DATABASE_URL`을 환경변수로 직접 넘겨야 합니다.
+
+```bash
+DATABASE_URL='postgresql+psycopg://nanodb:nanodb@127.0.0.1:5442/nanodb' uv run alembic upgrade head
+```
+
+컨테이너 스택의 `migrate` 서비스는 Compose가 환경변수를 직접 주입하므로 영향이 없습니다.
+
 ### 4. 데모 샘플 준비·점검·안전 초기화
 
 승인된 TEM 원본에서 무리샘플 PNG 파생본을 만들고 무결성을 점검합니다. 원본
@@ -123,6 +147,64 @@ make reset                  # NANODB_PROFILE=demo, 전용 target guard 통과 �
 
 `reset`은 `NANODB_PROFILE=demo`와 전용 `var/uploads` target guard를 통과해야만 demo DB
 행과 업로드를 known-empty 상태로 되돌리며, source sample을 대상으로 삼지 않습니다.
+저장된 측정과 도형을 함께 지운 뒤 이미지를 지웁니다.
+
+`NANODB_PROFILE=demo cmd` 같은 앞머리 환경변수 문법은 sh 계열 셸(Git Bash, WSL, macOS,
+Linux) 전용입니다. PowerShell에서는 다음처럼 나눠서 실행합니다.
+
+```powershell
+$env:NANODB_PROFILE = 'demo'
+uv run python scripts/prepare_demo_samples.py --load
+uv run python scripts/reset_demo.py --yes
+```
+
+`prepare_demo_samples.py`는 실행할 때마다 `data/demo/manifest.csv`의 `converted_at`을
+현재 시각으로 다시 씁니다. 파생본 SHA-256은 그대로이므로, 커밋할 내용이 아니면
+`git checkout -- data/demo/manifest.csv`로 되돌립니다.
+
+### 5. `make` 없이 실행 (Windows PowerShell 등)
+
+`make`는 기본 Windows에 없습니다. 각 target은 Makefile이 감싸는 명령 그대로이므로 아래를
+직접 실행하면 결과가 같습니다. `$env:...` 줄은 PowerShell 문법이며, Git Bash/WSL/macOS/
+Linux에서는 `NANODB_PROFILE=demo <명령>`처럼 한 줄로 붙여 써도 됩니다.
+
+| `make` target | 직접 실행할 명령 |
+| --- | --- |
+| `install` | `uv sync --frozen` 그리고 `npm ci` |
+| `build-frontend` | `npm run build` |
+| `up` | `docker compose up --build --wait` |
+| `demo` | `docker compose up --build --wait` 후 아래 `seed-demo` |
+| `stop` / `down` / `clean` | `docker compose stop` / `docker compose down` / `docker compose down --volumes` |
+| `migrate` | `uv run alembic upgrade head` (위 3번의 `DATABASE_URL` 주의 참고) |
+| `dev` | `uv run uvicorn nanodb.api.app:app --reload --host 127.0.0.1 --port 8000` |
+| `prepare-demo` | `uv run python scripts/prepare_demo_samples.py` |
+| `preflight` | `uv run python scripts/preflight_demo.py` |
+| `seed-demo` | `$env:NANODB_PROFILE='demo'` 후 `uv run python scripts/prepare_demo_samples.py --load` |
+| `reset` | `$env:NANODB_PROFILE='demo'` 후 `uv run python scripts/reset_demo.py --yes` |
+| `test-backend` | `uv run pytest` |
+| `test-frontend` | `npm run test:frontend` |
+| `test-e2e` | `npm run test:e2e` |
+| `lint` | `uv run ruff check .` |
+| `typecheck` | `uv run mypy` 그리고 `npm run typecheck` |
+
+컨테이너 스택으로 demo까지 올리는 최단 경로는 다음과 같습니다.
+
+```powershell
+Copy-Item .env.example .env
+uv sync --frozen
+npm ci
+docker compose up --build --wait
+$env:NANODB_PROFILE = 'demo'
+uv run python scripts/prepare_demo_samples.py --load
+# http://127.0.0.1:8000
+```
+
+frontend는 컨테이너 이미지 안에서 build되므로 이 경로에서는 host의 `npm run build`가
+필요 없습니다. `npm ci`는 demo·테스트 tooling용입니다.
+
+이 절 전체를 2026-09-08에 Windows 11 + Docker Desktop + PowerShell/Git Bash에서 실행해
+확인했습니다: 스택 기동, demo 적재 3건, backend 104 passed, frontend 66 passed,
+Playwright e2e 7 passed, ruff·mypy·tsc green.
 
 ## 테스트
 
@@ -136,7 +218,25 @@ make typecheck              # mypy + tsc
 ```
 
 PostgreSQL 통합 테스트는 `TEST_DATABASE_URL`이 설정된 경우에만 실행되며, 없으면 명시적으로
-skip됩니다.
+skip됩니다. 이때 **대상 데이터베이스 이름은 `_test`로 끝나야 합니다.** 통합 테스트는 스키마를
+만들고 지우므로, 이 guard가 운영·demo 데이터베이스를 실수로 겨냥하는 것을 막습니다. 이름이
+맞지 않으면 skip이 아니라 `TEST_DATABASE_URL must target a database ending in '_test'`로
+실패합니다.
+
+Compose 스택의 db에 전용 테스트 데이터베이스를 한 번 만들어 두고 씁니다.
+
+```bash
+docker compose exec db psql -U nanodb -d postgres -c "CREATE DATABASE nanodb_test"
+TEST_DATABASE_URL='postgresql+psycopg://nanodb:nanodb@127.0.0.1:5432/nanodb_test' uv run pytest
+```
+
+PowerShell에서는 `$env:TEST_DATABASE_URL`에 같은 값을 넣고 `uv run pytest`를 실행합니다.
+포트는 `.env`의 `DB_PORT`에 맞춥니다(기본 `5432`).
+
+`npm run test:e2e`는 이미 떠 있는 앱(`E2E_BASE_URL`, 기본 `http://127.0.0.1:8000`)을 대상으로
+실행되며 스택을 직접 띄우지 않습니다. e2e는 실제로 이미지·측정·도형을 등록하므로 실행 후
+demo 데이터가 늘어납니다. 깨끗한 시연 상태로 되돌리려면 위 4번의 `reset` 후 `seed-demo`를
+다시 실행합니다.
 
 ## 컨텍스트 내보내기 (ZIP)
 

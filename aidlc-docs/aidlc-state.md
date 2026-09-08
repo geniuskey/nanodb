@@ -4,7 +4,7 @@
 
 - **Project Type**: Greenfield
 - **Start Date**: 2026-09-07T11:50:01Z
-- **Current Stage**: CONSTRUCTION complete (Build and Test approved 2026-09-08). OPERATIONS is a workflow placeholder. Recommended follow-up: run integration/e2e/container stack in a Docker/PostgreSQL environment; then build Evidence Site (US-08).
+- **Current Stage**: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
 
 ## Workspace State
 
@@ -49,6 +49,7 @@
 - [x] Infrastructure Design (NANoDB Core approved 2026-09-08)
 - [x] Code Generation (NANoDB Core approved 2026-09-08; Part 2 Steps 1-26/26 complete)
 - [x] Build and Test (approved 2026-09-08; runnable gates green; integration/e2e/container deferred to a Docker/PostgreSQL environment)
+- [x] Evidence Site (US-08) Code Generation (approved 2026-09-08; Part 2 Steps 1-10/10 complete, US-08 [x]). Functional/NFR/Infra Design skipped (logged). VitePress site builds locally (dead-link check on), preview serves both pages + screenshots, no localhost links/secrets; GitHub Pages deploy actual run deferred to admin Pages setup + main push.
 
 ## Current Request Assessment
 

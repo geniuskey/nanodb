@@ -9,6 +9,10 @@ dist/
 .cache/
 *.tsbuildinfo
 
+# VitePress (evidence site) build output and cache
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+
 # Local environment files
 .env
 

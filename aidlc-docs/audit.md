@@ -1442,3 +1442,112 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: CONSTRUCTION - Build and Test complete; NANoDB Core unit complete
 
 ---
+
+## Evidence Site Unit — Next Work Selection
+
+**Timestamp**: 2026-09-08T08:05:00Z
+**User Input**: "원해" (in response to the question "다음으로 무엇을 진행할까요?", selected "Evidence Site 시작")
+**AI Response**: "User chose to start the Evidence Site unit (US-08). Beginning the per-unit CONSTRUCTION loop for Evidence Site."
+**Context**: CONSTRUCTION - Evidence Site unit start
+
+---
+
+## Evidence Site — Per-Unit Stage Assessment
+
+**Timestamp**: 2026-09-08T08:07:00Z
+**User Input**: (n/a — AI adaptive stage assessment)
+**AI Response**: "Assessed the per-unit CONSTRUCTION stages for the Evidence Site (US-08): Functional Design SKIPPED (static VitePress content site, no data models or business logic); NFR Requirements and NFR Design SKIPPED (tech stack and non-functional constraints are already fixed by DOC-003~013 and EVL-005 — reproducible locked build, minimal-permission deploy, no secrets/private assets published, local-preview fallback); Infrastructure Design SKIPPED as a separate stage (GitHub Pages + Actions deployment topology is fully specified by DOC-006~012 and generated as a workflow code artifact documented in the code summary). Code Generation EXECUTES with a Part 1 plan requiring user approval before generation. Extensions Resiliency/Security/Property-Based Testing remain disabled (N/A). User retains control to request any skipped stage."
+**Context**: CONSTRUCTION - Evidence Site per-unit stages assessed; Code Generation Part 1 next
+
+---
+
+## Evidence Site Code Generation Part 1 (Planning) Started
+
+**Timestamp**: 2026-09-08T08:10:00Z
+**User Input**: (n/a — continuation of approved Evidence Site start)
+**AI Response**: "Created the Evidence Site Code Generation plan at aidlc-docs/construction/plans/evidence-site-code-generation-plan.md with 8 ordered steps covering VitePress scaffold and locked deps, site config/default theme with base /nanodb_mvp/, honest two-page content (index.md, evidence.md), GitHub Actions Pages deploy workflow, admin/publish-safety documentation, local build verification and publish-safety check, and the code summary opening the review gate. All content must honestly reflect the Core Build and Test state (unit gates green; integration/e2e/container not yet executed) per DOC-013/EVL-002/EVL-007."
+**Context**: CONSTRUCTION - Evidence Site Code Generation Part 1 planning; awaiting plan approval
+
+---
+
+## Evidence Site Code Generation Plan Approval Prompt
+
+**Timestamp**: 2026-09-08T08:12:00Z
+**User Input**: (n/a — prompt logged before asking)
+**AI Response**: "Presenting the 8-step Evidence Site Code Generation plan (aidlc-docs/construction/plans/evidence-site-code-generation-plan.md) for approval. Will not begin generation (Part 2) until the user explicitly approves the full plan and step sequence."
+**Context**: CONSTRUCTION - Evidence Site Code Generation Part 1 approval gate
+
+---
+
+## Evidence Site — Updated Judging Criteria Provided (Request Changes)
+
+**Timestamp**: 2026-09-08T08:25:00Z
+**User Input**: "심사기준은 AI 평가 40%에 참가자 평가는 60%. AI 평가 상세는 AI 심사기준 6개 항목 · 100점 만점
+
+항목을 눌러 무엇을 보는지 펼쳐볼 수 있습니다.
+
+문서를 얼마나 많이 냈는가가 아니라, AI와의 작업이 실제로 결과물을 만들어냈다는 증거를 봅니다. 단계별 산출물이 서로 이어지는지, 앞 단계의 결정이 뒤에 반영됐는지가 기준입니다. 어떤 도구를 썼는지는 점수와 무관합니다.
+
+\"누구의 어떤 문제를 어떻게 푸는가\"가 읽는 사람에게 그대로 전달되는지를 봅니다. 언제, 얼마나 자주 불편한지와 대상 사용자가 누구인지가 구체적일수록 높습니다. 아이디어의 크기나 시장성은 여기서 보지 않습니다.
+
+기존 도구와의 구조적 차별점이 코드나 설계 문서로 확인되는지를 봅니다. \"새롭다\"는 주장만으로는 점수가 없습니다. 반대로 흔한 분야라도 구조가 실제로 다르면 인정합니다.
+
+만들려던 것이 코드로 실제로 동작하는지를 봅니다. 동작하는 화면을 담은 시연 스크린샷을 screenshots/ 또는 result/ 에 꼭 넣어주세요.
+· 빌드·실행 가능성 — 의존성 선언, 진입점, 락파일, CI 설정
+· 에러 핸들링 — 주요 경로의 예외 처리와 전역 핸들러
+· 의도한 흐름의 코드상 완결성 — 진입점부터 호출이 실제 구현까지 닿는지
+· 실행 증거와 기능의 정합 — 스크린샷 속 화면이 README 의 기능과 맞는지
+· 미완성·스텁 코드 — TODO 나 빈 함수가 핵심 경로에 남아 있는지
+
+처음 보는 사람이 시작까지 막히지 않고 가는지, 그리고 화면 앞에 앉았을 때 다음에 무엇을 해야 할지 알 수 있는지를 봅니다. 문서가 있는가가 아니라, 그대로 따라가서 막히지 않는가가 기준입니다. 결과물이 웹 서비스라면 화면 자체가 사용법을 설명해야 하고, 라이브러리라면 API와 예제가 그 역할을 합니다. 형태에 맞춰 봅니다.
+· 시작하기까지의 경로 — 설치·실행·필요한 키와 계정
+· 사용 매뉴얼 — 실행한 뒤 무엇을 어떻게 하는지, 예제와 트러블슈팅
+· UI 직관성 — 화면을 보면 다음 행동을 알 수 있는지
+· 인터랙션 피드백 — 누른 뒤에 무슨 일이 일어났는지 알려주는지 (로딩·성공·오류 표시, 데이터가 없을 때의 빈 화면)
+· 사용자 흐름의 완결성 — 핵심 시나리오 하나를 끝까지 통과할 수 있는지
+
+후속 개발자가 이어받았을 때 곤란해지는 지점이 있는지를 봅니다. 해커톤 산출물임을 감안해 프로덕션 수준을 요구하지는 않습니다.
+· 코드 구조·모듈화 · 설정 분리
+· 시크릿 관리 — 키가 코드에 박혀 있지 않은지
+· 인증·인가 및 입력 검증
+· 로깅·관측 가능성"
+**AI Response**: "User supplied updated official judging criteria that supersede the EVL-001 assumptions: overall weighting is AI evaluation 40% + participant evaluation 60%, and the AI evaluation has six items scored out of 100 (AI-DLC process, 문제 정의 및 해결, 창의성, 완성도, 사용성, 유지보수성 및 보안) with detailed rubrics but WITHOUT restating the previous per-item sub-weights (25/20/15/15/15/10). New concrete artifact expectations affect scope: demo screenshots of working screens must live in screenshots/ or result/; completeness looks at build/run (deps, entry point, lockfile, CI config), error handling with a global handler, entry-point-to-implementation completeness, screenshot/README consistency, and absence of stub/TODO on core paths. This is a Request Changes on the Evidence Site plan and raises Core-unit scope questions (Core currently has no CI workflow, and no screenshots exist; screenshots require a running stack which is blocked because Docker is unavailable here). Pausing generation to (1) capture this as a requirements/EVL update and (2) ask the user to resolve weighting representation, scope additions (Core CI, screenshots), and how to obtain screenshots."
+**Context**: CONSTRUCTION - Evidence Site Code Generation Part 1; user provided updated judging criteria; clarification required before revising plan
+
+---
+
+## Evidence Site — Clarification Answers and Revised Plan
+
+**Timestamp**: 2026-09-08T08:35:00Z
+**User Input**: (AskUserQuestion answers) "배점 표기 = 이전 배점 유지; 추가 범위 = screenshots/ 시연 캡처 + README↔스크린샷 정합 (Core CI workflow 미포함); 스크린샷 = 네이티브 실행·자동 캡처"
+**AI Response**: "Revised evidence-site-code-generation-plan.md per the four decisions. Added a 심사기준 업데이트 section: overall AI 40% + participant 60%, and the six AI items keep the previous 25/20/15/15/15/10 sub-weights with the user's detailed rubrics. Expanded to 10 steps: added Step 3 (install/start local Homebrew postgresql@16, migrate, seed demo, run Core natively via uvicorn, auto-capture home/catalog/register/measurement-overlay/context-export screens with Playwright chromium into screenshots/, then clean up) and Step 4 (README ↔ screenshot alignment). Did NOT add a Core CI workflow (user-excluded this cycle). Verified feasibility: Homebrew 6.0.22 present, postgresql@16 16.15 bottled available, Playwright 1.63.0 chromium already installed; no local PostgreSQL and Docker daemon unavailable, so the native-run path installs postgres locally. All captures use approved demo data only, no secrets, source samples unchanged. Integration/e2e CI and container stack remain honestly marked unverified in evidence.md."
+**Context**: CONSTRUCTION - Evidence Site Code Generation Part 1; revised 10-step plan; awaiting approval
+
+---
+
+## Evidence Site Code Generation Plan Approved (Part 1 complete)
+
+**Timestamp**: 2026-09-08T08:45:00Z
+**User Input**: "승인"
+**AI Response**: "User approved the revised 10-step Evidence Site Code Generation plan, including the Step 3 local Homebrew postgresql@16 install for the native-run screenshot capture. Marked Part 1 (Planning) complete in aidlc-state.md and beginning Part 2 generation, executing steps sequentially and marking each checkbox on completion, then presenting the completion message and review gate."
+**Context**: CONSTRUCTION - Evidence Site Code Generation Part 1 complete; Part 2 generation starting
+
+---
+
+## Evidence Site Code Generation Part 2 Complete (Steps 1-10)
+
+**Timestamp**: 2026-09-08T09:30:00Z
+**User Input**: (no new user input; continuing approved Part 2 execution)
+**AI Response**: "Completed the remaining Evidence Site steps. Step 3: installed/started local Homebrew postgresql@16, migrated, seeded demo data, ran Core natively, captured 5 real screenshots via Playwright, then cleaned up and confirmed source samples intact. Step 4: added a README 시연 화면 section embedding the 5 screenshots with feature-matched captions and honest local-native capture labeling (working tree 19b2af6, 2026-09-08). Step 5: docs/index.md intro (문제·목적·실제 기능·Image→Measurement→Development Context flow·external AI demo·한계·2~3분 읽기 순서; 대회 주제·도메인은 비공식 배점 명시). Step 6: docs/evidence.md mapping 40/60 overall + six AI items (25/20/15/15/15/10) to artifacts/screenshots/status with req IDs, worktree version and time; integration/e2e-CI/container marked 미검증; 8.4 manual-vs-context comparison (no improvement/token claims); implementation/demo/publish status distinction; no score guarantees or internal audit text. Mirrored screenshots into docs/public/screenshots/ for a self-contained site. Step 7: .github/workflows/deploy-evidence-site.yml (main push + workflow_dispatch, build-then-deploy needs:build, minimal permissions, github-pages env, single no-cancel concurrency, deploy only on main). Step 8: README Evidence Site usage + GitHub Pages admin setup (Source=GitHub Actions) + publish-safety principles. Step 9: docs:build succeeded with ignoreDeadLinks:false (no dead links); docs:preview served /nanodb_mvp/ 200, /evidence.html 200, screenshot asset 200; base correct; no localhost hyperlinks or secrets in dist; screenshots demo-only. Step 10: created aidlc-docs/construction/evidence-site/code/evidence-site-summary.md with files, DOC-001~013/EVL-001~008 traceability, capture method, build/preview results, and known limitations (incl. 3 npm-audit vulns in VitePress build-time deps, not fixed to preserve pinned toolchain; actual Pages deploy deferred). Marked plan Steps 4-10 and US-08 [x], updated aidlc-state.md. Presenting standardized 2-option completion message and opening the Code Generation review gate."
+**Context**: CONSTRUCTION - Evidence Site Code Generation Part 2 complete; review gate opened
+
+---
+
+## Evidence Site Code Generation Review Gate Approved
+
+**Timestamp**: 2026-09-08T09:45:00Z
+**User Input**: "2"
+**AI Response**: "User selected option 2 (Continue to Next Stage), approving Evidence Site (US-08) Code Generation. Marked Evidence Site Code Generation [x] in aidlc-state.md and set Current Stage to CONSTRUCTION complete for both units (Core + Evidence Site). Remaining deferred items: Core PostgreSQL integration test / browser e2e / container stack in a Docker+PostgreSQL environment, and actual GitHub Pages deploy after admin Pages setup + main push. Asking the user whether to commit/push a checkpoint (commit/push only on explicit confirmation)."
+**Context**: CONSTRUCTION - Evidence Site unit complete; both units done; awaiting checkpoint decision
+
+---

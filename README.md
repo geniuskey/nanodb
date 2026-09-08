@@ -34,6 +34,23 @@ NANoDB는 반도체 SEM/TEM 이미지와 측정 근거를 축적하고, 이를 A
 
 윤곽 라벨링, 피처 자동 추출, Tool 등록, Lineage, Report는 이번 3일 MVP의 후속 로드맵입니다.
 
+## 시연 화면
+
+아래 화면은 로컬 PostgreSQL 16과 native uvicorn으로 앱을 실행한 뒤 승인된 demo 데이터로
+Playwright가 자동 캡처한 실제 동작 화면입니다(캡처 시각 2026-09-08, working tree
+`19b2af6`, 캡처 스크립트 [`scripts/capture_screenshots.mjs`](scripts/capture_screenshots.mjs)).
+공개 배포된 서비스가 아니라 로컬 실행 결과이며, 비밀정보나 비공개 자료는 포함하지 않습니다.
+
+| 화면 | 대응 기능 |
+| --- | --- |
+| ![홈: 실제 이미지·측정 집계와 시작 CTA](screenshots/01-home.png) | 홈에서 실제 이미지 수·측정 수 집계와 등록·목록 시작 동선 (MVP 6) |
+| ![이미지 목록: 최신순 카드와 측정 수](screenshots/02-catalog.png) | 등록된 이미지를 목록에서 최신순으로 찾아 다시 열기 (MVP 2) |
+| ![이미지 등록: 미리보기와 제조 메타데이터 폼](screenshots/03-register.png) | PNG/JPEG를 제조 메타데이터·보정값과 함께 등록 (MVP 1, 4) |
+| ![측정 뷰어: 두 점 선택 draft와 실시간 preview](screenshots/04-measurement-draft.png) | 이미지 위 두 점 선택으로 CD/Depth/Thickness 측정과 preview (MVP 3, 4) |
+| ![저장 후: overlay 복원·저장 항목·context export 활성](screenshots/05-measurement-saved.png) | 저장 좌표·값의 overlay 복원과 측정이 있을 때 활성화되는 컨텍스트 ZIP 내보내기 (MVP 5, 7) |
+
+캡처는 미검토 참고값인 수동 측정을 자동 계측의 정답으로 표현하지 않습니다.
+
 ## 사전 준비
 
 - Python 3.12.12 (`.python-version`으로 고정), 의존성 관리자 [`uv`](https://docs.astral.sh/uv/)
@@ -197,6 +214,42 @@ nanodb_mvp/
 
 런타임 업로드(`var/uploads/`)와 built frontend(`dist/`)는 생성물이며 Git에 커밋하지
 않습니다.
+
+## 평가 근거 사이트 (Evidence Site)
+
+해커톤 평가자를 위한 정적 근거 사이트가 `docs/`에 VitePress로 있습니다. 문제·실제 기능·
+AI-DLC 근거·검증 상태·한계를 소개·근거 두 페이지에서 확인합니다. Core runtime과 분리된
+독립 dependency 그래프(`docs/package.json`, `docs/package-lock.json`)를 사용하며 실행 중
+Core 앱과 통신하지 않습니다.
+
+```bash
+cd docs
+npm ci                      # docs/package-lock.json 고정 설치
+npm run docs:dev            # 로컬 개발 서버
+npm run docs:build          # 정적 build → docs/.vitepress/dist
+npm run docs:preview        # build 결과 미리보기 (배포와 동일 base /nanodb_mvp/)
+```
+
+Node 버전은 루트 `.nvmrc`(22.17.1)로 로컬·CI를 일치시킵니다.
+
+### GitHub Pages 배포 (관리자 설정)
+
+1. 저장소 **Settings → Pages → Build and deployment → Source**를 **GitHub Actions**로
+   설정합니다.
+2. `main`에 `docs/**`·`screenshots/**`·`.nvmrc`·배포 workflow가 push되면
+   [`.github/workflows/deploy-evidence-site.yml`](.github/workflows/deploy-evidence-site.yml)이
+   사이트를 build하고 **build 성공 후에만** Pages에 배포합니다. 수동 실행은 Actions 탭의
+   `workflow_dispatch`로 합니다.
+3. 배포는 최소 권한(`contents: read`, `pages: write`, `id-token: write`)과 단일 배포
+   concurrency(진행 중 배포 미취소)로 제한됩니다.
+
+### 게시 안전 원칙
+
+- 공개 사이트는 localhost 앱으로 연결하지 않습니다.
+- 원본 이미지·비밀정보·내부 audit 원문·비공개 자료를 게시하지 않습니다.
+- 시연 스크린샷은 승인된 demo 데이터만 사용하며, 캡처 버전·시각을 표기합니다.
+- 사이트가 참조하는 스크린샷은 자체 포함을 위해 `docs/public/screenshots/`에 동일 사본을
+  두며, 원본 캡처는 루트 `screenshots/`입니다.
 
 ## 요구사항 문서
 

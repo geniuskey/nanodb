@@ -1,0 +1,36 @@
+# Keep the build context small and, importantly, keep source sample data and
+# runtime state out of the image. Only paths explicitly COPYed in the Dockerfile
+# are used; everything here is excluded from the build context.
+
+.git
+.gitignore
+.gitattributes
+
+# Runtime state and local artifacts
+var/
+dist/
+.venv/
+node_modules/
+**/node_modules/
+.cache/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.tsbuildinfo
+
+# Source sample data must never enter the image
+data/
+
+# Docs, tests, tooling and references not needed at runtime
+aidlc-docs/
+references/
+assets/
+tests/
+scripts/
+validation/
+.agents/
+.aidlc-rule-details/
+.claude/
+
+# Local environment files
+.env

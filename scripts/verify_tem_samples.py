@@ -8,7 +8,6 @@ from pathlib import Path
 
 from tem_metadata import read_meta
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SAMPLE_ROOT = PROJECT_ROOT / "data" / "samples" / "tem"
 IMAGE_ROOT = SAMPLE_ROOT / "images"

@@ -1335,3 +1335,21 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: CONSTRUCTION - Code Generation Part 2 Step 22/26 complete; per-step Git checkpoint required; Step 23 next
 
 ---
+
+## NANoDB Core Code Generation Step 23 Started
+
+**Timestamp**: 2026-09-08T05:40:00Z
+**User Input**: "2"
+**AI Response**: "After pushing the Step 22 checkpoint, started Step 23 deployment artifact and root task command generation (compose.yaml, Dockerfile, .dockerignore, .env.example, .gitignore update, Makefile) for US-01~US-06."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 23 in progress
+
+---
+
+## NANoDB Core Code Generation Step 23 Complete
+
+**Timestamp**: 2026-09-08T05:58:00Z
+**User Input**: "2"
+**AI Response**: "Generated the US-01~US-06 deployment artifacts and root task commands. Dockerfile is a three-stage build: node 22.17.1 builds the frontend to dist/frontend, python 3.12.12 with uv resolves locked non-dev dependencies and installs the nanodb package non-editable, and the runtime stage runs uvicorn nanodb.api.app:app as a non-root nanodb user serving the built frontend, with alembic config/migrations copied in and source samples excluded. compose.yaml orders db -> migrate -> app: PostgreSQL 16 with pg_isready healthcheck and a named nanodb-db volume, a one-shot migrate service running alembic upgrade head on a healthy db, and the app started only after migrate completes successfully, with UPLOAD_ROOT bind-mounted to ./var/uploads, a loopback-only app port and a readiness healthcheck; the db port is published on loopback so host-side demo seeding and reset reach it. .dockerignore keeps runtime state and data/ (source samples) out of the build context; .env.example documents every setting; .gitignore now ignores .env. The Makefile provides help, install, build-frontend, migrate, dev, lint, typecheck, test/test-backend/test-frontend/test-e2e, preflight, prepare-demo, seed-demo, reset, up, demo (up + guarded host-side seed), stop, down and clean. Validated compose config with docker compose config and made repo-wide ruff check green; incidentally normalized import ordering (removed one trailing blank line each) in the pre-existing sample utilities scripts/tem_metadata.py, scripts/verify_layout_samples.py and scripts/verify_tem_samples.py so the new make lint entry point passes. Image build and stack bring-up are exercised in the Build and Test stage."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 23/26 complete; per-step Git checkpoint required; Step 24 next
+
+---

@@ -8,7 +8,6 @@ from pathlib import Path
 
 from PIL import Image
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SAMPLE_ROOT = PROJECT_ROOT / "data" / "samples" / "layout"
 IMAGE_ROOT = SAMPLE_ROOT / "images"

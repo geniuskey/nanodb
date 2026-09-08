@@ -25,7 +25,6 @@ from typing import Any
 from PIL import Image
 from PIL.TiffImagePlugin import ImageFileDirectory_v2
 
-
 TAGS = {
     "device": 65000,
     "scrap_step": 65001,

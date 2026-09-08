@@ -172,7 +172,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 23. Deployment artifact와 root task command 생성 — US-01~US-06
 
-- [ ] `compose.yaml`, `Dockerfile`, `.dockerignore`, `.env.example`, `.gitignore` 갱신과 `Makefile`을 생성한다. `db → migrate → app` 순서, PostgreSQL named volume, `var/uploads/` bind mount, loopback app port, non-root runtime, database·upload readiness, `make demo`와 안전한 stop/reset/test 진입점을 제공한다. source sample은 regular app에 mount하거나 제공하지 않는다.
+- [x] `compose.yaml`, `Dockerfile`, `.dockerignore`, `.env.example`, `.gitignore` 갱신과 `Makefile`을 생성한다. `db → migrate → app` 순서, PostgreSQL named volume, `var/uploads/` bind mount, loopback app port, non-root runtime, database·upload readiness, `make demo`와 안전한 stop/reset/test 진입점을 제공한다. source sample은 regular app에 mount하거나 제공하지 않는다.
 
 ### Step 24. Project와 API documentation 갱신 — US-01~US-07
 

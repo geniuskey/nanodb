@@ -1,0 +1,70 @@
+# NANoDB Core local stack: PostgreSQL, a one-shot migration job and the app.
+#
+# Start order is db -> migrate -> app: the app only starts after migrations
+# complete successfully against a healthy database. The database uses a named
+# volume, image binaries live on a host bind mount at ./var/uploads, and the
+# app port is published on the loopback interface only. Source sample data
+# (data/samples/) is never mounted into any service.
+
+services:
+  db:
+    image: postgres:16.10-bookworm
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nanodb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nanodb}
+      POSTGRES_DB: ${POSTGRES_DB:-nanodb}
+    volumes:
+      - nanodb-db:/var/lib/postgresql/data
+    # Loopback-only publish so host-side demo seeding and reset can reach it.
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nanodb} -d ${POSTGRES_DB:-nanodb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    image: nanodb-core:local
+    build:
+      context: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://nanodb:nanodb@db:5432/nanodb}
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  app:
+    image: nanodb-core:local
+    build:
+      context: .
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://nanodb:nanodb@db:5432/nanodb}
+      UPLOAD_ROOT: /data/uploads
+      NANODB_PROFILE: ${NANODB_PROFILE:-demo}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-5}
+      DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-5}
+      DATABASE_POOL_TIMEOUT: ${DATABASE_POOL_TIMEOUT:-10}
+    volumes:
+      - ./var/uploads:/data/uploads
+    ports:
+      - "127.0.0.1:${APP_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "python -c \"import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready').status==200 else 1)\""
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  nanodb-db:

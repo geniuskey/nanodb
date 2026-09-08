@@ -176,7 +176,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 24. Project와 API documentation 갱신 — US-01~US-07
 
-- [ ] root `README.md`를 실제 구현 상태로 갱신하고 clean setup, locked install, native/Compose 실행, migration, sample preparation/preflight, safe reset, test 진입점, context ZIP, 외부 생성 코드 검토·실행·검증과 알려진 제한을 기록한다. 상세 API·deployment·traceability는 `aidlc-docs/construction/nanodb-core/code/` Markdown으로 생성한다.
+- [x] root `README.md`를 실제 구현 상태로 갱신하고 clean setup, locked install, native/Compose 실행, migration, sample preparation/preflight, safe reset, test 진입점, context ZIP, 외부 생성 코드 검토·실행·검증과 알려진 제한을 기록한다. 상세 API·deployment·traceability는 `aidlc-docs/construction/nanodb-core/code/` Markdown으로 생성한다.
 
 ### Step 25. Browser P0 scenario와 story traceability 생성 — US-01~US-07
 

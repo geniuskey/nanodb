@@ -15,7 +15,7 @@
 
 NANoDB는 반도체 SEM/TEM 이미지와 측정 근거를 축적하고, 이를 AI 기반 분석 소프트웨어 개발에 필요한 컨텍스트와 검증 데이터로 재사용하는 경량 웹 애플리케이션입니다. 이름은 `Nano Assets, Never orphaned Database`에서 왔으며, 나노 자산이 담당자나 도구의 변화 속에서도 고아가 되지 않게 하는 것을 지향합니다.
 
-> 현재 저장소에는 MVP 요구사항, AI-DLC 워크플로우, 로고와 검증된 샘플 데이터가 준비되어 있습니다. 웹 애플리케이션 구현은 다음 단계입니다.
+> 현재 저장소에는 MVP 요구사항, AI-DLC 워크플로우, 로고와 검증된 샘플 데이터에 더해 NANoDB Core 웹 애플리케이션(FastAPI backend, React frontend, PostgreSQL 스키마·migration, demo·검증 tooling)과 계층별 테스트가 생성되어 있습니다. 테스트 실행과 컨테이너 스택 기동의 최종 통과 판정은 Build and Test 단계에서 수행합니다.
 
 ## MVP에서 보여줄 것
 
@@ -34,6 +34,108 @@ NANoDB는 반도체 SEM/TEM 이미지와 측정 근거를 축적하고, 이를 A
 
 윤곽 라벨링, 피처 자동 추출, Tool 등록, Lineage, Report는 이번 3일 MVP의 후속 로드맵입니다.
 
+## 사전 준비
+
+- Python 3.12.12 (`.python-version`으로 고정), 의존성 관리자 [`uv`](https://docs.astral.sh/uv/)
+- Node.js 22.17.1과 npm
+- PostgreSQL 16 (로컬 설치 또는 아래 Compose 스택)
+- 컨테이너 실행 시 Docker와 Docker Compose v2
+
+## 빠른 시작
+
+### 1. Clean setup과 locked install
+
+```bash
+git clone https://github.com/geniuskey/nanodb_mvp.git
+cd nanodb_mvp
+cp .env.example .env        # 필요 시 값 수정
+make install                # uv sync --frozen + npm ci
+make build-frontend         # dist/frontend 생성
+```
+
+### 2. 컨테이너 스택으로 실행 (권장)
+
+`db → migrate → app` 순서로 기동하고, migration이 성공한 뒤에만 앱이 시작됩니다.
+
+```bash
+make up                     # docker compose up --build --wait
+# 또는 demo 데이터까지 적재하고 URL 출력:
+make demo
+```
+
+앱은 `http://127.0.0.1:8000`(loopback)에서 제공됩니다. 이미지 바이너리는 host의
+`./var/uploads`에 bind mount되고, DB 데이터는 named volume에 유지됩니다. 스택 제어는
+`make stop`, `make down`, 파괴적 초기화는 `make clean`(DB volume 포함 제거)입니다.
+
+### 3. 네이티브로 실행
+
+로컬 PostgreSQL이 `DATABASE_URL`로 접근 가능해야 합니다.
+
+```bash
+make migrate                # alembic upgrade head
+make dev                    # uvicorn --reload on 127.0.0.1:8000
+```
+
+### 4. 데모 샘플 준비·점검·안전 초기화
+
+승인된 TEM 원본에서 무리샘플 PNG 파생본을 만들고 무결성을 점검합니다. 원본
+`data/samples/`는 절대 수정하지 않습니다.
+
+```bash
+make prepare-demo           # data/demo/ 파생본·manifest 재생성 (오프라인)
+make preflight              # 파생본·manifest 오프라인 검증
+make seed-demo              # NANODB_PROFILE=demo, 실행 중 DB에 적재
+make reset                  # NANODB_PROFILE=demo, 전용 target guard 통과 시에만 초기화
+```
+
+`reset`은 `NANODB_PROFILE=demo`와 전용 `var/uploads` target guard를 통과해야만 demo DB
+행과 업로드를 known-empty 상태로 되돌리며, source sample을 대상으로 삼지 않습니다.
+
+## 테스트
+
+```bash
+make test                   # backend(pytest) + frontend(vitest)
+make test-backend           # PostgreSQL integration test는 TEST_DATABASE_URL이 있을 때 실행
+make test-frontend
+make test-e2e               # Playwright 브라우저 시나리오
+make lint                   # ruff
+make typecheck              # mypy + tsc
+```
+
+PostgreSQL 통합 테스트는 `TEST_DATABASE_URL`이 설정된 경우에만 실행되며, 없으면 명시적으로
+skip됩니다.
+
+## 컨텍스트 내보내기 (ZIP)
+
+이미지 상세에서 `GET /api/images/{id}/context-export`로 고정 네 파일 ZIP을 내려받습니다.
+
+- `context.md` — 좌표계·계산 규칙·데이터 주의사항
+- `data.json` — 선택 이미지와 저장된 모든 측정 (`schema_version` `1.0`)
+- `task.md` — 수행할 개발 과제
+- `checks.json` — 검증용 정답(ground truth)
+
+이미지 바이너리·절대 경로·secret은 포함하지 않으며, 자동 외부 전송도 하지 않습니다.
+측정이 하나 이상 있을 때만 export가 활성화됩니다. 상세 계약은
+[API Reference](aidlc-docs/construction/nanodb-core/code/api-reference.md)를 참고하세요.
+
+## 외부 AI 생성 코드 검토·실행·검증
+
+내보낸 컨텍스트로 외부 AI 개발 도구에서 요약 CSV 생성 코드를 만들고 오프라인으로 검증하는
+자산이 [`validation/external-ai/`](validation/external-ai/)에 있습니다. 수동 설명 준비와
+컨텍스트 내보내기 두 방식을 같은 과제로 비교하며, 준비 시간·추가 요청 수·검증 결과를
+`pass`/`fail`/`unverified` 그대로 기록합니다. 이 도구는 앱 런타임에 연결되지 않고 모델을
+자동 호출하지 않습니다. 향상이나 토큰 절감을 미리 주장하지 않습니다.
+
+## 알려진 제한
+
+- 인증·권한, 단일 키워드 검색, 측정 삭제, 항목별 표본 수·평균은 이번 P0 범위 밖입니다.
+- 자동 계측·윤곽 검출은 없습니다. 측정은 수동 두 점 방식의 미검토 참고값입니다.
+- 앱은 단일 호스트 로컬 파일 저장을 사용하며 multi-instance·객체 저장소·HA는 범위 밖입니다.
+- 앱 내부 AI 호출·코드 실행 기능은 없습니다.
+- 이미지·스택 기동과 전체 테스트 통과 판정은 Build and Test 단계에서 수행합니다.
+- 배포·API 상세는 [deployment.md](aidlc-docs/construction/nanodb-core/code/deployment.md),
+  [api-reference.md](aidlc-docs/construction/nanodb-core/code/api-reference.md)를 참고하세요.
+
 ## 샘플 데이터
 
 | 데이터 묶음 | 수량 | 내용 | Manifest |
@@ -43,19 +145,15 @@ NANoDB는 반도체 SEM/TEM 이미지와 측정 근거를 축적하고, 이를 A
 
 각 manifest에는 안정적인 sample ID, 파일명, SHA-256, 도메인 메타데이터와 프로젝트 사용 승인 상태가 들어 있습니다. TIFF 파일은 일반 Git 바이너리로 함께 관리합니다.
 
-샘플 TIFF는 원본 데이터와 메타데이터 처리 검증용입니다. 현재 MVP의 브라우저 직접 등록 형식은 PNG/JPEG이며, TIFF 직접 업로드나 웹 표시 변환은 후속 범위입니다. 해커톤 데모에서는 원본을 수정하지 않은 PNG 파생본을 미리 준비하고, 리샘플링하지 않은 경우에만 manifest의 `length_nm_per_pixel`을 그대로 사용합니다. 파생본 준비·무결성 점검·데모 초기화 절차는 구현 단계에서 README에 실행 명령과 함께 확정합니다.
+샘플 TIFF는 원본 데이터와 메타데이터 처리 검증용입니다. 현재 MVP의 브라우저 직접 등록 형식은 PNG/JPEG이며, TIFF 직접 업로드나 웹 표시 변환은 후속 범위입니다. 해커톤 데모에서는 원본을 수정하지 않은 PNG 파생본을 미리 준비하고, 리샘플링하지 않은 경우에만 manifest의 `length_nm_per_pixel`을 그대로 사용합니다. 파생본 준비·무결성 점검·데모 초기화 절차는 위 [빠른 시작](#빠른-시작)의 `make prepare-demo`, `make preflight`, `make seed-demo`, `make reset`로 실행합니다.
 
 ### 샘플 검증
 
-Python 3.10 이상을 권장합니다.
+의존성 설치(`make install`) 후 `uv`로 실행합니다.
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-
-python scripts/verify_tem_samples.py
-python scripts/verify_layout_samples.py
+```bash
+uv run python scripts/verify_tem_samples.py
+uv run python scripts/verify_layout_samples.py
 ```
 
 검증기는 다음 항목을 확인합니다.
@@ -67,8 +165,8 @@ python scripts/verify_layout_samples.py
 
 ### TEM 메타데이터 읽기
 
-```powershell
-python scripts/tem_metadata.py data/samples/tem/images/tem_001.tif
+```bash
+uv run python scripts/tem_metadata.py data/samples/tem/images/tem_001.tif
 ```
 
 `write_meta()`는 원본을 덮어쓰지 않고 별도 파생 TIFF만 생성합니다. `scrap_step`은 현재 숫자형 문자열과 코드형 문자열이 혼재하므로 도메인 정의가 확정될 때까지 문자열로 취급합니다.
@@ -77,17 +175,28 @@ python scripts/tem_metadata.py data/samples/tem/images/tem_001.tif
 
 ```text
 nanodb_mvp/
+├── src/
+│   ├── backend/nanodb/          # FastAPI app, domain, services, persistence, adapters
+│   └── frontend/                # React 19 + Vite frontend
+├── alembic/                     # PostgreSQL migration 환경과 revision
+├── tests/                       # backend(unit/api/contract/integration)와 e2e
+├── scripts/                     # 샘플 검증·demo 준비/preflight/reset tooling
+├── validation/external-ai/      # 외부 AI 생성 코드 검증 자산 (US-07)
+├── data/
+│   ├── samples/                 # 원본 TEM·layout 샘플과 manifest (앱에 mount 안 함)
+│   └── demo/                    # 무리샘플 PNG 파생본과 manifest
 ├── assets/logo/                 # 라이트·다크 로고
-├── data/samples/
-│   ├── tem/                     # TEM 이미지와 manifest
-│   └── layout/                  # 센서·DRAM layout과 manifest
-├── scripts/                     # 메타데이터 읽기와 샘플 검증
 ├── requirements/                # 3일 MVP 요구사항
 ├── references/                  # 로고·홈 탭 기준 PDF
 ├── aidlc-docs/                  # AI-DLC 상태와 산출물
+├── Dockerfile, compose.yaml     # 단일 이미지 build와 db→migrate→app 스택
+├── Makefile, .env.example       # task 진입점과 환경 예시
 ├── AGENTS.md                    # Codex용 AI-DLC 지침
 └── CLAUDE.md                    # Claude Code용 AI-DLC 지침
 ```
+
+런타임 업로드(`var/uploads/`)와 built frontend(`dist/`)는 생성물이며 Git에 커밋하지
+않습니다.
 
 ## 요구사항 문서
 
@@ -124,11 +233,13 @@ NANoDB는 AI로 분석 코드를 만들 때 반복하는 데이터 형식·좌�
 - [x] 홈 탭 요구사항 정리
 - [x] 라이트·다크 로고 준비
 - [x] TEM/Layout 샘플과 manifest 검증
-- [ ] 웹 애플리케이션 구현
+- [x] 웹 애플리케이션 구현 (backend·frontend·PostgreSQL·계층별 테스트 생성)
 - [x] 대회 취지에 맞춘 개발 컨텍스트·AI 코드 검증 요구사항 반영
-- [ ] 개발 컨텍스트 ZIP 구현
-- [ ] 계측 기반 및 개발 지원 데모 검증
-- [ ] 설명 준비 시간·수정 요청·검증 결과 비교 기록
+- [x] 개발 컨텍스트 ZIP 구현
+- [x] demo 준비·검증 tooling과 배포 artifact 생성
+- [x] 외부 AI 생성 코드 검증 자산 생성
+- [ ] 테스트 실행과 컨테이너 스택 최종 통과 판정 (Build and Test)
+- [ ] 설명 준비 시간·수정 요청·검증 결과 실제 비교 기록
 
 ## License
 

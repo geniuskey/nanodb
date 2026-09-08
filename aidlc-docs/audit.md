@@ -1353,3 +1353,21 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: CONSTRUCTION - Code Generation Part 2 Step 23/26 complete; per-step Git checkpoint required; Step 24 next
 
 ---
+
+## NANoDB Core Code Generation Step 24 Started
+
+**Timestamp**: 2026-09-08T06:10:00Z
+**User Input**: "2"
+**AI Response**: "After pushing the Step 23 checkpoint, started Step 24: update root README.md to the actual implementation state and generate detailed API and deployment reference docs under aidlc-docs/construction/nanodb-core/code/ (US-01~US-07)."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 24 in progress
+
+---
+
+## NANoDB Core Code Generation Step 24 Complete
+
+**Timestamp**: 2026-09-08T06:24:00Z
+**User Input**: "2"
+**AI Response**: "Updated the root README.md to the actual generated implementation state and added detailed reference docs. README now documents prerequisites, clean setup and locked install (make install), container run via db->migrate->app (make up/demo), native run (make migrate/dev), demo sample preparation/preflight/safe reset (make prepare-demo/preflight/seed-demo/reset), test entry points (make test/test-backend/test-frontend/test-e2e/lint/typecheck with TEST_DATABASE_URL-gated integration tests), the four-file context ZIP contract, the external AI generated-code review/run/verify assets under validation/external-ai/, known limitations, and an updated repository structure and project status; sample-utility commands were moved to uv and the earlier deferral note now points to the make targets. Added aidlc-docs/construction/nanodb-core/code/api-reference.md (field-level request/response contracts, error envelope and domain error code table) and deployment.md (Dockerfile stages, compose services, env vars, make targets and operational boundaries). No application code changed. README remains valid for the pyproject readme and Docker build."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 24/26 complete; per-step Git checkpoint required; Step 25 next
+
+---

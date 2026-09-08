@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="461" viewBox="0 0 1600 461" role="img" aria-labelledby="title desc">
+  <title id="title">NANoDB</title>
+  <desc id="desc">NANoDB logo with the tagline Nano Assets, Never Orphaned.</desc>
+  <g font-family="Arial, Helvetica, sans-serif" font-weight="800">
+    <text x="60" y="289" font-size="306" fill="#111827" letter-spacing="-10">NAN</text>
+    <g fill="none" stroke="#4f46e5" stroke-linecap="round">
+      <path d="M1022 200 A108 108 0 1 1 806 200 A108 108 0 1 1 1022 200 Z M1000 200 A86 86 0 1 1 828 200 A86 86 0 1 1 1000 200 Z M1007 132 A24 24 0 1 1 959 132 A24 24 0 1 1 1007 132 Z" fill="#4f46e5" fill-rule="evenodd" stroke="none"/>
+      <circle cx="914" cy="200" r="55" stroke-width="18"/>
+      <circle cx="914" cy="200" r="14" fill="#4f46e5" stroke="none"/>
+      <circle cx="983" cy="132" r="17.5" fill="#4f46e5" stroke="none"/>
+    </g>
+    <text x="1045" y="289" font-size="306" fill="#4f46e5" letter-spacing="-10">DB</text>
+    <text x="62" y="407" font-size="60" font-weight="600" letter-spacing="8" fill="#6b7280">NANO ASSETS, NEVER ORPHANED</text>
+  </g>
+</svg>

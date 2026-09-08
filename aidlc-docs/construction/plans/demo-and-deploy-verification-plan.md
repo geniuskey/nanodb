@@ -84,7 +84,17 @@
   네 이미지 태그(`python:3.12.12-slim-bookworm`, `node:22.17.1-bookworm-slim`,
   `postgres:16.10-bookworm`, `ghcr.io/astral-sh/uv:0.9.5`)의 실재를 레지스트리 API로 확인했다.
   **Docker가 되는 환경에서 `make up` 1회 실행이 여전히 필요하다.**
-- **GitHub Pages 실제 배포**: 저장소 Settings의 Pages Source를 `GitHub Actions`로 바꾸는
-  관리자 설정과 `main` push가 필요하다(DOC-012). workflow 자체는 DOC-006~011을 충족한다.
+- **GitHub Pages 실제 배포**: 예측이 틀렸다. PR 머지 직후 확인해 보니 Pages Source는 이미
+  `GitHub Actions`로 설정돼 있었고, `main` 머지 커밋에서 workflow의 build와 deploy job이
+  모두 성공했다([run](https://github.com/geniuskey/nanodb_mvp/actions/runs/34225740216)). 이전 두 번의 main push에서도 성공했다. 즉 이 항목은 처음부터
+  미검증이 아니라 **검증 가능한 상태였고, 내가 workflow 실행 이력을 확인하지 않고
+  `aidlc-state.md`의 오래된 서술을 그대로 옮겼다.** 게시된 URL 자체는 `geniuskey.github.io`가
+  이 실행 환경의 egress 정책에서 403이라 열어보지 못했다.
 
-두 항목은 이 세션에서 제거할 수 없는 리스크이며, 요구사항과 평가 자료에 `미검증`으로 남겼다.
+남은 미검증은 컨테이너 스택 하나뿐이다.
+
+## 교훈
+
+이번 작업의 전제는 "문서가 실행 결과와 어긋나 있다"였는데, 정작 나도 실행 이력을 확인하지 않고
+낡은 상태 서술을 옮겨 적어 같은 실수를 했다. 상태를 옮길 때는 원본 문서가 아니라 실행 기록을
+근거로 삼아야 한다.

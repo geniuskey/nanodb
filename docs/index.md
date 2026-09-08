@@ -81,8 +81,9 @@ NANoDB는 이미지·측정·맥락 데이터가 담당자나 도구의 변화 �
 - 앱은 단일 호스트 로컬 파일 저장을 사용하며 multi-instance·객체 저장소·HA는 범위 밖입니다.
 - 앱 내부 AI 호출·코드 실행 기능은 없습니다.
 - PostgreSQL 통합 테스트와 브라우저 e2e는 로컬 PostgreSQL 16과 Chromium으로 실행해 통과를
-  확인했습니다. 컨테이너 스택(`docker compose`) 기동과 GitHub Pages 실제 배포는 여전히
-  **미검증**입니다. 상세 상태는 [심사 근거](/evidence)를 참고하세요.
+  확인했습니다. GitHub Pages 배포도 `main` 머지에서 실제로 실행돼 성공했습니다. 컨테이너
+  스택(`docker compose`) 기동만 여전히 **미검증**입니다. 상세 상태는
+  [심사 근거](/evidence)를 참고하세요.
 
 ## 평가 관련 참고
 

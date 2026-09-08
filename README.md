@@ -14,7 +14,7 @@
 
 NANoDB는 반도체 SEM/TEM 이미지와 측정 근거를 축적하고, 이를 AI 기반 분석 소프트웨어 개발에 필요한 컨텍스트와 검증 데이터로 재사용하는 경량 웹 애플리케이션입니다. 이름은 `Nano Assets, Never orphaned Database`에서 왔으며, 데이터와 맥락이 담당자나 도구의 변화 속에서도 흩어지지 않게 하는 것을 지향합니다.
 
-> 현재 저장소에는 MVP 요구사항, AI-DLC 워크플로우, 로고와 검증된 샘플 데이터에 더해 NANoDB Core 웹 애플리케이션(FastAPI backend, React frontend, PostgreSQL 스키마·migration, demo·검증 tooling)과 계층별 테스트가 생성되어 있습니다. 테스트 실행과 컨테이너 스택 기동의 최종 통과 판정은 Build and Test 단계에서 수행합니다.
+> 현재 저장소에는 MVP 요구사항, AI-DLC 워크플로우, 로고와 검증된 샘플 데이터에 더해 NANoDB Core 웹 애플리케이션(FastAPI backend, React frontend, PostgreSQL 스키마·migration, demo·검증 tooling)과 계층별 테스트가 생성되어 있습니다. backend unit·API·contract test, frontend unit test, lint·typecheck·demo preflight 등 native 환경에서 실행 가능한 게이트는 통과했으며(2026-09-08 기준), PostgreSQL integration test·브라우저 e2e·컨테이너 스택 기동은 Docker/PostgreSQL 환경에서 실행·판정하도록 남겨두었습니다.
 
 ## MVP에서 보여줄 것
 
@@ -148,7 +148,7 @@ skip됩니다.
 - 자동 계측·윤곽 검출은 없습니다. 측정은 수동 두 점 방식의 미검토 참고값입니다.
 - 앱은 단일 호스트 로컬 파일 저장을 사용하며 multi-instance·객체 저장소·HA는 범위 밖입니다.
 - 앱 내부 AI 호출·코드 실행 기능은 없습니다.
-- 이미지·스택 기동과 전체 테스트 통과 판정은 Build and Test 단계에서 수행합니다.
+- native unit·정적 게이트(backend·frontend unit test, lint, typecheck, preflight)는 통과했습니다. 컨테이너 이미지·스택 기동과 PostgreSQL integration·브라우저 e2e test는 Docker/PostgreSQL 환경에서 실행·판정합니다.
 - 배포·API 상세는 [deployment.md](aidlc-docs/construction/nanodb-core/code/deployment.md),
   [api-reference.md](aidlc-docs/construction/nanodb-core/code/api-reference.md)를 참고하세요.
 
@@ -290,7 +290,8 @@ NANoDB는 AI로 분석 코드를 만들 때 반복하는 데이터 형식·좌�
 - [x] 개발 컨텍스트 ZIP 구현
 - [x] demo 준비·검증 tooling과 배포 artifact 생성
 - [x] 외부 AI 생성 코드 검증 자산 생성
-- [ ] 테스트 실행과 컨테이너 스택 최종 통과 판정 (Build and Test)
+- [x] Build and Test: native unit·정적 게이트 통과 (backend 57 passed·7 skipped, frontend 23 passed, lint·typecheck·preflight green, 2026-09-08)
+- [ ] Docker/PostgreSQL 환경에서 integration·브라우저 e2e·컨테이너 스택 최종 통과 판정
 - [ ] 설명 준비 시간·수정 요청·검증 결과 실제 비교 기록
 
 ## License

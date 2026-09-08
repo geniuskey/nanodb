@@ -1551,3 +1551,21 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: CONSTRUCTION - Evidence Site unit complete; both units done; awaiting checkpoint decision
 
 ---
+
+## Evidence Site Checkpoint Committed and Pushed
+
+**Timestamp**: 2026-09-08T09:55:00Z
+**User Input**: "1"
+**AI Response**: "User selected option 1 (commit + push). Reverted the incidental data/demo/manifest.csv change (only converted_at timestamp differed; derivative SHA-256 identical) to keep the checkpoint clean. Staged Evidence Site deliverables + state/audit updates and committed as a05aa05 'feat: add NANoDB evidence site (US-08)'. Initial push failed with HTTP 400 (POST-buffer limit given ~3MB of PNGs); set http.postBuffer to 500MB and retried; push succeeded (19b2af6..a05aa05 on main). Note: pushing docs/** can trigger the Pages workflow, but actual deploy requires admin Pages Source = GitHub Actions."
+**Context**: CONSTRUCTION - Evidence Site checkpoint pushed to origin/main (a05aa05)
+
+---
+
+## Brand Copy Change — Remove "나노 자산은 고아가 되지 않는다" Tagline
+
+**Timestamp**: 2026-09-08T10:20:00Z
+**User Input**: "\"나노 자산은 고아가 되지 않는다\n\" 문구는 모두 삭제해줘. 너무 자극적이야."
+**AI Response**: "Removed the Korean 'orphan' tagline everywhere it appeared as product/spec copy because the user found it too provocative. Changes: README.md (dropped the subtitle line; rephrased the inline description to '데이터와 맥락이 ... 흩어지지 않게'), docs/index.md ('흩어지지 않도록'), src/frontend/src/pages/HomePage.tsx home-title h1 → '측정 데이터와 맥락을 이어갑니다', requirements/home-tab-requirements.md HOM-002 (removed the 한국어 의미 clause) and HOM-008 (removed 'the tagline 뜻을 유지' clause), aidlc-docs/inception/requirements/requirements.md and requirements/nanodb-mvp-requirements.md (removed the tagline clause). Kept the English acronym expansion 'Nano Assets, Never orphaned Database' (the literal name derivation) and the subtitle '데이터는 쌓이고, 툴은 이어진다.'. Left the single remaining occurrence in aidlc-docs/audit.md:324 untouched because it is an append-only historical quote of a past user message, not product copy. Verified: no '고아' remains outside that audit quote; VitePress rebuild succeeded; frontend vitest 23 passed."
+**Context**: Post-CONSTRUCTION targeted copy edit; awaiting commit decision
+
+---

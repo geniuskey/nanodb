@@ -7,13 +7,12 @@
 
 <p align="center">
   <strong>NANoDB: Nano Assets, Never orphaned Database.</strong><br>
-  나노 자산은 고아가 되지 않는다<br>
   <sub>데이터는 쌓이고, 툴은 이어진다.</sub>
 </p>
 
 # NANoDB
 
-NANoDB는 반도체 SEM/TEM 이미지와 측정 근거를 축적하고, 이를 AI 기반 분석 소프트웨어 개발에 필요한 컨텍스트와 검증 데이터로 재사용하는 경량 웹 애플리케이션입니다. 이름은 `Nano Assets, Never orphaned Database`에서 왔으며, 나노 자산이 담당자나 도구의 변화 속에서도 고아가 되지 않게 하는 것을 지향합니다.
+NANoDB는 반도체 SEM/TEM 이미지와 측정 근거를 축적하고, 이를 AI 기반 분석 소프트웨어 개발에 필요한 컨텍스트와 검증 데이터로 재사용하는 경량 웹 애플리케이션입니다. 이름은 `Nano Assets, Never orphaned Database`에서 왔으며, 데이터와 맥락이 담당자나 도구의 변화 속에서도 흩어지지 않게 하는 것을 지향합니다.
 
 > 현재 저장소에는 MVP 요구사항, AI-DLC 워크플로우, 로고와 검증된 샘플 데이터에 더해 NANoDB Core 웹 애플리케이션(FastAPI backend, React frontend, PostgreSQL 스키마·migration, demo·검증 tooling)과 계층별 테스트가 생성되어 있습니다. 테스트 실행과 컨테이너 스택 기동의 최종 통과 판정은 Build and Test 단계에서 수행합니다.
 

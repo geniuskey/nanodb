@@ -30,7 +30,7 @@ export function HomePage() {
     <main>
       <section className="hero" aria-labelledby="home-title">
         <p className="eyebrow">Nano Assets, Never orphaned Database</p>
-        <h1 id="home-title">나노 자산은 고아가 되지 않는다</h1>
+        <h1 id="home-title">측정 데이터와 맥락을 이어갑니다</h1>
         <p className="hero-copy">
           SEM/TEM 이미지와 측정 근거를 연결해 다시 찾고, 복원하고, AI 분석
           코드 개발에 재사용합니다.

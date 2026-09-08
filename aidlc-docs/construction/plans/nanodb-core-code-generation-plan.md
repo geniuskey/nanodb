@@ -184,17 +184,17 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 26. 생성 결과 일관성 검토와 완료 요약 — US-01~US-07
 
-- [ ] 계획 밖 범위 유입, 누락 file, duplicate 수정본, source sample 변경, runtime data·secret 추적, 계층 역의존성과 미완료 story를 검사한다. `aidlc-docs/construction/nanodb-core/code/code-generation-summary.md`에 생성·수정 file, test, deployment artifact, 알려진 제한과 story 완료 상태를 기록하고 Code Generation review gate를 연다.
+- [x] 계획 밖 범위 유입, 누락 file, duplicate 수정본, source sample 변경, runtime data·secret 추적, 계층 역의존성과 미완료 story를 검사한다. `aidlc-docs/construction/nanodb-core/code/code-generation-summary.md`에 생성·수정 file, test, deployment artifact, 알려진 제한과 story 완료 상태를 기록하고 Code Generation review gate를 연다.
 
 ## Story 완료 추적
 
-- [ ] **US-01** — 승인된 demo sample, preflight와 source-safe reset이 생성됐다.
-- [ ] **US-02** — Home이 실제 count·기준 시각·구현된 CTA와 roadmap 경계를 표시한다.
-- [ ] **US-03** — PNG/JPEG 등록·검증·목록·상세·원본 불변 흐름이 생성됐다.
-- [ ] **US-04** — original-coordinate 두 점 preview와 server 재계산·저장이 생성됐다.
-- [ ] **US-05** — reload/resize 후 측정 근거 복원과 선택 강조가 생성됐다.
-- [ ] **US-06** — 고정 네 파일의 안전하고 결정적인 context ZIP이 생성됐다.
-- [ ] **US-07** — 외부 생성 코드의 실제 실행 절차와 정직한 결과 근거가 생성됐다.
+- [x] **US-01** — 승인된 demo sample, preflight와 source-safe reset이 생성됐다.
+- [x] **US-02** — Home이 실제 count·기준 시각·구현된 CTA와 roadmap 경계를 표시한다.
+- [x] **US-03** — PNG/JPEG 등록·검증·목록·상세·원본 불변 흐름이 생성됐다.
+- [x] **US-04** — original-coordinate 두 점 preview와 server 재계산·저장이 생성됐다.
+- [x] **US-05** — reload/resize 후 측정 근거 복원과 선택 강조가 생성됐다.
+- [x] **US-06** — 고정 네 파일의 안전하고 결정적인 context ZIP이 생성됐다.
+- [x] **US-07** — 외부 생성 코드의 실제 실행 절차와 정직한 결과 근거가 생성됐다.
 
 각 story는 구현과 해당 test·문서가 모두 생성됐을 때만 `[x]`로 바꾼다. 실제 test 실행 결과는 Build and Test 단계에서 별도로 판정한다.
 

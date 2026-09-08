@@ -1637,3 +1637,19 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: INCEPTION - Workspace Detection (resume) + Requirements Analysis Step 1~6; brownfield review of implemented UI/UX vs approved requirements
 
 ---
+
+## UI/UX Amendment — Recommended Options Accepted
+**Timestamp**: 2026-09-08T09:52:00Z
+**User Input**: "추천. 대신 해커톤이니 너무 빡빡하게 제한을 두지마. 최우선은 앱이 사용자에게 주는 가치야"
+**AI Response**: "Question 1~7 전부 추천안(A)으로 확정하고 Requirements Analysis Step 7(요구사항 문서 갱신)을 실행한다. 사용자 지시에 따라 요구사항 문체를 게이트·차단형이 아니라 사용자 가치 우선의 우선순위형으로 쓴다. 신규 UX 요구사항은 P0(데모 가치 직결) / P1 / P2(미구현이어도 데모 실패로 보지 않음)로 등급을 나누고, 3일 타임박스에서 새 하드 게이트를 추가하지 않는다. 확정 사항: Q1=A 도형 라벨링 P1 정식 승격(제외 범위의 '윤곽 라벨링'을 자유 폴리곤·검수·버전으로 한정, 도형 삭제 추가), Q2=A 도형을 data.json annotations[]로 ZIP에 포함하고 schema_version 갱신, Q3=A 홈 영상 유지 + 실패 대체·prefers-reduced-motion·오프라인 경로, Q4=A HOM v2 정본 유지 + '이렇게 쓰세요' 섹션에만 CTA 1쌍 허용, Q5=A 확대·이동 + 배율당 원본 픽셀 표시, Q6=A 메모만 수정(좌표·항목은 불변), Q7=A 좌표 직접 입력 대안."
+**Context**: Requirements Analysis Step 6 gate passed; proceeding to Step 7 requirement document updates
+
+---
+
+## Requirements Analysis Step 7 — UI/UX Amendment Applied
+**Timestamp**: 2026-09-08T10:18:00Z
+**User Input**: (Step 6 게이트 답변 "추천"에 따른 후속 실행, 추가 입력 없음)
+**AI Response**: "Q1~Q7 A안대로 요구사항 5개 문서를 갱신했다. requirements/nanodb-mvp-requirements.md: 우선순위 표를 P0/P1/P2와 구현 상태로 재작성, IMG-001·005에 TIFF 추가, IMG-007~010·CAT-006~009·MEA-012~014·RES-007 신규, CAT-003/RES-005/SUM-002를 구현 완료로 표기하고 SUM-002를 min/max로 확장, 3.7절 도형 라벨링(ANN-001~008)과 3.8절 공통 UI/UX(UIX-001~009) 신설, CTX-004·005·012를 도형 포함과 schema_version 상향으로 개정, 5.1·5.2·5.3·5.5·7.1·7.2절 갱신. home-tab-requirements.md: HOM-005를 '사용 흐름 섹션에만 CTA 1쌍 허용'으로 개정하고 HOM-034a 신설, HOM-011에서 구현된 화살표·원 라벨링과 로드맵 폴리곤 라벨링을 분리, HOM-009에 PNG 히어로 자산 명기, 3.9.1절 HOM-040(소개 영상 실패 대체·reduced-motion·오프라인 경로) 신설, 수용 기준과 v1↔v2 표 갱신. constraints.md: 4절에서 화살표·원과 단순 확대를 제외 목록에서 분리하고 저장 측정 좌표·항목 수정을 제외로 명시, 9절 '윤곽 라벨링'을 자유 폴리곤·검수·버전으로 한정, 12절에 터치 측정·다크모드·포인터 없는 측정 추가. aidlc-docs/inception/requirements/requirements.md: 핵심 결정 4·14·15 개정·신설, 홈 CTA 정합화, 4.4·4.9·5·6·7·7.1절과 10절 검토 표 갱신. README.md: 데모 흐름에 TIFF·검색·도형 라벨링·확장 통계 반영, 낡은 'P1 미구현'·'TIFF 후속 범위' 문장 정정, 알려진 제한을 실제 격차(확대 없음·측정 수정 불가·도형 삭제 불가·키보드 측정 불가·터치/다크모드 미지원)로 교체. 요구사항 ID 중복 검사 통과(MVP 81개, 홈 41개, 중복 0). 새 하드 게이트는 추가하지 않았고 P2 미구현은 데모 실패가 아님을 문서에 명시했다."
+**Context**: INCEPTION - Requirements Analysis Step 7-8 complete; awaiting approval before Workflow Planning
+
+---

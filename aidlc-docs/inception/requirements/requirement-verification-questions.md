@@ -49,6 +49,8 @@ X) 기타 — `[Answer]:` 뒤에 원하는 범위를 설명해 주세요.
 > 배경: [ui-ux-review-2026-09-08.md](ui-ux-review-2026-09-08.md) 6절 R2 묶음.
 > 아래 7개 질문만 사용자 결정이 필요합니다. R1(정합화)·R3(범위 선언)·R4(공통 UX)는 답변과 무관하게 반영합니다.
 > 각 `[Answer]:` 뒤에 선택 문자를 적어 주세요. **전부 추천안대로 진행해도 되면 Question 1의 `[Answer]:`에 `추천`이라고만 적어 주세요.**
+>
+> **2026-09-08 답변 완료**: 사용자가 "추천"으로 답해 Question 1~7 모두 A안으로 확정했다. 추가 지시는 "해커톤이니 너무 빡빡하게 제한을 두지 마라, 최우선은 앱이 사용자에게 주는 가치"였다. 이에 따라 신규 요구사항은 새 하드 게이트를 만들지 않고 P1(사용자 가치) / P2(미구현이어도 데모 실패 아님)로 등급을 나눠 반영했다.
 
 ## Question 1: 도형 라벨링(화살표·원)의 요구사항 지위
 
@@ -64,7 +66,7 @@ D) 제거 — 요구사항과 맞추기 위해 코드·테이블·API를 되돌�
 
 X) 기타 (please describe after [Answer]: tag below)
 
-[Answer]: 
+[Answer]: A
 
 ## Question 2: 도형 데이터를 개발 컨텍스트 ZIP에 포함할지
 
@@ -78,7 +80,7 @@ C) 별도 파일로 포함 — `annotations.json`을 ZIP에 추가하되 기존 
 
 X) 기타 (please describe after [Answer]: tag below)
 
-[Answer]: 
+[Answer]: A
 
 ## Question 3: 홈 소개 영상(YouTube 자동재생)
 
@@ -94,7 +96,7 @@ D) 제거 — 홈에서 영상을 빼고 평가용 VitePress 사이트에만 링
 
 X) 기타 (please describe after [Answer]: tag below)
 
-[Answer]: 
+[Answer]: A
 
 ## Question 4: 홈 CTA — 어느 문서가 정본인가
 
@@ -108,7 +110,7 @@ C) 상위 문서를 정본으로 — 히어로에 primary/secondary CTA를 되�
 
 X) 기타 (please describe after [Answer]: tag below)
 
-[Answer]: 
+[Answer]: A
 
 ## Question 5: 정밀 측정을 위한 확대·이동
 
@@ -122,7 +124,7 @@ C) 현행 유지 + 제외 범위 명시 — 확대·이동을 제외 범위로 �
 
 X) 기타 (please describe after [Answer]: tag below)
 
-[Answer]: 
+[Answer]: A
 
 ## Question 6: 저장된 측정의 수정
 
@@ -136,7 +138,7 @@ C) 수정 없음 — 현행 유지하되 "저장 측정의 수정과 수정 이�
 
 X) 기타 (please describe after [Answer]: tag below)
 
-[Answer]: 
+[Answer]: A
 
 ## Question 7: 측정 상호작용의 키보드 접근
 
@@ -150,4 +152,4 @@ C) 제외 범위 명시 — "포인터 장치 없는 측정"을 제외 범위로
 
 X) 기타 (please describe after [Answer]: tag below)
 
-[Answer]: 
+[Answer]: A

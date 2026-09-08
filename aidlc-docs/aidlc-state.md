@@ -4,7 +4,7 @@
 
 - **Project Type**: Greenfield
 - **Start Date**: 2026-09-07T11:50:01Z
-- **Current Stage**: INCEPTION - Requirements Analysis (UI/UX completeness amendment, 2026-09-08) awaiting answers at the Step 6 gate. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
+- **Current Stage**: INCEPTION - Requirements Analysis (UI/UX completeness amendment, 2026-09-08): questions answered, requirement documents updated, awaiting approval. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
 
 ## Workspace State
 
@@ -59,9 +59,10 @@
 - **Complexity**: Moderate — no new backend capability is implied, but requirement drift runs in both directions (code without requirements, and requirements without code).
 - **Requirements Depth**: Standard
 - **Review Result**: [ui-ux-review-2026-09-08.md](inception/requirements/ui-ux-review-2026-09-08.md) — 3 finding groups (A: implemented but unspecified, B: document conflicts, C: UI/UX quality gaps) and a 4-bundle amendment plan (R1 reconciliation, R2 decisions, R3 scope declarations, R4 common UX).
-- **Open Decisions**: Questions 1-7 in [requirement-verification-questions.md](inception/requirements/requirement-verification-questions.md) — annotation status, annotation data in the context ZIP, home intro video, home CTA source of truth, zoom for precise measurement, editing saved measurements, keyboard measurement.
-- **Authorization**: Not yet granted. Requirements Analysis Step 7 (requirement document edits) is blocked at the Step 6 gate until the questions are answered.
-- **Unknowns**: The six R2 decisions above. R1, R3 and R4 need no answer and are ready to apply on approval.
+- **Decisions**: Questions 1-7 answered "추천" on 2026-09-08 — every recommended option (A) accepted. Added instruction: this is a hackathon, so do not add tight constraints; the value the app gives users comes first.
+- **Grading rule applied**: New UI/UX requirements add no new hard gate. Items that raise user value are P1; accessibility, recovery and presentation polish are P2, and P2 gaps are explicitly not demo failures.
+- **Authorization**: Requirements Analysis Step 7 executed. Requirement documents, constraints and README are updated. Awaiting approval before Workflow Planning.
+- **Unknowns**: None blocking. Implementation sequencing for the new P1 items is a Workflow Planning decision.
 
 ## UI/UX Completeness Review Progress
 
@@ -70,10 +71,22 @@
 - [x] Compare implementation against the four requirement documents and README
 - [x] Record findings: [ui-ux-review-2026-09-08.md](inception/requirements/ui-ux-review-2026-09-08.md)
 - [x] Raise clarifying questions: [requirement-verification-questions.md](inception/requirements/requirement-verification-questions.md) Questions 1-7
-- [ ] Receive and validate answers (Step 6 gate)
-- [ ] Apply R1/R3/R4 requirement edits
-- [ ] Apply R2 requirement edits per the answers
-- [ ] Refresh stale Construction artifacts (`frontend-components.md`, `frontend-components-summary.md`) and README
+- [x] Receive and validate answers (Step 6 gate; "추천" = all A, 2026-09-08)
+- [x] Apply R1/R3/R4 requirement edits
+- [x] Apply R2 requirement edits per the answers
+- [x] Update README known limitations and demo flow
+- [ ] Refresh stale Construction artifacts (`frontend-components.md`, `frontend-components-summary.md`) — deferred to the Construction stage that implements the new P1 items
+- [ ] Implement the new P1 items (Workflow Planning decides the sequence)
+
+### Applied requirement changes (2026-09-08)
+
+| Document | Change |
+| --- | --- |
+| `requirements/nanodb-mvp-requirements.md` | Priority table rebuilt with P0/P1/P2 and implementation status; IMG-001/005 extended to TIFF; new IMG-007~010, CAT-006~009, MEA-012~014, RES-007; CAT-003/RES-005/SUM-002 marked implemented; SUM-002 extended to min/max; new section 3.7 (ANN-001~008 annotation labeling) and 3.8 (UIX-001~009 common UX); CTX-004/005/012 extended to carry annotations and bump `schema_version`; sections 5.1/5.2/5.3/5.5 and 7.1/7.2 updated |
+| `requirements/home-tab-requirements.md` | HOM-005 now allows exactly one CTA pair in the usage-flow section (new HOM-034a); HOM-011 separates implemented arrow/circle labeling from roadmap polygon labeling; HOM-009 records the PNG hero asset; new section 3.9.1 with HOM-040 for the intro video; acceptance criteria and the v1-v2 table updated |
+| `requirements/constraints.md` | Section 4 carves the implemented arrow/circle shapes and simple zoom out of the exclusion list; section 9 narrows "윤곽 라벨링" to free polygon plus review/versioning; section 12 adds touch-only measurement, dark mode and pointer-free measurement |
+| `aidlc-docs/inception/requirements/requirements.md` | Decisions 4, 14-15 added or amended; home CTA rule reconciled with HOM v2; 4.4 demo features, 4.9 export scope, NFR summary, exclusions, acceptance criteria, timebox gates and the section 10 readiness table updated |
+| `README.md` | Demo flow lists TIFF, search/filter, annotation labeling and the extended statistics; the stale "P1 not yet implemented" and "TIFF out of scope" claims corrected; known limitations now state the real gaps (no zoom, no measurement edit, no shape delete, no keyboard measurement, no touch or dark mode) |
 
 ## Current Requirements Decisions
 
@@ -88,6 +101,13 @@
 - Keep image binaries in a local directory on the single application host. Multi-instance storage and high availability remain out of scope.
 - Treat about 1,000 registered beta users as a target, not a verified concurrency guarantee.
 - All three extension choices remain disabled (B/B/C), N/A; full rules were not loaded.
+- Arrow and circle annotation labeling is an implemented P1 feature (ANN-001~008), separate from roadmap free-polygon labeling and label review.
+- Registration accepts PNG, JPEG and TIFF. A TIFF original is preserved and served through a PNG derivative that keeps the original pixel dimensions, so stored coordinates map 1:1.
+- Image delete is in scope with cascade disclosure and confirmation; a saved measurement's coordinates, parameter, value and calibration are immutable and only its note can be edited.
+- Annotations travel in the context ZIP, which bumps the export `schema_version`.
+- The home body stays a reading document; the only in-body CTAs are the pair at the end of the usage-flow section. `home-tab-requirements.md` is the source of truth for the home screen.
+- The home intro video is the single permitted external runtime dependency and must degrade to readable text.
+- Supported surface is mouse input on desktop at 1280px or wider in current Chrome or Edge. Touch-only measurement and dark mode are out of scope.
 
 ## Amendment Plan Progress
 
@@ -150,7 +170,7 @@ See [contest-alignment-plan.md](inception/requirements/contest-alignment-plan.md
 
 ## Next Stage Assessment
 
-Answer Questions 1-7 in `requirement-verification-questions.md` (or reply "추천" to accept every recommended option). Requirements Analysis Step 7 then updates the requirement documents, after which Workflow Planning decides which Construction stages the approved amendments need.
+Requirements Analysis is complete for this amendment. On approval, Workflow Planning decides how the new P1 items are sequenced into Construction — the strongest user-value candidates are the measurement screen's calibration and scale display (MEA-012/014), zoom and pan (MEA-013), shape delete (ANN-005), annotations in the export (ANN-008), success feedback (UIX-002) and the in-app confirmation dialog (UIX-001). The P2 group stays optional and is not a demo gate.
 
 ## Execution Plan Summary
 

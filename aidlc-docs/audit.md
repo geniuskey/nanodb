@@ -1416,3 +1416,29 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: CONSTRUCTION - Code Generation stage complete; Build and Test stage starting
 
 ---
+
+## Build and Test Stage
+
+**Timestamp**: 2026-09-08T07:40:00Z
+**Build Status**: Success (executable scope) — frontend build, TS typecheck, mypy, Ruff all green; container image build not run (Docker daemon unavailable)
+**Test Status**: Pass (executable scope) — backend pytest 57 passed / 7 skipped, frontend Vitest 23 passed / 6 files, demo preflight passed; PostgreSQL integration (7 skipped), browser e2e, and load tests NOT run due to Docker/PostgreSQL unavailability in this environment
+**User Input**: "2" (approved the Code Generation review gate to proceed to Build and Test)
+**AI Response**: "Ran every executable gate and recorded real results. mypy clean (26 files), ruff clean, frontend build succeeded (dist/frontend, 247.73 kB js), tsc typecheck clean, backend pytest 57 passed / 7 skipped (integration needs TEST_DATABASE_URL), frontend Vitest 23 passed across 6 files, demo preflight passed, source samples unchanged. Docker daemon is unavailable in this environment, so the container image build, db->migrate->app Compose stack, PostgreSQL integration tests, browser e2e, and load tests could not execute; each is documented with its reproduction procedure. Generated build-instructions.md, unit-test-instructions.md, integration-test-instructions.md, e2e-test-instructions.md, performance-test-instructions.md and build-and-test-summary.md under aidlc-docs/construction/build-and-test/. Overall: runnable gates green; Operations entry recommended only after integration/e2e/stack bring-up are executed in a Docker/PostgreSQL environment."
+**Files Generated**:
+- build-instructions.md
+- unit-test-instructions.md
+- integration-test-instructions.md
+- e2e-test-instructions.md
+- performance-test-instructions.md
+- build-and-test-summary.md
+
+---
+
+## Build and Test Stage Approved
+
+**Timestamp**: 2026-09-08T07:52:00Z
+**User Input**: "승인"
+**AI Response**: "User approved the Build and Test results. Marked the Build and Test stage complete in aidlc-state.md and committing/pushing the checkpoint. CONSTRUCTION phase is complete for NANoDB Core. OPERATIONS is a workflow placeholder. Recommended follow-up before deployment: execute PostgreSQL integration tests, browser e2e and the db->migrate->app container stack in a Docker/PostgreSQL environment; the next unit of work is the Evidence Site (US-08)."
+**Context**: CONSTRUCTION - Build and Test complete; NANoDB Core unit complete
+
+---

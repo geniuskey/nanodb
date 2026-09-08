@@ -4,7 +4,7 @@
 
 - **Project Type**: Greenfield
 - **Start Date**: 2026-09-07T11:50:01Z
-- **Current Stage**: CONSTRUCTION - Build and Test (NANoDB Core Code Generation approved and complete)
+- **Current Stage**: CONSTRUCTION complete (Build and Test approved 2026-09-08). OPERATIONS is a workflow placeholder. Recommended follow-up: run integration/e2e/container stack in a Docker/PostgreSQL environment; then build Evidence Site (US-08).
 
 ## Workspace State
 
@@ -48,7 +48,7 @@
 - [x] NFR Design (NANoDB Core approved 2026-09-08)
 - [x] Infrastructure Design (NANoDB Core approved 2026-09-08)
 - [x] Code Generation (NANoDB Core approved 2026-09-08; Part 2 Steps 1-26/26 complete)
-- [ ] Build and Test (in progress)
+- [x] Build and Test (approved 2026-09-08; runnable gates green; integration/e2e/container deferred to a Docker/PostgreSQL environment)
 
 ## Current Request Assessment
 

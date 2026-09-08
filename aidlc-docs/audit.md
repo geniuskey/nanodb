@@ -940,3 +940,156 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: CONSTRUCTION - Infrastructure Design approved; user-authorized Git commit and push checkpoint
 
 ---
+
+## NANoDB Core Code Generation Planning Started
+
+**Timestamp**: 2026-09-08T03:13:25Z
+**User Input**: "aidlc 다음 단계 NANoDB Core Code Generation 계획 작성 시작"
+**AI Response**: "AI-DLC 상태를 재개하고 필수 공통 규칙, 확장 설정, Code Generation 상세 규칙 및 이전 단계 산출물을 로드하여 NANoDB Core Code Generation Part 1 계획 작성을 시작했다."
+**Context**: CONSTRUCTION - NANoDB Core Code Generation Part 1 planning in progress
+
+---
+
+## NANoDB Core Code Generation Plan Complete
+
+**Timestamp**: 2026-09-08T03:21:12Z
+**User Input**: "N/A — completion of the user-requested NANoDB Core Code Generation plan."
+**AI Response**: "US-01~US-07을 대상으로 project scaffold, backend domain/persistence/service/API, React UI, 계층별 test, demo preparation, external AI verification evidence, deployment artifact와 문서를 생성하는 26단계 계획을 작성했다. Application code generation은 아직 시작하지 않았다."
+**Context**: CONSTRUCTION - NANoDB Core Code Generation Part 1 plan ready; approval required
+
+---
+
+## NANoDB Core Code Generation Plan Validation and Extension Compliance
+
+**Timestamp**: 2026-09-08T03:21:12Z
+**User Input**: "N/A — validation of the NANoDB Core Code Generation plan."
+**AI Response**: "Step 1~26의 연속 번호, application/documentation 경로 분리, US-01~US-07 traceability, 계측 기반 선행 gate, test/deployment/documentation 범위와 Markdown 형식을 검증했다. Mermaid와 ASCII diagram은 없어 해당 검증은 N/A다. Resiliency, Security Baseline과 Property-Based Testing extension은 비활성화되어 적용 N/A이며, 승인된 일반 upload/path/secret/error 경계는 계획에 유지했다."
+**Context**: CONSTRUCTION - Code Generation Part 1 content validation complete; approval required
+
+---
+
+## NANoDB Core Code Generation Plan Approval Gate
+
+**Timestamp**: 2026-09-08T03:21:12Z
+**User Input**: "N/A — approval prompt generated after Code Generation plan validation."
+**AI Response**: "Review aidlc-docs/construction/plans/nanodb-core-code-generation-plan.md. Request changes or approve the complete 26-step plan and generation sequence. No application code will be generated before explicit approval."
+**Context**: CONSTRUCTION - NANoDB Core Code Generation Part 1 explicit approval required
+
+---
+
+## NANoDB Core Code Generation Plan Approval Received
+
+**Timestamp**: 2026-09-08T03:23:51Z
+**User Input**: "승인"
+**AI Response**: "NANoDB Core Code Generation 26단계 계획 승인을 기록하고 Part 1을 완료 처리했다. 승인된 계획의 Step 1부터 Part 2 구현을 시작한다."
+**Context**: CONSTRUCTION - NANoDB Core Code Generation Part 1 approved; Part 2 authorized
+
+---
+
+## NANoDB Core Code Generation Step 1 Compatibility Adjustment
+
+**Timestamp**: 2026-09-08T03:26:56Z
+**User Input**: "승인"
+**AI Response**: "Initial npm lock validation found that jsdom 30.0.1 requires Node 22.22.2 or newer while the approved local runtime is Node 22.17.1. The plan and package manifest were adjusted to jsdom 27.0.1, which supports Node 22.17.1, without changing scope or test intent."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 1 dependency compatibility correction
+
+---
+
+## NANoDB Core Code Generation Step 1 Complete
+
+**Timestamp**: 2026-09-08T03:28:11Z
+**User Input**: "승인"
+**AI Response**: "Created the greenfield Python and Node project structure, exact direct dependency manifests, uv.lock, package-lock.json, TypeScript/Vite configuration and test roots. Validated the locked Python environment, npm install, TypeScript configuration and initial Ruff checks."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 1/26 complete; Step 2 pending
+
+---
+
+## NANoDB Core Code Generation Continued
+
+**Timestamp**: 2026-09-08T03:31:52Z
+**User Input**: "계속해줘"
+**AI Response**: "승인된 Code Generation 계획을 Step 2부터 재개하고 순수 도메인 모델과 business logic 구현을 시작했다."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 2 in progress
+
+---
+
+## NANoDB Core Code Generation Step 2 Complete
+
+**Timestamp**: 2026-09-08T03:34:14Z
+**User Input**: "계속해줘"
+**AI Response**: "Implemented framework-independent Image, Measurement and ExportSnapshot domain types, domain errors, coordinate validation, Euclidean distance and nm calculation, decimal half-up display rounding, fixed-order expected summaries and export snapshot validation. Ruff and strict mypy checks passed."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 2/26 complete; Step 3 pending
+
+---
+
+## NANoDB Core Code Generation Step 3 Complete
+
+**Timestamp**: 2026-09-08T03:36:32Z
+**User Input**: "계속해줘"
+**AI Response**: "Generated 20 example-based pure unit tests covering the 500px/100nm reference, coordinate boundaries, identical and non-finite points, invalid calibration, stored precision, decimal half-up display rounding, contract summary order and export snapshot integrity. Ruff passed and all 20 tests passed."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 3/26 complete; Step 4 pending
+
+---
+
+## NANoDB Core Code Generation Step 4 Complete
+
+**Timestamp**: 2026-09-08T03:37:41Z
+**User Input**: "계속해줘"
+**AI Response**: "Created the business logic generation summary with implementation paths, BR-IMG/MEA/RES/CTX traceability, pure function contracts, test mapping and generation-time validation results. Markdown and referenced paths were validated."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 4/26 complete; Step 5 pending
+
+---
+
+## NANoDB Core Code Generation Step 5 Complete
+
+**Timestamp**: 2026-09-08T03:42:18Z
+**User Input**: "계속해줘"
+**AI Response**: "Created the PostgreSQL Image and Measurement schema, initial Alembic migration, synchronous SQLAlchemy transaction boundary, repositories for create/find/count/aggregate list and deterministic measurement ordering. Ruff, formatting, strict mypy and offline PostgreSQL migration SQL generation passed."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 5/26 complete; Step 6 pending
+
+---
+
+## NANoDB Core Code Generation Step 6 Complete
+
+**Timestamp**: 2026-09-08T03:44:36Z
+**User Input**: "계속해줘"
+**AI Response**: "Generated four actual-PostgreSQL integration tests for empty migration, database constraints and rollback, aggregate counts and deterministic ordering, fresh-session persistence and a mandatory _test database-name guard. Ruff and test collection passed. Docker Desktop was unavailable, so execution correctly skipped without TEST_DATABASE_URL; no mock database was substituted. Full execution remains for Build and Test."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 6/26 complete; Step 7 pending
+
+---
+
+## NANoDB Core Code Generation Step 7 Complete
+
+**Timestamp**: 2026-09-08T03:45:35Z
+**User Input**: "계속해줘"
+**AI Response**: "Created the repository generation summary covering schema ownership, migration revision, deterministic query ordering, transaction and pool boundaries, NFR traceability, integration test mapping and the explicit pending actual-PostgreSQL execution condition. Markdown and referenced paths were validated."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 7/26 complete; Step 8 pending
+
+---
+
+## NANoDB Core Code Generation Step 8 Complete
+
+**Timestamp**: 2026-09-08T03:48:02Z
+**User Input**: "계속해줘"
+**AI Response**: "Implemented the single-host FileStore, bounded staged upload, safe internal key handling, atomic same-filesystem promotion, compensation deletion, Pillow PNG/JPEG decoder and ImageService registration/list/detail/file orchestration. Ruff, formatting and strict mypy passed."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 8/26 complete; Step 9 pending
+
+---
+
+## NANoDB Core Code Generation Step 9 Complete
+
+**Timestamp**: 2026-09-08T03:50:56Z
+**User Input**: "계속해줘"
+**AI Response**: "Implemented server-authoritative MeasurementService, actual PostgreSQL count SummaryService, single-read-snapshot ContextExportService and a deterministic allowlisted ZIP builder for context.md, data.json, task.md and checks.json. Image binary, stored key, internal paths, secrets and audit content are excluded. Ruff, formatting, strict mypy and existing pure tests passed."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 9/26 complete; Step 10 pending
+
+---
+
+## NANoDB Core Code Generation Git Checkpoint and Continuation Requested
+
+**Timestamp**: 2026-09-08T03:52:26Z
+**User Input**: "git commit and push & 다음 작업 진행"
+**AI Response**: "현재 Code Generation Step 1~9 산출물과 진행 기록을 검증한 뒤 main branch에 commit하고 origin/main으로 push한 다음, 승인된 계획의 Step 10 FastAPI API layer 생성을 진행한다."
+**Context**: CONSTRUCTION - user-authorized Git checkpoint before Code Generation Step 10
+
+---

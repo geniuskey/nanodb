@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 .venv/
 
+# Node and local tool caches
+node_modules/
+dist/
+.cache/
+*.tsbuildinfo
+
 # Local Claude Code settings
 .claude/settings.json
 .claude/settings.local.json

@@ -14,6 +14,7 @@ import {
   POINT_COUNT,
   TYPE_LABEL,
   formatValue,
+  measurementColor,
   previewValue,
 } from "../measurement/geometry";
 import { MeasurementOverlay } from "../measurement/MeasurementOverlay";
@@ -398,55 +399,6 @@ export function MeasurementPage() {
               )}
             </p>
           </div>
-          <section className="measurement-items" aria-labelledby="items-heading" data-testid="measurement-items">
-            <h2 id="items-heading">측정 항목 ({detail.product_id})</h2>
-            <p className="note-hint">제품별 측정 항목을 관리합니다. 항목의 종류(길이/각도/곡률)가 이미지 위에서 쓰는 도구를 정합니다.</p>
-            <table className="items-table">
-              <thead>
-                <tr><th scope="col">측정 항목 명</th><th scope="col">종류</th><th scope="col">관리</th></tr>
-              </thead>
-              <tbody>
-                {items.length === 0 && (
-                  <tr><td colSpan={3} className="items-empty">등록된 측정 항목이 없습니다. 아래에서 추가하세요.</td></tr>
-                )}
-                {items.map((item) => (
-                  <tr key={item.id} data-testid="measurement-item-row">
-                    {editItemId === item.id ? (
-                      <>
-                        <td><input value={editItem.name} maxLength={255} aria-label="측정 항목 명 수정" data-testid="item-edit-name" onChange={(e) => setEditItem((c) => ({ ...c, name: e.target.value }))} /></td>
-                        <td>
-                          <select value={editItem.type} aria-label="측정 종류 수정" data-testid="item-edit-type" onChange={(e) => setEditItem((c) => ({ ...c, type: e.target.value as MeasurementType }))}>
-                            {TYPES.map((type) => <option key={type} value={type}>{TYPE_LABEL[type]}</option>)}
-                          </select>
-                        </td>
-                        <td className="items-actions">
-                          <button type="button" data-testid="item-save" disabled={itemBusy} onClick={() => saveItem(item.id)}>저장</button>
-                          <button type="button" data-testid="item-cancel" onClick={() => setEditItemId(null)}>취소</button>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td>{item.name}</td>
-                        <td>{TYPE_LABEL[item.measurement_type]}</td>
-                        <td className="items-actions">
-                          <button type="button" data-testid="item-edit" onClick={() => { setEditItemId(item.id); setEditItem({ name: item.name, type: item.measurement_type }); }}>수정</button>
-                          <button type="button" data-testid="item-delete" onClick={() => setPending({ kind: "item", item })}>삭제</button>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <form className="items-add" onSubmit={addItem}>
-              <input value={newItem.name} maxLength={255} placeholder="새 측정 항목 명 (예: Gate CD)" aria-label="새 측정 항목 명" data-testid="item-new-name" onChange={(e) => setNewItem((c) => ({ ...c, name: e.target.value }))} />
-              <select value={newItem.type} aria-label="새 측정 종류" data-testid="item-new-type" onChange={(e) => setNewItem((c) => ({ ...c, type: e.target.value as MeasurementType }))}>
-                {TYPES.map((type) => <option key={type} value={type}>{TYPE_LABEL[type]}</option>)}
-              </select>
-              <button type="submit" className="button" disabled={itemBusy} data-testid="item-add">항목 추가</button>
-            </form>
-            {itemError && <p role="alert" data-testid="item-error">{itemError}</p>}
-          </section>
         </section>
         <aside className="measurement-controls">
           <section className="image-facts" aria-labelledby="image-facts-heading">
@@ -486,48 +438,120 @@ export function MeasurementPage() {
           <label>메모<textarea value={note} onChange={(event) => setNote(event.target.value)} /></label>
           {error && <p role="alert">{error}</p>}
           <div className="actions"><button type="button" onClick={resetDraft} data-testid="measurement-reset">초기화</button><button type="button" onClick={save} disabled={draft.length !== needed || saving} data-testid="measurement-save">{saving ? "저장 중…" : "측정 저장"}</button></div>
-          <h2>저장된 측정</h2>
-          {detail.measurements.length === 0 ? <p>저장된 측정이 없습니다. 항목과 종류를 고른 뒤 이미지 위에서 점을 찍어 첫 측정을 저장하세요.</p> : <ul className="measurement-list">{detail.measurements.map((item: MeasurementView) => (
-            <li key={item.id} className="measurement-row">
-              <button type="button" className={selectedId === item.id ? "selected" : ""} onClick={() => setSelectedId(item.id)} data-testid="saved-measurement-item"><strong>{item.label ? `${item.label} · ` : ""}{TYPE_LABEL[item.measurement_type]} · {formatValue(item.value, item.unit)}</strong><span>{new Date(item.created_at).toLocaleString()}</span>{item.note && <span>{item.note}</span>}</button>
-              <div className="measurement-row-actions">
-                <button type="button" className="edit-note" onClick={() => { setEditId(item.id); setEdit({ label: item.label ?? "", note: item.note ?? "" }); }} data-testid="edit-annotation" aria-label={`${item.label ?? TYPE_LABEL[item.measurement_type]} 측정 라벨과 메모 수정`}>라벨·메모</button>
-                <button type="button" className="delete-measurement" onClick={() => setPending({ kind: "measurement", id: item.id })} data-testid="delete-measurement" aria-label={`${item.label ?? TYPE_LABEL[item.measurement_type]} 측정 삭제`}>삭제</button>
-              </div>
-              {editId === item.id && (
-                <div className="note-editor">
-                  {/* Only the annotation is editable: points, type, value and
-                      calibration stay as measured (RES-007). */}
-                  <label>
-                    측정 항목 명
-                    <input value={edit.label} maxLength={255} autoFocus onChange={(event) => setEdit((current) => ({ ...current, label: event.target.value }))} data-testid="label-input" />
-                  </label>
-                  <label>
-                    메모
-                    <textarea value={edit.note} onChange={(event) => setEdit((current) => ({ ...current, note: event.target.value }))} data-testid="note-input" />
-                  </label>
-                  <p className="note-hint">점·종류·값·보정값은 측정한 그대로 유지됩니다.</p>
-                  <div className="actions">
-                    <button type="button" onClick={() => setEditId(null)} data-testid="note-cancel">취소</button>
-                    <button type="button" onClick={() => saveAnnotation(item.id)} disabled={savingEdit} data-testid="note-save">{savingEdit ? "저장 중…" : "라벨·메모 저장"}</button>
-                  </div>
-                </div>
-              )}
-            </li>
-          ))}</ul>}
-          <section className="export-panel" aria-labelledby="context-export-heading">
-            <h2 id="context-export-heading">Context Export</h2>
-            <p>포함: Product ID, Lot ID, Wafer ID, 공정 Step, 원본 파일명, 저장된 측정과 측정별 라벨·메모</p>
-            <p>제외: 이미지 바이너리</p>
-            <p>다운로드한 ZIP은 사용자가 외부 AI 도구에 수동으로 전달합니다. NANoDB가 자동으로 외부에 전송하지 않습니다.</p>
-            {detail.measurements.length === 0 && <p data-testid="context-export-disabled-reason">저장된 측정이 하나 이상 있어야 내보낼 수 있습니다.</p>}
-            {exportError && <p role="alert">{exportError}</p>}
-            <button type="button" onClick={exportContext} disabled={detail.measurements.length === 0 || exporting} data-testid="context-export-button">
-              {exporting ? "ZIP 생성 중…" : "Context ZIP 다운로드"}
-            </button>
-          </section>
         </aside>
       </div>
+      <div className="measurement-tables">
+        <section className="table-panel" aria-labelledby="items-heading" data-testid="measurement-items">
+          <h2 id="items-heading">측정 항목 ({detail.product_id})</h2>
+          <p className="note-hint">제품별 측정 항목을 관리합니다. 항목의 종류(길이/각도/곡률)가 이미지 위에서 쓰는 도구를 정합니다.</p>
+          <table className="data-table items-table">
+            <thead>
+              <tr><th scope="col">측정 항목 명</th><th scope="col">종류</th><th scope="col">관리</th></tr>
+            </thead>
+            <tbody>
+              {items.length === 0 && (
+                <tr><td colSpan={3} className="table-empty">등록된 측정 항목이 없습니다. 아래에서 추가하세요.</td></tr>
+              )}
+              {items.map((item) => (
+                <tr key={item.id} data-testid="measurement-item-row">
+                  {editItemId === item.id ? (
+                    <>
+                      <td><input value={editItem.name} maxLength={255} aria-label="측정 항목 명 수정" data-testid="item-edit-name" onChange={(e) => setEditItem((c) => ({ ...c, name: e.target.value }))} /></td>
+                      <td>
+                        <select value={editItem.type} aria-label="측정 종류 수정" data-testid="item-edit-type" onChange={(e) => setEditItem((c) => ({ ...c, type: e.target.value as MeasurementType }))}>
+                          {TYPES.map((type) => <option key={type} value={type}>{TYPE_LABEL[type]}</option>)}
+                        </select>
+                      </td>
+                      <td className="table-actions">
+                        <button type="button" data-testid="item-save" disabled={itemBusy} onClick={() => saveItem(item.id)}>저장</button>
+                        <button type="button" data-testid="item-cancel" onClick={() => setEditItemId(null)}>취소</button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>{item.name}</td>
+                      <td>{TYPE_LABEL[item.measurement_type]}</td>
+                      <td className="table-actions">
+                        <button type="button" data-testid="item-edit" onClick={() => { setEditItemId(item.id); setEditItem({ name: item.name, type: item.measurement_type }); }}>수정</button>
+                        <button type="button" data-testid="item-delete" onClick={() => setPending({ kind: "item", item })}>삭제</button>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <form className="items-add" onSubmit={addItem}>
+            <input value={newItem.name} maxLength={255} placeholder="새 측정 항목 명 (예: Gate CD)" aria-label="새 측정 항목 명" data-testid="item-new-name" onChange={(e) => setNewItem((c) => ({ ...c, name: e.target.value }))} />
+            <select value={newItem.type} aria-label="새 측정 종류" data-testid="item-new-type" onChange={(e) => setNewItem((c) => ({ ...c, type: e.target.value as MeasurementType }))}>
+              {TYPES.map((type) => <option key={type} value={type}>{TYPE_LABEL[type]}</option>)}
+            </select>
+            <button type="submit" className="button" disabled={itemBusy} data-testid="item-add">항목 추가</button>
+          </form>
+          {itemError && <p role="alert" data-testid="item-error">{itemError}</p>}
+        </section>
+        <section className="table-panel" aria-labelledby="saved-heading" data-testid="saved-measurements">
+          <h2 id="saved-heading">저장된 측정</h2>
+          {detail.measurements.length === 0 ? (
+            <p>저장된 측정이 없습니다. 항목과 종류를 고른 뒤 이미지 위에서 점을 찍어 첫 측정을 저장하세요.</p>
+          ) : (
+            <table className="data-table saved-table">
+              <thead>
+                <tr><th scope="col" className="swatch-col">색상</th><th scope="col">측정</th><th scope="col">등록</th><th scope="col">관리</th></tr>
+              </thead>
+              <tbody>
+                {detail.measurements.map((item: MeasurementView) => {
+                  const selected = selectedId === item.id;
+                  return (
+                    <tr key={item.id} className={selected ? "saved-row selected" : "saved-row"} aria-selected={selected} onClick={() => setSelectedId(item.id)} data-testid="saved-measurement-item">
+                      <td className="swatch-col"><span className="measurement-swatch" style={{ background: measurementColor(item.id) }} aria-hidden="true" /></td>
+                      <td>
+                        <strong>{item.label ? `${item.label} · ` : ""}{TYPE_LABEL[item.measurement_type]} · {formatValue(item.value, item.unit)}</strong>
+                        {item.note && <span className="saved-note">{item.note}</span>}
+                        {editId === item.id && (
+                          <div className="note-editor" onClick={(event) => event.stopPropagation()}>
+                            {/* Only the annotation is editable: points, type, value and
+                                calibration stay as measured (RES-007). */}
+                            <label>
+                              측정 항목 명
+                              <input value={edit.label} maxLength={255} autoFocus onChange={(event) => setEdit((current) => ({ ...current, label: event.target.value }))} data-testid="label-input" />
+                            </label>
+                            <label>
+                              메모
+                              <textarea value={edit.note} onChange={(event) => setEdit((current) => ({ ...current, note: event.target.value }))} data-testid="note-input" />
+                            </label>
+                            <p className="note-hint">점·종류·값·보정값은 측정한 그대로 유지됩니다.</p>
+                            <div className="actions">
+                              <button type="button" onClick={() => setEditId(null)} data-testid="note-cancel">취소</button>
+                              <button type="button" onClick={() => saveAnnotation(item.id)} disabled={savingEdit} data-testid="note-save">{savingEdit ? "저장 중…" : "라벨·메모 저장"}</button>
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="saved-time">{new Date(item.created_at).toLocaleString()}</td>
+                      <td className="table-actions">
+                        <button type="button" className="edit-note" onClick={(event) => { event.stopPropagation(); setEditId(item.id); setEdit({ label: item.label ?? "", note: item.note ?? "" }); }} data-testid="edit-annotation" aria-label={`${item.label ?? TYPE_LABEL[item.measurement_type]} 측정 라벨과 메모 수정`}>라벨·메모</button>
+                        <button type="button" className="delete-measurement" onClick={(event) => { event.stopPropagation(); setPending({ kind: "measurement", id: item.id }); }} data-testid="delete-measurement" aria-label={`${item.label ?? TYPE_LABEL[item.measurement_type]} 측정 삭제`}>삭제</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </section>
+      </div>
+      <section className="export-panel table-panel" aria-labelledby="context-export-heading">
+        <h2 id="context-export-heading">Context Export</h2>
+        <p>포함: Product ID, Lot ID, Wafer ID, 공정 Step, 원본 파일명, 저장된 측정과 측정별 라벨·메모</p>
+        <p>제외: 이미지 바이너리</p>
+        <p>다운로드한 ZIP은 사용자가 외부 AI 도구에 수동으로 전달합니다. NANoDB가 자동으로 외부에 전송하지 않습니다.</p>
+        {detail.measurements.length === 0 && <p data-testid="context-export-disabled-reason">저장된 측정이 하나 이상 있어야 내보낼 수 있습니다.</p>}
+        {exportError && <p role="alert">{exportError}</p>}
+        <button type="button" className="button" onClick={exportContext} disabled={detail.measurements.length === 0 || exporting} data-testid="context-export-button">
+          {exporting ? "ZIP 생성 중…" : "Context ZIP 다운로드"}
+        </button>
+      </section>
       {pending && copy && (
         <ConfirmDialog
           title={copy.title}

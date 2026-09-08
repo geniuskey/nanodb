@@ -20,6 +20,27 @@ export const TYPE_LABEL: Record<MeasurementType, string> = {
   curvature: "곡률",
 };
 
+/**
+ * Palette used to draw each saved measurement in its own colour, so a row in
+ * the table and its shape on the image can be matched by eye. Assigned by id so
+ * a measurement keeps its colour regardless of list order.
+ */
+export const MEASUREMENT_COLORS = [
+  "#8b84ff",
+  "#ff8fab",
+  "#4bd6c4",
+  "#ffb14b",
+  "#7ab8ff",
+  "#c78bff",
+  "#ff7a5c",
+  "#6ee787",
+];
+
+export function measurementColor(id: number): string {
+  const size = MEASUREMENT_COLORS.length;
+  return MEASUREMENT_COLORS[((id % size) + size) % size];
+}
+
 /** Human hint for how each type is drawn, shown while placing points. */
 export const DRAW_HINT: Record<MeasurementType, string> = {
   length: "두 점을 찍어 선분을 그립니다.",

@@ -1,5 +1,10 @@
 import type { MeasurementType, MeasurementView } from "../api/types";
-import { circleCenter, circumradiusPx, formatValue } from "./geometry";
+import {
+  circleCenter,
+  circumradiusPx,
+  formatValue,
+  measurementColor,
+} from "./geometry";
 import { toRenderedPoint, type OriginalSize, type Point } from "./coordinates";
 
 interface Props {
@@ -29,12 +34,21 @@ function perpendicular(a: Point, b: Point): Point | null {
 }
 
 /** A length segment with T-shaped end caps (perpendicular ticks). */
-function LengthShape({ points, className }: { points: Point[]; className: string }) {
+function LengthShape({
+  points,
+  className,
+  color,
+}: {
+  points: Point[];
+  className: string;
+  color?: string;
+}) {
   const [start, end] = points;
   const normal = perpendicular(start, end);
+  const stroke = color ? { stroke: color } : undefined;
   return (
     <>
-      <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} className={className} />
+      <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} className={className} style={stroke} />
       {normal &&
         [start, end].map((point, index) => (
           <line
@@ -44,6 +58,7 @@ function LengthShape({ points, className }: { points: Point[]; className: string
             x2={point.x + normal.x * CAP}
             y2={point.y + normal.y * CAP}
             className={className}
+            style={stroke}
           />
         ))}
     </>
@@ -51,7 +66,16 @@ function LengthShape({ points, className }: { points: Point[]; className: string
 }
 
 /** Two arms from the vertex plus a small arc marking the measured angle. */
-function AngleShape({ points, className }: { points: Point[]; className: string }) {
+function AngleShape({
+  points,
+  className,
+  color,
+}: {
+  points: Point[];
+  className: string;
+  color?: string;
+}) {
+  const stroke = color ? { stroke: color } : undefined;
   const [vertex, armA, armB] = points;
   const radius = 18;
   const angleA = Math.atan2(armA.y - vertex.y, armA.x - vertex.x);
@@ -71,11 +95,12 @@ function AngleShape({ points, className }: { points: Point[]; className: string 
   const sweep = delta > 0 ? 1 : 0;
   return (
     <>
-      <line x1={vertex.x} y1={vertex.y} x2={armA.x} y2={armA.y} className={className} />
-      <line x1={vertex.x} y1={vertex.y} x2={armB.x} y2={armB.y} className={className} />
+      <line x1={vertex.x} y1={vertex.y} x2={armA.x} y2={armA.y} className={className} style={stroke} />
+      <line x1={vertex.x} y1={vertex.y} x2={armB.x} y2={armB.y} className={className} style={stroke} />
       <path
         d={`M ${arcStart.x} ${arcStart.y} A ${radius} ${radius} 0 0 ${sweep} ${arcEnd.x} ${arcEnd.y}`}
         className={className}
+        style={stroke}
         fill="none"
       />
     </>
@@ -88,11 +113,13 @@ function CurvatureShape({
   original,
   rendered,
   className,
+  color,
 }: {
   points: Point[];
   original: OriginalSize;
   rendered: { left: number; top: number; width: number; height: number };
   className: string;
+  color?: string;
 }) {
   // Fit in original pixels (uniform scale), then convert centre and radius to
   // rendered space so the drawn circle matches the stored geometry.
@@ -107,6 +134,7 @@ function CurvatureShape({
           cy={centerOriginal.y * scale}
           r={radiusPx * scale}
           className={className}
+          style={color ? { stroke: color } : undefined}
           fill="none"
         />
       )}
@@ -140,6 +168,7 @@ export function MeasurementOverlay({
         const points = measurement.points.map(toRendered);
         const selected = measurement.id === selectedId;
         const lineClass = selected ? "saved-line selected" : "saved-line";
+        const color = measurementColor(measurement.id);
         const caption = measurement.label?.trim();
         // The caption sits near the shape it belongs to, so a measurement and
         // the name of what it measures are read as one thing.
@@ -150,10 +179,10 @@ export function MeasurementOverlay({
         return (
           <g key={measurement.id} data-measurement-id={measurement.id}>
             {measurement.measurement_type === "length" && (
-              <LengthShape points={points} className={lineClass} />
+              <LengthShape points={points} className={lineClass} color={color} />
             )}
             {measurement.measurement_type === "angle" && (
-              <AngleShape points={points} className={lineClass} />
+              <AngleShape points={points} className={lineClass} color={color} />
             )}
             {measurement.measurement_type === "curvature" && (
               <CurvatureShape
@@ -161,6 +190,7 @@ export function MeasurementOverlay({
                 original={original}
                 rendered={rendered}
                 className={lineClass}
+                color={color}
               />
             )}
             {points.map((point, index) => (
@@ -169,6 +199,7 @@ export function MeasurementOverlay({
                 cx={point.x}
                 cy={point.y}
                 r={selected ? 6 : 4}
+                style={{ fill: color }}
               />
             ))}
             {caption && (
@@ -176,6 +207,7 @@ export function MeasurementOverlay({
                 x={anchor.x}
                 y={anchor.y - 8}
                 className={selected ? "measurement-label selected" : "measurement-label"}
+                style={{ fill: color }}
                 data-testid="measurement-label"
               >
                 {caption} · {formatValue(measurement.value, measurement.unit)}

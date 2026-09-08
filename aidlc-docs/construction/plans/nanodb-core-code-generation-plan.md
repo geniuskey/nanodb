@@ -164,7 +164,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 21. Demo preparation test 생성 — US-01
 
-- [ ] manifest/file 누락, decode/format/dimension/hash/calibration/authorization 오류와 source/runtime root 동일 조건을 실패시키고, reset 뒤 Image·Measurement 0건과 source sample 불변을 검증하는 test를 생성한다.
+- [x] manifest/file 누락, decode/format/dimension/hash/calibration/authorization 오류와 source/runtime root 동일 조건을 실패시키고, reset 뒤 Image·Measurement 0건과 source sample 불변을 검증하는 test를 생성한다.
 
 ### Step 22. External AI development verification assets와 evidence 생성 — US-07
 

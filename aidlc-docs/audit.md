@@ -1299,3 +1299,21 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: CONSTRUCTION - Code Generation Part 2 Step 20/26 complete; Step 21 not started
 
 ---
+
+## NANoDB Core Code Generation Step 21 Started
+
+**Timestamp**: 2026-09-08T05:06:00Z
+**User Input**: "step 20 푸시까지 했어. step 21 작업 시작하자."
+**AI Response**: "Confirmed Step 20 was pushed and started Step 21 demo preparation test generation for US-01."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 21 in progress
+
+---
+
+## NANoDB Core Code Generation Step 21 Complete
+
+**Timestamp**: 2026-09-08T05:12:00Z
+**User Input**: "step 20 푸시까지 했어. step 21 작업 시작하자."
+**AI Response**: "Generated US-01 demo preparation tests. tests/backend/unit/test_demo_tooling.py builds an isolated temporary source and demo tree, then verifies prepare creates PNG derivatives and a manifest without touching source samples, rejects unauthorized sources, and drives preflight failures for missing manifest, missing derivative, unlisted derivative, undecodable and non-PNG content, dimension mismatch, derivative and source SHA-256 mismatch, non-positive and non-numeric calibration, unauthorized source, invalid timestamp, and source/runtime root overlap. Reset guards are covered for non-demo profile refusal, missing --yes confirmation, non-dedicated upload target, source-overlap rejection, accepted target, and the source-safe empty-state directory clear. tests/backend/integration/test_demo_reset.py asserts the database-clearing path reduces Image and Measurement counts to zero. Ran Ruff and the full backend suite: 57 passed, 7 PostgreSQL integration tests skipped without TEST_DATABASE_URL. Reverted a timestamp-only regeneration of data/demo/manifest.csv so the committed Step 20 artifact stays stable."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 21/26 complete; per-step Git checkpoint required; Step 22 next
+
+---

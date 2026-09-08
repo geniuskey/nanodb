@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import type { ImageListView, ImageType } from "../api/types";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { useDocumentTitle } from "../ui/useDocumentTitle";
 import { StatusBanner } from "../ui/StatusBanner";
 
 type State = "loading" | "success" | "failure";
@@ -16,6 +17,7 @@ const TYPE_FILTERS: { value: TypeFilter; label: string }[] = [
 ];
 
 export function ImageListPage() {
+  useDocumentTitle("이미지 목록");
   const [images, setImages] = useState<ImageListView[]>([]);
   const [state, setState] = useState<State>("loading");
   const [queryInput, setQueryInput] = useState("");
@@ -26,6 +28,7 @@ export function ImageListPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   // Debounce the free-text box so typing does not fire a request per keystroke.
   useEffect(() => {
@@ -58,7 +61,7 @@ export function ImageListPage() {
     return () => {
       active = false;
     };
-  }, [activeQuery, typeFilter]);
+  }, [activeQuery, typeFilter, attempt]);
 
   async function removeImage() {
     const image = pending;
@@ -122,7 +125,19 @@ export function ImageListPage() {
           {refreshing ? " · 갱신 중" : ""}
         </p>
       )}
-      {state === "failure" && <p role="alert">이미지 목록을 불러오지 못했습니다.</p>}
+      {state === "failure" && (
+        <p role="alert">
+          이미지 목록을 불러오지 못했습니다.{" "}
+          <button
+            type="button"
+            className="retry"
+            data-testid="retry-catalog"
+            onClick={() => setAttempt((current) => current + 1)}
+          >
+            다시 시도
+          </button>
+        </p>
+      )}
       {state === "success" && images.length === 0 && (
         <section className="empty-state">
           {isFiltered ? (

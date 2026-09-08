@@ -547,6 +547,25 @@ describe("MeasurementPage", () => {
     expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ note: null });
   });
 
+  it("offers a retry when the image detail cannot be loaded", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ code: "IMAGE_NOT_FOUND", message: "이미지를 찾을 수 없습니다." }, 404))
+      .mockResolvedValueOnce(jsonResponse(detail));
+    renderPage(fetchMock);
+
+    await userEvent.click(await screen.findByTestId("retry-detail"));
+
+    // The second attempt succeeds, so the user never had to reload the page.
+    expect(await screen.findByTestId("measurement-image")).toBeInTheDocument();
+  });
+
+  it("names the open image in the document title", async () => {
+    renderPage();
+    await preparedImage();
+
+    expect(document.title).toBe("sample.png · NANoDB");
+  });
+
   it("rejects a successful response that is not a ZIP", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse(detail))

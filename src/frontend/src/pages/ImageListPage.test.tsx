@@ -162,6 +162,19 @@ describe("ImageListPage", () => {
     );
   });
 
+  it("offers a retry when the catalog cannot be loaded", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error("offline"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithRouter(<ImageListPage />);
+
+    const retry = await screen.findByTestId("retry-catalog");
+    const before = fetchMock.mock.calls.length;
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(before));
+  });
+
   it("distinguishes a filtered empty result from an empty catalog", async () => {
     vi.stubGlobal("fetch", vi.fn().mockImplementation(() => Promise.resolve(jsonResponse([]))));
 

@@ -4,7 +4,7 @@
 
 - **Project Type**: Greenfield
 - **Start Date**: 2026-09-07T11:50:01Z
-- **Current Stage**: CONSTRUCTION - the 2026-09-08 P1 group is complete except HOM-040 (MEA-012/013/014, UIX-001/002/008, ANN-005/006/008, RES-007, CAT-008/009), with every gate green including browser e2e. The 2026-09-08 UI/UX requirements amendment was approved on the same day. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
+- **Current Stage**: CONSTRUCTION - the whole 2026-09-08 UI/UX amendment is implemented except UIX-003 and UIX-009, which stay declared P2. Every gate is green including browser e2e. The 2026-09-08 UI/UX requirements amendment was approved on the same day. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
 
 ## Workspace State
 
@@ -79,8 +79,9 @@
 - [x] Implement priority 1-4: MEA-012/013/014, UIX-001/002, ANN-005/006 — see [measurement-ux-code-generation-plan.md](construction/plans/measurement-ux-code-generation-plan.md)
 - [x] Refresh stale Construction artifacts (`frontend-components.md`, `frontend-components-summary.md`)
 - [x] ANN-008 (annotations in the context ZIP, contract version 1.1), RES-007 (note editing), CAT-008~009, UIX-008 — see [context-and-p1-completion-plan.md](construction/plans/context-and-p1-completion-plan.md)
-- [ ] Remaining P1: HOM-040 (intro video fallback, reduced-motion, offline path)
-- [ ] P2 group (optional; not a demo gate)
+- [x] HOM-040 (intro video caption, reduced-motion play button, offline path in README)
+- [x] P2: UIX-006 (error boundary + catch-all route), UIX-004 (document titles), UIX-005 (skip link), UIX-007 (retry), IMG-009~010 (required marks and per-field errors) — see [p2-polish-plan.md](construction/plans/p2-polish-plan.md)
+- [ ] UIX-003 (numeric coordinate entry) and UIX-009 (loading placeholders) — deliberately left; not a demo gate
 
 ### Applied requirement changes (2026-09-08)
 
@@ -188,11 +189,20 @@ See [contest-alignment-plan.md](inception/requirements/contest-alignment-plan.md
 - The catalog keeps its results on screen through a filter refetch and reports the result count; the home empty state is Korean with a next action.
 - Verified: ruff clean, mypy clean (27 files), pytest 104 passed against a local PostgreSQL 16, vitest 50 passed, vite build succeeded, Playwright e2e 7 passed. The new browser test unzips the downloaded archive and asserts on the real `data.json`, since this change altered an interface with an external consumer.
 
+## HOM-040 + P2 Polish Unit (2026-09-08)
+
+- Plan: [p2-polish-plan.md](construction/plans/p2-polish-plan.md) — 19/19 steps complete. Frontend only; the backend is untouched.
+- A render crash and an unknown address now land on recovery screens instead of a white page and an empty shell. The boundary never shows the error itself, matching the server's error-envelope rule.
+- Registration marks required fields and puts each message next to its input with `aria-invalid`/`aria-describedby`, focusing the first offender. Native `required` is deliberately avoided so the browser cannot pre-empt the app's own messages; the form carries `noValidate` instead.
+- The intro video keeps autoplay for most viewers but always carries a caption explaining it comes from an external service, so a blocked network leaves a labelled area rather than a black box. A reduced-motion viewer gets a play button.
+- Two defects were found while building this and fixed here: `/images/new` lit both the catalog and the register tab as the current location (a HOM-004 violation, now written into the requirement), and the skip link was positioned against the wrong ancestor.
+- Verified: ruff clean, mypy clean, pytest 104 passed, vitest 62 passed, vite build, Playwright e2e 7 passed, plus browser screenshots of the form errors, the not-found screen and the skip link.
+
 ## Next Stage Assessment
 
-The whole 2026-09-08 P1 group is delivered except HOM-040, which needs a decision-free but design-touching change to the home intro video (a poster and text fallback when the embed cannot load, no autoplay under `prefers-reduced-motion`, and an offline path recorded in the README). After that only the P2 group remains: IMG-009~010 (inline form errors), UIX-003 (numeric coordinate entry, the one accessibility gap that also helps precision), UIX-004~007 and UIX-009. None of those is a demo gate.
+The UI/UX amendment is finished apart from UIX-003 (numeric coordinate entry, the remaining accessibility gap) and UIX-009 (loading placeholders). Both are recorded as unimplemented in the requirements and in the README's known limitations, and neither is a demo gate.
 
-Still outstanding from the original review and unchanged by this work: browser e2e and the container stack are now proven to run here, but the repository's own `make demo` path and the GitHub Pages deploy remain unverified in a fresh environment.
+What is genuinely unverified is no longer UI work: the repository's own `make demo` path, the container stack, and the GitHub Pages deploy have never been exercised in a fresh environment. The evidence site's published state and the external AI development demo (US-07, EVL-006~008) also remain separate from app completeness, as the requirements require them to be.
 
 ## Execution Plan Summary
 

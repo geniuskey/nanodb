@@ -25,6 +25,7 @@ import {
 import { MeasurementOverlay } from "../measurement/MeasurementOverlay";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { StatusBanner } from "../ui/StatusBanner";
+import { useDocumentTitle } from "../ui/useDocumentTitle";
 
 const PRODUCTS: ProductType[] = ["DRAM", "Flash", "Logic", "Sensor"];
 
@@ -76,15 +77,19 @@ export function MeasurementPage() {
   const [draftShape, setDraftShape] = useState<DraftShape | null>(null);
   const [activeAnnotationId, setActiveAnnotationId] = useState<number | null>(null);
   const [annotationError, setAnnotationError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  useDocumentTitle(detail?.original_filename ?? "측정");
 
   useEffect(() => {
+    setError(null);
     api.getImage(imageId).then((loaded) => {
       setDetail(loaded);
       setAnnotations(loaded.annotations ?? []);
     }).catch((caught) =>
       setError(caught instanceof ApiError ? caught.message : "이미지를 불러오지 못했습니다."),
     );
-  }, [imageId]);
+  }, [imageId, attempt]);
 
   useEffect(() => {
     if (!draftShape) return;
@@ -116,7 +121,20 @@ export function MeasurementPage() {
     return () => window.removeEventListener("resize", update);
   }, [detail, zoom, viewport.width, viewport.height]);
 
-  if (error && !detail) return <main><p role="alert">{error}</p><Link to="/images">목록으로</Link></main>;
+  if (error && !detail) {
+    return (
+      <main>
+        <section className="empty-state">
+          <h1>측정 화면을 열지 못했습니다</h1>
+          <p role="alert">{error}</p>
+          <div className="actions">
+            <button type="button" className="button primary" data-testid="retry-detail" onClick={() => setAttempt((current) => current + 1)}>다시 시도</button>
+            <Link className="button" to="/images">목록으로</Link>
+          </div>
+        </section>
+      </main>
+    );
+  }
   if (!detail) return <main><p role="status">측정 화면을 불러오는 중입니다.</p></main>;
 
   const preview = draft.length === 2

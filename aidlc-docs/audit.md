@@ -1693,3 +1693,29 @@ CAT-008: 최초 로딩만 화면을 비우고 필터 재조회는 refreshing 상
 **Context**: CONSTRUCTION - P1 group complete except HOM-040; stale Construction artifacts refreshed
 
 ---
+
+## HOM-040 + P2 Polish (UIX-004~007, IMG-009~010)
+**Timestamp**: 2026-09-08T13:20:00Z
+**User Input**: "p2로 된것들 구현 검토해줘" / "계속해줘"
+**AI Response**: "먼저 P2 8건을 실제 코드 기준으로 검토해 보고했다. 8건 전부 착수 0%였고(aria-invalid·required·document.title·ErrorBoundary·path=\"*\"·재시도·건너뛰기 링크가 저장소에 전무), 작업량·데모 가치로 등급을 매겨 UIX-006(에러 경계·404)을 최우선으로, UIX-003·UIX-009는 보류로 권고했다. 또한 아직 미구현이던 HOM-040(P1)이 대부분의 P2보다 값이 크다고 짚었다. 사용자가 '계속해줘'로 권장 순서를 승인해 구현했다. 계획: construction/plans/p2-polish-plan.md (19단계 전부 완료).
+
+HOM-040: prefers-reduced-motion에서는 자동 재생 대신 재생 버튼을 제공하고(matchMedia가 없는 환경은 '선호 없음'으로 처리), 영상 프레임 아래에 항상 보이는 설명 문구를 두어 네트워크 차단 시 빈 검은 상자로 남지 않게 했다. README에 오프라인 진행 방법을 기록했다.
+
+UIX-006: ui/ErrorBoundary.tsx(getDerivedStateFromError로 복구 화면, 오류 원인 미노출, 다시 시도로 재렌더)와 pages/NotFoundPage.tsx + Route path=\"*\". Shell의 Outlet을 ErrorBoundary로 감쌌다. 지금까지 렌더 예외는 흰 화면, 미정의 경로는 헤더만 남은 빈 shell이었다.
+
+UIX-004: ui/useDocumentTitle.ts를 만들어 네 화면에 적용(측정 화면은 파일명). MeasurementPage에서는 훅을 early return 뒤에 두면 detail이 도착하는 순간 훅 순서가 바뀌므로, 조건부 호출이 되지 않게 early return 위로 옮겼다.
+
+UIX-005: 포커스 전에는 보이지 않는 건너뛰기 링크와 #main-content 대상. 조상 스택 영향을 받지 않도록 position: fixed로 고정했다.
+
+UIX-007: 홈 요약·홈 최근 이미지·목록·측정 상세 네 곳의 실패에 다시 시도 추가. 홈은 이미지 목록 fetch를 KPI·구성·최근 그리드가 공유하도록 한 번만 호출하게 정리해 재시도 한 번으로 셋이 함께 회복된다.
+
+IMG-009/010: 등록 폼을 필드별 오류 상태로 재작성. 별표 + aria-required로 필수를 표시하고, 오류를 해당 입력 옆에 표시하며 aria-invalid·aria-describedby로 연결하고 제출 실패 시 첫 오류 입력으로 포커스를 옮긴다. 서버가 field를 지정한 오류도 같은 자리에 표시한다. 네이티브 required는 의도적으로 쓰지 않았다 — 브라우저 기본 검증이 먼저 막으면 기존 e2e가 기대하는 앱 오류 메시지가 렌더되지 않기 때문이며, 대신 form에 noValidate를 뒀다.
+
+구현 중 발견해 함께 고친 결함 2건: (1) /images/new에서 '이미지DB'와 '이미지 등록' 탭이 동시에 현재 위치로 표시되던 HOM-004 위반 — 실제 브라우저에서 라우트별 활성 탭을 뽑아 확인했고, '이미지DB' 탭에 /images/new 제외 규칙을 넣어 어느 경로에서도 활성 탭이 하나가 되게 했다(HOM-004에 이 규칙을 명문화). (2) 건너뛰기 링크의 위치 기준 문제.
+
+보류: UIX-003(좌표 직접 입력)과 UIX-009(로딩 자리 확보). 전자는 마우스 데모에서 보여줄 일이 없고 한계가 이미 README에 기록돼 있으며, 후자는 로컬·100건 전제라 체감이 작다. 둘 다 요구사항에 미구현으로 명시했다.
+
+검증(전부 실제 실행): ruff 통과, mypy 27파일 이상 없음, pytest 104 passed(서버 무변경), vitest 62 passed, build 성공, Playwright e2e 7 passed. 등록 폼 오류·404·건너뛰기 링크는 실제 브라우저 스크린샷으로도 확인했다."
+**Context**: CONSTRUCTION - HOM-040 and the P2 group complete except UIX-003/UIX-009
+
+---

@@ -128,7 +128,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 12. API layer summary 생성 — US-02~US-06
 
-- [ ] `aidlc-docs/construction/nanodb-core/code/api-layer-summary.md`에 endpoint, request/response/error 계약, service orchestration, logging·안전 경계와 test mapping을 기록한다.
+- [x] `aidlc-docs/construction/nanodb-core/code/api-layer-summary.md`에 endpoint, request/response/error 계약, service orchestration, logging·안전 경계와 test mapping을 기록한다.
 
 ### Step 13. React App Shell, Home과 Image Catalog 생성 — US-02, US-03
 

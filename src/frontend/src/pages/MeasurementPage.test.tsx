@@ -36,7 +36,10 @@ const detail = {
   }],
 };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 function renderPage(fetchMock = vi.fn().mockResolvedValue(jsonResponse(detail))) {
   vi.stubGlobal("fetch", fetchMock);
@@ -119,5 +122,76 @@ describe("MeasurementPage", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("저장하지 못했습니다");
     expect(screen.getByTestId("measurement-preview")).toBeInTheDocument();
+  });
+
+  it("discloses included data, image exclusion and the manual transfer boundary", async () => {
+    renderPage();
+    await screen.findByTestId("measurement-image");
+
+    expect(screen.getByText(/Product ID, Lot ID, Wafer ID, 원본 파일명, 저장된 측정과 메모/)).toBeInTheDocument();
+    expect(screen.getByText(/제외: 이미지 바이너리/)).toBeInTheDocument();
+    expect(screen.getByText(/자동으로 외부에 전송하지 않습니다/)).toBeInTheDocument();
+    expect(screen.getByTestId("context-export-button")).toBeEnabled();
+  });
+
+  it("disables export and explains why when no measurements are saved", async () => {
+    renderPage(vi.fn().mockResolvedValue(jsonResponse({ ...detail, measurements: [] })));
+
+    expect(await screen.findByTestId("context-export-button")).toBeDisabled();
+    expect(screen.getByTestId("context-export-disabled-reason")).toHaveTextContent("측정이 하나 이상");
+  });
+
+  it("downloads one successful ZIP and blocks duplicate export requests", async () => {
+    let resolveExport!: (response: Response) => void;
+    const exportResponse = new Promise<Response>((resolve) => { resolveExport = resolve; });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(detail))
+      .mockReturnValueOnce(exportResponse);
+    const createObjectURL = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:nanodb-export");
+    const revokeObjectURL = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    renderPage(fetchMock);
+    const button = await screen.findByTestId("context-export-button");
+
+    await userEvent.click(button);
+    await userEvent.click(button);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(button).toBeDisabled();
+
+    resolveExport(new Response("PKzip", { headers: { "Content-Type": "application/zip" } }));
+    await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:nanodb-export");
+    expect(button).toBeEnabled();
+  });
+
+  it("shows an error envelope without downloading it", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(detail))
+      .mockResolvedValueOnce(jsonResponse({ code: "EXPORT_FAILED", message: "ZIP을 생성하지 못했습니다." }, 500));
+    const createObjectURL = vi.spyOn(URL, "createObjectURL");
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    renderPage(fetchMock);
+
+    await userEvent.click(await screen.findByTestId("context-export-button"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("ZIP을 생성하지 못했습니다");
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(click).not.toHaveBeenCalled();
+  });
+
+  it("rejects a successful response that is not a ZIP", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(detail))
+      .mockResolvedValueOnce(jsonResponse({ message: "not an archive" }));
+    const createObjectURL = vi.spyOn(URL, "createObjectURL");
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    renderPage(fetchMock);
+
+    await userEvent.click(await screen.findByTestId("context-export-button"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("올바른 Context ZIP");
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(click).not.toHaveBeenCalled();
   });
 });

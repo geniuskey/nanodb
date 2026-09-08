@@ -21,6 +21,8 @@ export function MeasurementPage() {
   const [rendered, setRendered] = useState({ width: 0, height: 0 });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     api.getImage(imageId).then(setDetail).catch((caught) =>
@@ -76,6 +78,22 @@ export function MeasurementPage() {
     } finally { setSaving(false); }
   }
 
+  async function exportContext() {
+    if (!detail || detail.measurements.length === 0 || exporting) return;
+    setExporting(true); setExportError(null);
+    try {
+      const archive = await api.downloadContext(imageId);
+      const url = URL.createObjectURL(archive);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `nanodb-image-${imageId}.zip`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (caught) {
+      setExportError(caught instanceof ApiError ? caught.message : "Context ZIP을 다운로드하지 못했습니다.");
+    } finally { setExporting(false); }
+  }
+
   return (
     <main>
       <Link to="/images">← 목록으로</Link>
@@ -96,6 +114,17 @@ export function MeasurementPage() {
           <div className="actions"><button type="button" onClick={() => setDraft([])} data-testid="measurement-reset">초기화</button><button type="button" onClick={save} disabled={draft.length !== 2 || saving} data-testid="measurement-save">{saving ? "저장 중…" : "측정 저장"}</button></div>
           <h2>저장된 측정</h2>
           {detail.measurements.length === 0 ? <p>저장된 측정이 없습니다.</p> : <ul className="measurement-list">{detail.measurements.map((item: MeasurementView) => <li key={item.id}><button type="button" className={selectedId === item.id ? "selected" : ""} onClick={() => setSelectedId(item.id)} data-testid="saved-measurement-item"><strong>{item.parameter_type} · {item.value_nm.toFixed(2)}nm</strong><span>{item.distance_px.toFixed(2)}px · {new Date(item.created_at).toLocaleString()}</span>{item.note && <span>{item.note}</span>}</button></li>)}</ul>}
+          <section className="export-panel" aria-labelledby="context-export-heading">
+            <h2 id="context-export-heading">Context Export</h2>
+            <p>포함: Product ID, Lot ID, Wafer ID, 원본 파일명, 저장된 측정과 메모</p>
+            <p>제외: 이미지 바이너리</p>
+            <p>다운로드한 ZIP은 사용자가 외부 AI 도구에 수동으로 전달합니다. NANoDB가 자동으로 외부에 전송하지 않습니다.</p>
+            {detail.measurements.length === 0 && <p data-testid="context-export-disabled-reason">저장된 측정이 하나 이상 있어야 내보낼 수 있습니다.</p>}
+            {exportError && <p role="alert">{exportError}</p>}
+            <button type="button" onClick={exportContext} disabled={detail.measurements.length === 0 || exporting} data-testid="context-export-button">
+              {exporting ? "ZIP 생성 중…" : "Context ZIP 다운로드"}
+            </button>
+          </section>
         </aside>
       </div>
     </main>

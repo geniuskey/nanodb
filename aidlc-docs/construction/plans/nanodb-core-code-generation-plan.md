@@ -152,7 +152,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 18. Context Export frontend와 download test 생성 — US-06
 
-- [ ] 포함되는 제조 식별정보·filename·memo와 image binary 제외, 수동 외부 전달 경계를 먼저 표시하고 측정이 있을 때만 export를 활성화한다. ZIP 성공 응답만 download하고 error envelope는 파일로 저장하지 않도록 구현·test한다.
+- [x] 포함되는 제조 식별정보·filename·memo와 image binary 제외, 수동 외부 전달 경계를 먼저 표시하고 측정이 있을 때만 export를 활성화한다. ZIP 성공 응답만 download하고 error envelope는 파일로 저장하지 않도록 구현·test한다.
 
 ### Step 19. Frontend components summary 생성 — US-02~US-06
 

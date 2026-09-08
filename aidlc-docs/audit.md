@@ -1219,3 +1219,20 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: CONSTRUCTION - per-step Git commit and push policy enabled from Step 10 checkpoint onward
 
 ---
+## NANoDB Core Code Generation Step 18 Started
+
+**Timestamp**: 2026-09-08T04:28:54Z
+**User Input**: "계속해줘"
+**AI Response**: "Pushed Step 17 and started Step 18 Context Export frontend and download test generation."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 18 in progress
+
+---
+
+## NANoDB Core Code Generation Step 18 Complete
+
+**Timestamp**: 2026-09-08T04:31:38Z
+**User Input**: "계속해줘"
+**AI Response**: "Implemented the Context Export disclosure panel, measurement-gated and duplicate-safe download, strict application/zip response validation, error-envelope handling without file creation, and success/failure frontend tests. All 23 frontend tests, TypeScript and production build passed."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 18/26 complete; per-step Git checkpoint required
+
+---

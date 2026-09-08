@@ -69,4 +69,7 @@ footer { padding: 32px; text-align: center; color: #677; }
 .measurement-list button { width: 100%; display: grid; gap: 5px; text-align: left; margin-bottom: 8px; }
 .measurement-list button.selected { background: #fff4d9; border-color: #d29216; }
 .measurement-list span { color: #566; }
+.export-panel { margin: 28px 0 0; padding-top: 24px; border-top: 1px solid #dce4e3; }
+.export-panel p { color: #566; line-height: 1.5; }
+.export-panel [role="alert"] { color: #a32121; }
 @media (max-width: 800px) { .card-grid.three, .flow, .image-grid { grid-template-columns: 1fr; } .hero { padding: 36px 24px; } header { flex-direction: column; gap: 12px; } }

@@ -118,7 +118,25 @@ export function ImageListPage() {
 
       <StatusBanner message={status} />
       {actionError && <p role="alert">{actionError}</p>}
-      {state === "loading" && <p role="status">이미지를 불러오는 중입니다.</p>}
+      {state === "loading" && (
+        <>
+          <p role="status">이미지를 불러오는 중입니다.</p>
+          {/* Hold the grid's shape so the page does not jump when cards
+              arrive (UIX-009). */}
+          <div className="image-grid" aria-hidden="true" data-testid="catalog-skeleton">
+            {[0, 1, 2, 3].map((slot) => (
+              <div className="image-card skeleton-card" key={slot}>
+                <span className="skeleton skeleton-thumb" />
+                <div className="skeleton-lines">
+                  <span className="skeleton skeleton-line" />
+                  <span className="skeleton skeleton-line short" />
+                  <span className="skeleton skeleton-line" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       {state === "success" && (
         <p className="result-count" role="status" data-testid="catalog-count">
           {isFiltered ? "조건에 맞는 이미지" : "등록된 이미지"} {images.length}건

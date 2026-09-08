@@ -78,6 +78,8 @@ export function MeasurementPage() {
   const [activeAnnotationId, setActiveAnnotationId] = useState<number | null>(null);
   const [annotationError, setAnnotationError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [coords, setCoords] = useState({ sx: "", sy: "", ex: "", ey: "" });
+  const [coordError, setCoordError] = useState<string | null>(null);
 
   useDocumentTitle(detail?.original_filename ?? "측정");
 
@@ -291,6 +293,38 @@ export function MeasurementPage() {
     } finally { setSavingNote(false); }
   }
 
+  /**
+   * Build a draft from typed original coordinates (UIX-003).
+   *
+   * The only path to a measurement is otherwise clicking the image, which
+   * leaves keyboard users with none. It doubles as the exact-pixel route when
+   * the image is shown smaller than its original size.
+   */
+  function applyCoordinates() {
+    if (!detail) return;
+    const parsed = {
+      sx: Number(coords.sx), sy: Number(coords.sy),
+      ex: Number(coords.ex), ey: Number(coords.ey),
+    };
+    const values = Object.values(parsed);
+    if (Object.values(coords).some((raw) => raw.trim() === "") || values.some((n) => !Number.isFinite(n))) {
+      setCoordError("네 좌표를 모두 숫자로 입력해 주세요.");
+      return;
+    }
+    const withinX = (n: number) => n >= 0 && n < detail.pixel_width;
+    const withinY = (n: number) => n >= 0 && n < detail.pixel_height;
+    if (!withinX(parsed.sx) || !withinX(parsed.ex) || !withinY(parsed.sy) || !withinY(parsed.ey)) {
+      setCoordError(`좌표는 0 이상 X ${detail.pixel_width}, Y ${detail.pixel_height} 미만이어야 합니다.`);
+      return;
+    }
+    if (parsed.sx === parsed.ex && parsed.sy === parsed.ey) {
+      setCoordError("시작점과 끝점이 같습니다. 서로 다른 두 점을 입력해 주세요.");
+      return;
+    }
+    setCoordError(null);
+    setDraft([{ x: parsed.sx, y: parsed.sy }, { x: parsed.ex, y: parsed.ey }]);
+  }
+
   function confirmCopy(target: PendingDelete): { title: string; body: string; label: string } {
     if (target.kind === "measurement") {
       return {
@@ -442,6 +476,21 @@ export function MeasurementPage() {
           </section>
           <label>측정 항목<select value={parameter} onChange={(event) => setParameter(event.target.value as ParameterType)} data-testid="measurement-parameter"><option>CD</option><option>Depth</option><option>Thickness</option></select></label>
           <p>선택한 점: {draft.length}/2</p>
+          <details className="coord-entry">
+            <summary>좌표로 직접 지정</summary>
+            <p className="note-hint">
+              마우스 없이 측정하거나, 화면에서 집을 수 없는 원본 픽셀을 정확히 지정할 때
+              사용합니다. 원본 기준 0 이상 X {detail.pixel_width}, Y {detail.pixel_height} 미만.
+            </p>
+            <div className="coord-grid">
+              <label>시작 X<input inputMode="decimal" data-testid="coord-start-x" value={coords.sx} onChange={(e) => setCoords((c) => ({ ...c, sx: e.target.value }))} /></label>
+              <label>시작 Y<input inputMode="decimal" data-testid="coord-start-y" value={coords.sy} onChange={(e) => setCoords((c) => ({ ...c, sy: e.target.value }))} /></label>
+              <label>끝 X<input inputMode="decimal" data-testid="coord-end-x" value={coords.ex} onChange={(e) => setCoords((c) => ({ ...c, ex: e.target.value }))} /></label>
+              <label>끝 Y<input inputMode="decimal" data-testid="coord-end-y" value={coords.ey} onChange={(e) => setCoords((c) => ({ ...c, ey: e.target.value }))} /></label>
+            </div>
+            {coordError && <p role="alert" data-testid="coord-error">{coordError}</p>}
+            <button type="button" data-testid="coord-apply" onClick={applyCoordinates}>좌표로 지정</button>
+          </details>
           {preview !== null && <p data-testid="measurement-preview">{preview.toFixed(2)}px · {(preview * detail.calibration_nm_per_pixel).toFixed(2)}nm</p>}
           <label>메모<textarea value={note} onChange={(event) => setNote(event.target.value)} /></label>
           {error && <p role="alert">{error}</p>}

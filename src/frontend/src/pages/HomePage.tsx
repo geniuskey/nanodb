@@ -192,7 +192,19 @@ function KpiSection({ images, reloadImages }: { images: ImageListView[] | null; 
       </h2>
       <p className="section-note">현재 저장된 데이터만 집계합니다. 예시 숫자를 대입하지 않습니다.</p>
 
-      {state === "loading" && <p role="status">실제 데이터를 불러오는 중입니다.</p>}
+      {state === "loading" && (
+        <>
+          <p role="status">실제 데이터를 불러오는 중입니다.</p>
+          <div className="kpi-grid four" aria-hidden="true" data-testid="kpi-skeleton">
+            {[0, 1, 2, 3].map((slot) => (
+              <article className="kpi-card" key={slot}>
+                <span className="skeleton skeleton-value" />
+                <span className="skeleton skeleton-line short" />
+              </article>
+            ))}
+          </div>
+        </>
+      )}
       {state === "failure" && (
         <p role="alert">
           데이터를 불러오지 못했습니다.{" "}

@@ -56,7 +56,8 @@ An unknown address renders `NotFoundPage` through a catch-all route rather than 
 - Each route sets its own document title, so tabs, history and screen readers can tell the screens apart.
 - Failed loads on the home page, the catalog and the measurement detail offer a retry instead of forcing a reload.
 - Browser-default keyboard focus remains available for all interactive native controls. The confirmation dialog manages its own focus and Escape.
-- Known gap: measuring still requires a pointer. The numeric-coordinate alternative is UIX-003 and is not implemented.
+- Measuring does not require a pointer: original coordinates can be typed in, which doubles as the exact-pixel route when the image is displayed smaller than its original size.
+- Loading states reserve the space the results will occupy; the placeholders are `aria-hidden` and the `role="status"` text carries the announcement.
 
 Stable automation selectors are purpose-based:
 
@@ -73,6 +74,8 @@ Stable automation selectors are purpose-based:
 | Recovery | `retry-summary`, `retry-images`, `retry-catalog`, `retry-detail` |
 | Registration errors | `error-file`, `error-product_id`, `error-lot_id`, `error-wafer_id`, `error-calibration_nm_per_pixel` |
 | Home video | `video-play`, `video-caption` |
+| Coordinate entry | `coord-start-x`, `coord-start-y`, `coord-end-x`, `coord-end-y`, `coord-apply`, `coord-error` |
+| Loading placeholders | `catalog-skeleton`, `kpi-skeleton` |
 | Export | `context-export-button`, `context-export-disabled-reason` |
 
 Annotation shape groups expose `data-annotation-id` so a shape and its table row can be correlated in either direction.
@@ -85,12 +88,12 @@ Measurement overlay groups additionally expose `data-measurement-id` so a saved-
 | --- | ---: | --- |
 | `src/frontend/src/App.test.tsx` | 4 | Brand and accessible primary navigation, catch-all not-found route, skip link, exactly one active tab |
 | `src/frontend/src/pages/HomePage.test.tsx` | 7 | Loading/success, failure resilience with retry, real summary values with the parameter breakdown, non-interactive roadmap, intro video with its caption, reduced-motion play button, document title |
-| `src/frontend/src/pages/ImageListPage.test.tsx` | 10 | Empty state, catalog metadata/counts, failure distinction and retry, search and type filter forwarding, filtered-empty wording, result count with results kept during a refetch, delete confirm and cancel |
+| `src/frontend/src/pages/ImageListPage.test.tsx` | 11 | Empty state, catalog metadata/counts, failure distinction and retry, search and type filter forwarding, filtered-empty wording, result count with results kept during a refetch, delete confirm and cancel |
 | `src/frontend/src/pages/ImageRegisterPage.test.tsx` | 5 | Per-field validation messages, `aria-invalid`/`aria-describedby` and first-error focus, non-positive calibration, one pending multipart request, retained fields on server failure |
 | `src/frontend/src/ui/ErrorBoundary.test.tsx` | 1 | A crashed subtree becomes a recovery screen that hides the cause and can retry |
 | `src/frontend/src/measurement/coordinates.test.ts` | 5 | Coordinate restoration at 100% and 50%, clamping, and outside-rectangle rejection |
-| `src/frontend/src/pages/MeasurementPage.test.tsx` | 30 | Draft lifecycle, save state/result/failure, list-overlay selection, image facts, zoom scaling and the accuracy statement, annotation rendering/drawing/label persistence/delete/shape selection, note editing and clearing, confirmation accept/cancel/Escape and cascade wording, success announcements, detail retry, document title, export disclosure/gating, duplicate protection, ZIP success, error envelope and wrong media type |
-| **Total** | **62** | US-02 through US-06 frontend behaviour |
+| `src/frontend/src/pages/MeasurementPage.test.tsx` | 32 | Draft lifecycle, save state/result/failure, list-overlay selection, image facts, zoom scaling and the accuracy statement, annotation rendering/drawing/label persistence/delete/shape selection, note editing and clearing, confirmation accept/cancel/Escape and cascade wording, success announcements, detail retry, document title, export disclosure/gating, duplicate protection, ZIP success, error envelope and wrong media type |
+| **Total** | **66** | US-02 through US-06 frontend behaviour |
 
 Browser scenarios live in `tests/e2e/` (7 Playwright specs) and cover the P0 flow plus zoom keeping the overlay aligned, shape delete through the dialog, and an exported ZIP whose `data.json` carries the edited note and the labelled shape.
 

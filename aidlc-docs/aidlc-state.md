@@ -4,7 +4,7 @@
 
 - **Project Type**: Greenfield
 - **Start Date**: 2026-09-07T11:50:01Z
-- **Current Stage**: CONSTRUCTION - the 2026-09-08 UI/UX amendment is implemented except UIX-003 and UIX-009, and every runnable path (make demo, quality gates, browser e2e, evidence site build and preview) has been executed end to end. Only the container stack and the actual Pages deploy remain unverified, both blocked by this environment rather than by the project. The 2026-09-08 UI/UX requirements amendment was approved on the same day. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
+- **Current Stage**: CONSTRUCTION complete for the 2026-09-08 UI/UX amendment. Every requirement in it (P0 reconciliation, P1 and P2) is implemented, and every runnable path — make demo, quality gates, browser e2e, evidence site build and preview — has been executed end to end. Only the container stack and the actual Pages deploy remain unverified, both blocked by this environment rather than by the project. The 2026-09-08 UI/UX requirements amendment was approved on the same day. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
 
 ## Workspace State
 
@@ -81,7 +81,7 @@
 - [x] ANN-008 (annotations in the context ZIP, contract version 1.1), RES-007 (note editing), CAT-008~009, UIX-008 — see [context-and-p1-completion-plan.md](construction/plans/context-and-p1-completion-plan.md)
 - [x] HOM-040 (intro video caption, reduced-motion play button, offline path in README)
 - [x] P2: UIX-006 (error boundary + catch-all route), UIX-004 (document titles), UIX-005 (skip link), UIX-007 (retry), IMG-009~010 (required marks and per-field errors) — see [p2-polish-plan.md](construction/plans/p2-polish-plan.md)
-- [ ] UIX-003 (numeric coordinate entry) and UIX-009 (loading placeholders) — deliberately left; not a demo gate
+- [x] UIX-003 (numeric coordinate entry) and UIX-009 (loading placeholders) — the P2 group is now closed
 - [x] Verify the demo path, container definitions and publishing path — see [demo-and-deploy-verification-plan.md](construction/plans/demo-and-deploy-verification-plan.md)
 - [ ] Run `make up` once where Docker image layers are reachable
 - [ ] Set the repository's Pages Source to GitHub Actions and push to main (DOC-012)
@@ -200,6 +200,7 @@ See [contest-alignment-plan.md](inception/requirements/contest-alignment-plan.md
 - The intro video keeps autoplay for most viewers but always carries a caption explaining it comes from an external service, so a blocked network leaves a labelled area rather than a black box. A reduced-motion viewer gets a play button.
 - Two defects were found while building this and fixed here: `/images/new` lit both the catalog and the register tab as the current location (a HOM-004 violation, now written into the requirement), and the skip link was positioned against the wrong ancestor.
 - Verified: ruff clean, mypy clean, pytest 104 passed, vitest 62 passed, vite build, Playwright e2e 7 passed, plus browser screenshots of the form errors, the not-found screen and the skip link.
+- Closed later the same day: UIX-003 adds typed original coordinates as a second route to a draft — the only pointer-free path to measuring, and the way to hit an exact pixel when the image is displayed smaller than its original. UIX-009 reserves the catalog grid and the home KPI row during a first load. Re-verified with vitest 66 and the browser: typing (40,40)-(300,200) on a 400x300 image produced a 305.29px / 152.64nm draft.
 
 ## Demo and Publishing Verification (2026-09-08)
 
@@ -214,7 +215,7 @@ See [contest-alignment-plan.md](inception/requirements/contest-alignment-plan.md
 
 The UI/UX amendment is finished apart from UIX-003 (numeric coordinate entry, the remaining accessibility gap) and UIX-009 (loading placeholders). Both are recorded as unimplemented in the requirements and in the README's known limitations, and neither is a demo gate.
 
-Two things remain, and neither can be closed from here. Someone with Docker image access should run `make up` once to prove the container stack; an administrator must set the repository's Pages Source to GitHub Actions and push to main for DOC-012. Both are recorded as `미검증` in the requirements and on the evidence site.
+No code work remains in this amendment. Two things remain, and neither can be closed from here. Someone with Docker image access should run `make up` once to prove the container stack; an administrator must set the repository's Pages Source to GitHub Actions and push to main for DOC-012. Both are recorded as `미검증` in the requirements and on the evidence site.
 
 Separately, and by design, the external AI development demo (US-07, EVL-006~008) stays independent of app completeness: the prompts, generated code, run commands and pass/fail results still have to be produced and recorded by hand.
 

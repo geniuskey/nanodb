@@ -559,6 +559,55 @@ describe("MeasurementPage", () => {
     expect(await screen.findByTestId("measurement-image")).toBeInTheDocument();
   });
 
+  it("builds a measurement from typed coordinates without touching the image", async () => {
+    const created = { ...detail.measurements[0], id: 3, value_nm: 100 };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(detail))
+      .mockResolvedValueOnce(jsonResponse(created, 201));
+    renderPage(fetchMock);
+    await preparedImage();
+
+    await userEvent.type(screen.getByTestId("coord-start-x"), "100");
+    await userEvent.type(screen.getByTestId("coord-start-y"), "100");
+    await userEvent.type(screen.getByTestId("coord-end-x"), "400");
+    await userEvent.type(screen.getByTestId("coord-end-y"), "500");
+    await userEvent.click(screen.getByTestId("coord-apply"));
+
+    // Same draft the two clicks would have produced: 500px at 0.2nm/px.
+    expect(screen.getByTestId("measurement-preview")).toHaveTextContent("500.00px · 100.00nm");
+    await userEvent.click(screen.getByTestId("measurement-save"));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({
+      start: { x: 100, y: 100 },
+      end: { x: 400, y: 500 },
+    });
+  });
+
+  it("rejects typed coordinates outside the original image or with no length", async () => {
+    renderPage();
+    await preparedImage();
+
+    // 1000x800 original: x must stay below 1000.
+    await userEvent.type(screen.getByTestId("coord-start-x"), "1200");
+    await userEvent.type(screen.getByTestId("coord-start-y"), "10");
+    await userEvent.type(screen.getByTestId("coord-end-x"), "20");
+    await userEvent.type(screen.getByTestId("coord-end-y"), "20");
+    await userEvent.click(screen.getByTestId("coord-apply"));
+
+    expect(screen.getByTestId("coord-error")).toHaveTextContent("X 1000");
+    expect(screen.queryByTestId("measurement-preview")).not.toBeInTheDocument();
+
+    await userEvent.clear(screen.getByTestId("coord-start-x"));
+    await userEvent.type(screen.getByTestId("coord-start-x"), "20");
+    await userEvent.clear(screen.getByTestId("coord-start-y"));
+    await userEvent.type(screen.getByTestId("coord-start-y"), "20");
+    await userEvent.click(screen.getByTestId("coord-apply"));
+
+    expect(screen.getByTestId("coord-error")).toHaveTextContent("서로 다른 두 점");
+    expect(screen.queryByTestId("measurement-preview")).not.toBeInTheDocument();
+  });
+
   it("names the open image in the document title", async () => {
     renderPage();
     await preparedImage();

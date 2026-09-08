@@ -442,6 +442,29 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .note-hint { margin: 0 0 12px; color: var(--ink-muted); font-size: 0.78rem; }
 .note-editor .actions { display: flex; gap: 8px; }
 .result-count { margin: -8px 0 20px; color: var(--ink-muted); font-size: 0.85rem; }
+
+/* Loading placeholders (UIX-009): keep the layout from jumping when the real
+   content arrives. Purely decorative, so they are aria-hidden. */
+.skeleton { display: block; background: var(--accent-track); border-radius: 6px; }
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton { animation: skeleton-pulse 1.4s ease-in-out infinite; }
+}
+@keyframes skeleton-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+.skeleton-card { align-items: center; }
+.skeleton-thumb { width: 180px; height: 150px; border-radius: 10px; }
+.skeleton-lines { display: grid; gap: 10px; width: 100%; }
+.skeleton-line { height: 14px; }
+.skeleton-line.short { width: 45%; }
+.skeleton-value { width: 60%; height: 38px; margin-bottom: 10px; }
+
+/* Coordinate entry (UIX-003) */
+.coord-entry { margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; }
+.coord-entry summary { font-weight: 700; cursor: pointer; }
+.coord-entry > *:not(summary) { margin-top: 10px; }
+.coord-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.coord-grid label { display: grid; gap: 5px; margin: 0; font-size: 0.82rem; font-weight: 700; }
+.coord-grid input { padding: 8px; border: 1px solid #b7bdc8; border-radius: 8px; font: inherit; }
+.coord-entry [role="alert"] { color: var(--danger); font-size: 0.85rem; }
 /* A filter refetch dims the previous results instead of removing them. */
 .image-grid.refreshing { opacity: .55; transition: opacity 120ms ease-out; }
 .export-panel { margin: 28px 0 0; padding-top: 24px; border-top: 1px solid var(--line); }

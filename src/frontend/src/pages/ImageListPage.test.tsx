@@ -162,6 +162,17 @@ describe("ImageListPage", () => {
     );
   });
 
+  it("reserves the grid while the first load is in flight", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => undefined)));
+
+    renderWithRouter(<ImageListPage />);
+
+    // Placeholders hold the layout, and they are decorative only.
+    const skeleton = await screen.findByTestId("catalog-skeleton");
+    expect(skeleton).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("불러오는 중");
+  });
+
   it("offers a retry when the catalog cannot be loaded", async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error("offline"));
     vi.stubGlobal("fetch", fetchMock);

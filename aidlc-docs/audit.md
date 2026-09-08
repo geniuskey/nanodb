@@ -1740,3 +1740,21 @@ IMG-009/010: 등록 폼을 필드별 오류 상태로 재작성. 별표 + aria-r
 **Context**: CONSTRUCTION - runnable paths verified end to end; two items blocked by environment, reported not worked around
 
 ---
+
+## P2 Completion — UIX-003 and UIX-009
+**Timestamp**: 2026-09-08T15:30:00Z
+**User Input**: "멈추지말고 할것 마무리해줘. 다하면 pr 생성 및 머지"
+**AI Response**: "보류했던 P2 2건을 마무리해 이번 개정의 코드 작업을 전부 닫았다.
+
+UIX-003: 측정 화면에 '좌표로 직접 지정' 영역을 추가했다. 시작·끝 원본 좌표 네 개를 입력해 draft를 만들며, 값이 비었거나 숫자가 아니면, 원본 범위(0 이상 X pixel_width, Y pixel_height 미만)를 벗어나면, 두 점이 같으면 각각 이유를 표시하고 draft를 만들지 않는다. 이후 흐름은 클릭 측정과 동일하게 서버가 재계산한다. 포인터 없는 유일한 측정 경로이자, 이미지가 축소돼 화면에서 집을 수 없는 픽셀을 지정하는 수단을 겸한다.
+
+UIX-009: 목록과 홈 KPI의 첫 조회에 결과와 같은 모양의 자리 표시를 넣어 도착 시 레이아웃이 밀리지 않게 했다. 자리 표시는 장식이므로 aria-hidden이고 상태 안내는 기존 role=status 텍스트가 그대로 담당한다. prefers-reduction-motion을 존중해 애니메이션은 선호가 없을 때만 적용한다.
+
+검증: ruff 통과, mypy 27파일 이상 없음, pytest 104 passed(로컬 PostgreSQL 16), vitest 66 passed, build 성공, Playwright e2e 7 passed. 좌표 입력은 실제 브라우저에서 400×300 이미지에 (40,40)~(300,200)을 입력해 305.29px · 152.64nm draft와 '선택한 점: 2/2'까지 확인했다.
+
+정직하게 남기는 사항: 전체 게이트를 처음 묶어 돌릴 때 make test-backend가 한 번 Error 1로 실패했으나 이후 직접 pytest 3회와 make 1회 모두 104 passed로 통과했고 재현되지 않았다. 원인을 특정하지 못했으므로 'flake'로 단정하지 않고 관찰 사실만 기록한다.
+
+문서: 요구사항 우선순위 표에서 P2 전 항목을 구현 완료로 표기하고 UIX-003·UIX-009 본문을 구현 기준으로 갱신, README와 docs/index.md의 '마우스 클릭 전용' 한계 문장 정정, frontend-components.md에 좌표 입력·자리 확보 절 추가, frontend-components-summary.md의 testid 계약과 테스트 수(66) 갱신, p2-polish-plan.md에 후속 완료 절 추가."
+**Context**: CONSTRUCTION - P2 group closed; amendment code work complete
+
+---

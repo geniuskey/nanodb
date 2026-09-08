@@ -4,7 +4,7 @@
 
 - **Project Type**: Greenfield
 - **Start Date**: 2026-09-07T11:50:01Z
-- **Current Stage**: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
+- **Current Stage**: INCEPTION - Requirements Analysis (UI/UX completeness amendment, 2026-09-08) awaiting answers at the Step 6 gate. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
 
 ## Workspace State
 
@@ -53,13 +53,27 @@
 
 ## Current Request Assessment
 
-- **Request**: Replace SQLite with PostgreSQL while keeping local file storage and all other approved scope unchanged.
-- **Request Type**: User-authorized targeted Requirements Analysis and Application Design amendment.
-- **Scope**: Use local PostgreSQL for the hackathon and retain PostgreSQL for an initial internal beta target of about 1,000 registered users; keep files on the single app host.
-- **Complexity**: Moderate for the hackathon profile; high for the internal service profile because concurrency, identity, backup and shared storage become relevant.
+- **Request**: "프로젝트 리뷰하고 ui/ux 미구현 된 부분들 어떻게 반영할지 고민하고 요구사항 업데이트해서 프로젝트 완성도 높여줘."
+- **Request Type**: Enhancement — brownfield review of the implemented UI/UX against approved requirements, followed by a requirements amendment.
+- **Scope**: Multiple components — frontend screens (home, catalog, register, measurement), the requirement documents (`requirements/nanodb-mvp-requirements.md`, `requirements/home-tab-requirements.md`, `requirements/constraints.md`, consolidated `requirements.md`), README and the stale Construction design artifacts.
+- **Complexity**: Moderate — no new backend capability is implied, but requirement drift runs in both directions (code without requirements, and requirements without code).
 - **Requirements Depth**: Standard
-- **Authorization**: NANoDB Core Code Generation Part 1 plan approved on 2026-09-08. Part 2 generation may execute in the approved 26-step sequence.
-- **Unknowns**: Expected concurrent active and writing users, internal hosting platform, PostgreSQL deployment model, connection-pool sizing and load-test target. Other infrastructure, security, retention and integrated submission questions remain deferred because the user requested no other scope change.
+- **Review Result**: [ui-ux-review-2026-09-08.md](inception/requirements/ui-ux-review-2026-09-08.md) — 3 finding groups (A: implemented but unspecified, B: document conflicts, C: UI/UX quality gaps) and a 4-bundle amendment plan (R1 reconciliation, R2 decisions, R3 scope declarations, R4 common UX).
+- **Open Decisions**: Questions 1-7 in [requirement-verification-questions.md](inception/requirements/requirement-verification-questions.md) — annotation status, annotation data in the context ZIP, home intro video, home CTA source of truth, zoom for precise measurement, editing saved measurements, keyboard measurement.
+- **Authorization**: Not yet granted. Requirements Analysis Step 7 (requirement document edits) is blocked at the Step 6 gate until the questions are answered.
+- **Unknowns**: The six R2 decisions above. R1, R3 and R4 need no answer and are ready to apply on approval.
+
+## UI/UX Completeness Review Progress
+
+- [x] Workspace Detection (resume from existing aidlc-state.md; brownfield with current artifacts, no re-run of Reverse Engineering)
+- [x] Load prior artifacts (requirements, stories, application design, per-unit construction design, code summaries)
+- [x] Compare implementation against the four requirement documents and README
+- [x] Record findings: [ui-ux-review-2026-09-08.md](inception/requirements/ui-ux-review-2026-09-08.md)
+- [x] Raise clarifying questions: [requirement-verification-questions.md](inception/requirements/requirement-verification-questions.md) Questions 1-7
+- [ ] Receive and validate answers (Step 6 gate)
+- [ ] Apply R1/R3/R4 requirement edits
+- [ ] Apply R2 requirement edits per the answers
+- [ ] Refresh stale Construction artifacts (`frontend-components.md`, `frontend-components-summary.md`) and README
 
 ## Current Requirements Decisions
 
@@ -136,7 +150,7 @@ See [contest-alignment-plan.md](inception/requirements/contest-alignment-plan.md
 
 ## Next Stage Assessment
 
-Review and approve or revise the NANoDB Core Code Generation plan. Application code generation, database provisioning, load testing and deployment remain unperformed.
+Answer Questions 1-7 in `requirement-verification-questions.md` (or reply "추천" to accept every recommended option). Requirements Analysis Step 7 then updates the requirement documents, after which Workflow Planning decides which Construction stages the approved amendments need.
 
 ## Execution Plan Summary
 

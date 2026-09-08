@@ -136,7 +136,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 14. App Shell, Home과 Catalog frontend unit test 생성 — US-02, US-03
 
-- [ ] Vitest와 Testing Library로 loading/success/empty/failure, 실제 count와 기준 시각, 구현된 CTA, 비활성 roadmap, catalog card와 measurement count, 접근 가능한 label/focus 및 안정적인 `data-testid`를 검증한다.
+- [x] Vitest와 Testing Library로 loading/success/empty/failure, 실제 count와 기준 시각, 구현된 CTA, 비활성 roadmap, catalog card와 measurement count, 접근 가능한 label/focus 및 안정적인 `data-testid`를 검증한다.
 
 ### Step 15. Image Registration feature와 frontend unit test 생성 — US-03
 

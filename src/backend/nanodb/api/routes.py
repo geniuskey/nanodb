@@ -8,8 +8,11 @@ from fastapi import APIRouter, File, Form, Query, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 from sqlalchemy import text
 
-from nanodb.api.mappers import image_view, measurement_view
+from nanodb.api.mappers import annotation_view, image_view, measurement_view
 from nanodb.api.schemas import (
+    AnnotationInputSchema,
+    AnnotationUpdateSchema,
+    AnnotationView,
     ImageDetailView,
     ImageListView,
     ImageView,
@@ -20,6 +23,7 @@ from nanodb.api.schemas import (
     SummaryView,
 )
 from nanodb.domain.entities import ImageType, Point
+from nanodb.services.annotation_service import AnnotationInput, AnnotationUpdate
 from nanodb.services.image_service import ImageRegistration
 from nanodb.services.measurement_service import MeasurementInput
 
@@ -98,9 +102,11 @@ def list_images(
 def image_detail(image_id: int, request: Request) -> ImageDetailView:
     image = request.app.state.image_service.get_image(image_id)
     measurements = request.app.state.measurement_service.list_for_image(image_id)
+    annotations = request.app.state.annotation_service.list_for_image(image_id)
     return ImageDetailView(
         **image_view(image).model_dump(),
         measurements=[measurement_view(item) for item in measurements],
+        annotations=[annotation_view(item) for item in annotations],
     )
 
 
@@ -159,6 +165,63 @@ def delete_measurement(
 ) -> Response:
     request.app.state.measurement_service.delete(image_id, measurement_id)
     return Response(status_code=204)
+
+
+@router.post(
+    "/images/{image_id}/annotations",
+    response_model=AnnotationView,
+    status_code=201,
+)
+def create_annotation(
+    image_id: int,
+    payload: AnnotationInputSchema,
+    request: Request,
+) -> AnnotationView:
+    result = request.app.state.annotation_service.create(
+        image_id,
+        AnnotationInput(
+            kind=payload.kind,
+            start=Point(payload.start.x, payload.start.y),
+            end=Point(payload.end.x, payload.end.y),
+            product=payload.product,
+            step=payload.step,
+            measurement_name=payload.measurement_name,
+        ),
+    )
+    return annotation_view(result)
+
+
+@router.get(
+    "/images/{image_id}/annotations",
+    response_model=list[AnnotationView],
+)
+def list_annotations(image_id: int, request: Request) -> list[AnnotationView]:
+    return [
+        annotation_view(item)
+        for item in request.app.state.annotation_service.list_for_image(image_id)
+    ]
+
+
+@router.patch(
+    "/images/{image_id}/annotations/{annotation_id}",
+    response_model=AnnotationView,
+)
+def update_annotation(
+    image_id: int,
+    annotation_id: int,
+    payload: AnnotationUpdateSchema,
+    request: Request,
+) -> AnnotationView:
+    result = request.app.state.annotation_service.update(
+        image_id,
+        annotation_id,
+        AnnotationUpdate(
+            product=payload.product,
+            step=payload.step,
+            measurement_name=payload.measurement_name,
+        ),
+    )
+    return annotation_view(result)
 
 
 @router.get("/images/{image_id}/context-export")

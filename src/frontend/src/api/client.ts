@@ -1,4 +1,7 @@
 import type {
+  AnnotationCreateInput,
+  AnnotationUpdateInput,
+  AnnotationView,
   ApiErrorEnvelope,
   ImageDetailView,
   ImageListView,
@@ -115,5 +118,23 @@ export const api = {
     requestVoid(`/api/images/${imageId}`, { method: "DELETE" }),
   registerImage: (form: FormData) =>
     request<ImageView>("/api/images", { method: "POST", body: form }),
+  listAnnotations: (imageId: number) =>
+    request<AnnotationView[]>(`/api/images/${imageId}/annotations`),
+  createAnnotation: (imageId: number, value: AnnotationCreateInput) =>
+    request<AnnotationView>(`/api/images/${imageId}/annotations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    }),
+  updateAnnotation: (
+    imageId: number,
+    annotationId: number,
+    value: AnnotationUpdateInput,
+  ) =>
+    request<AnnotationView>(`/api/images/${imageId}/annotations/${annotationId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    }),
   downloadContext: contextDownload,
 };

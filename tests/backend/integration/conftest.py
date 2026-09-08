@@ -43,7 +43,10 @@ def db_session(
     engine, factory = database_engine
     with engine.begin() as connection:
         connection.execute(
-            text("TRUNCATE TABLE measurements, images RESTART IDENTITY CASCADE")
+            text(
+                "TRUNCATE TABLE annotations, measurements, images "
+                "RESTART IDENTITY CASCADE"
+            )
         )
     with factory() as session:
         yield session

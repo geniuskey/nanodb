@@ -16,6 +16,7 @@ from nanodb.adapters.image_decoder import ImageDecoder
 from nanodb.domain.entities import Image, ImageType
 from nanodb.domain.errors import DomainError
 from nanodb.persistence.repositories import (
+    AnnotationRepository,
     ImageListItem,
     ImageRepository,
     MeasurementRepository,
@@ -135,9 +136,9 @@ class ImageService:
         return image
 
     def delete(self, image_id: int) -> None:
-        """Delete an image with its derived measurements, then its stored file.
+        """Delete an image with its measurements and annotations, then its file.
 
-        Measurements are removed first because the foreign key uses RESTRICT.
+        Child rows are removed first because the foreign keys use RESTRICT.
         The file is deleted only after the rows are committed, so a failure
         leaves an orphan file (recoverable) rather than a row pointing at a
         missing file.
@@ -148,6 +149,7 @@ class ImageService:
             if image is None:
                 raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
             MeasurementRepository(session).delete_by_image(image_id)
+            AnnotationRepository(session).delete_by_image(image_id)
             repository.delete(image_id)
             session.commit()
         self._file_store.delete_if_exists(image.stored_filename)

@@ -53,6 +53,7 @@ export interface MeasurementView {
 
 export interface ImageDetailView extends ImageView {
   measurements: MeasurementView[];
+  annotations: AnnotationView[];
 }
 
 export interface MeasurementCreateInput {
@@ -60,6 +61,39 @@ export interface MeasurementCreateInput {
   start: { x: number; y: number };
   end: { x: number; y: number };
   note: string | null;
+}
+
+export type ShapeKind = "arrow" | "circle";
+
+export type ProductType = "DRAM" | "Flash" | "Logic" | "Sensor";
+
+export interface AnnotationView {
+  id: number;
+  image_id: number;
+  kind: ShapeKind;
+  start_x: number;
+  start_y: number;
+  end_x: number;
+  end_y: number;
+  product: ProductType | null;
+  step: string;
+  measurement_name: string;
+  created_at: string;
+}
+
+export interface AnnotationCreateInput {
+  kind: ShapeKind;
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+  product: ProductType | null;
+  step: string;
+  measurement_name: string;
+}
+
+export interface AnnotationUpdateInput {
+  product: ProductType | null;
+  step: string;
+  measurement_name: string;
 }
 
 export interface ApiErrorEnvelope {

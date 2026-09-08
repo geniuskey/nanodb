@@ -294,6 +294,29 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .export-panel p { color: var(--ink-muted); line-height: 1.5; }
 .export-panel [role="alert"] { color: var(--danger); }
 
+/* Measurement/labeling editor: toolbar above the image stage. */
+.editor-column { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.annotation-toolbar { align-self: stretch; display: inline-flex; gap: 8px; padding: 6px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+.annotation-toolbar .tool-button { padding: 6px 14px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); font-weight: 700; cursor: pointer; line-height: 1.2; }
+.annotation-toolbar .tool-button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.annotation-overlay { position: absolute; inset: 0; }
+.annotation-overlay line { vector-effect: non-scaling-stroke; }
+.annotation-arrow { stroke: #4be0a1; stroke-width: 3; }
+.annotation-circle { fill: none; stroke: #4be0a1; stroke-width: 3; vector-effect: non-scaling-stroke; }
+.annotation-arrow.selected, .annotation-circle.selected { stroke: #ffc24b; stroke-width: 4; }
+.annotation-arrow.draft, .annotation-circle.draft { stroke: #ffc24b; stroke-dasharray: 7 4; }
+.annotation-arrowhead { fill: #4be0a1; }
+.annotation-number { fill: #4be0a1; font-size: 15px; font-weight: 700; }
+.annotation-panel { margin: 0 0 24px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.annotation-panel p { color: var(--ink-muted); line-height: 1.5; }
+.annotation-panel [role="alert"] { color: var(--danger); }
+.annotation-table { width: 100%; border-collapse: collapse; }
+.annotation-table th, .annotation-table td { padding: 6px 4px; text-align: left; font-size: 14px; vertical-align: middle; }
+.annotation-table th { color: var(--ink-muted); font-weight: 700; }
+.annotation-table tr.active td { background: var(--accent-tint); }
+.annotation-table .annotation-index { font-weight: 700; text-align: center; width: 28px; }
+.annotation-table select, .annotation-table input { width: 100%; padding: 6px; border: 1px solid #b7bdc8; border-radius: 6px; font: inherit; }
+
 @media (max-width: 800px) {
   .card-grid.three, .flow, .image-grid, .stat-grid, .kpi-grid, .kpi-grid.four,
   .comp-grid, .phase-grid, .hero-grid,

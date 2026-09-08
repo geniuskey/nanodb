@@ -10,14 +10,21 @@ from sqlalchemy.orm import Session
 
 from nanodb.domain.calculations import MeasurementCalculation
 from nanodb.domain.entities import (
+    Annotation,
     Image,
     ImageType,
     Measurement,
     ParameterStat,
     ParameterType,
     Point,
+    ProductType,
+    ShapeKind,
 )
-from nanodb.persistence.models import ImageModel, MeasurementModel
+from nanodb.persistence.models import (
+    AnnotationModel,
+    ImageModel,
+    MeasurementModel,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +61,20 @@ def _to_measurement(model: MeasurementModel) -> Measurement:
         calibration_nm_per_pixel=model.calibration_nm_per_pixel,
         value_nm=model.value_nm,
         note=model.note,
+        created_at=model.created_at,
+    )
+
+
+def _to_annotation(model: AnnotationModel) -> Annotation:
+    return Annotation(
+        id=model.id,
+        image_id=model.image_id,
+        kind=ShapeKind(model.kind),
+        start=Point(model.start_x, model.start_y),
+        end=Point(model.end_x, model.end_y),
+        product=ProductType(model.product) if model.product else None,
+        step=model.step,
+        measurement_name=model.measurement_name,
         created_at=model.created_at,
     )
 
@@ -259,6 +280,86 @@ class MeasurementRepository:
     def delete_all(self) -> None:
         for model in self._session.scalars(select(MeasurementModel)):
             self._session.delete(model)
+
+
+class AnnotationRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def create(
+        self,
+        *,
+        image_id: int,
+        kind: ShapeKind,
+        start: Point,
+        end: Point,
+        product: ProductType | None,
+        step: str,
+        measurement_name: str,
+    ) -> Annotation:
+        model = AnnotationModel(
+            image_id=image_id,
+            kind=kind.value,
+            start_x=start.x,
+            start_y=start.y,
+            end_x=end.x,
+            end_y=end.y,
+            product=product.value if product else None,
+            step=step,
+            measurement_name=measurement_name,
+        )
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_annotation(model)
+
+    def update_fields(
+        self,
+        image_id: int,
+        annotation_id: int,
+        *,
+        product: ProductType | None,
+        step: str,
+        measurement_name: str,
+    ) -> Annotation | None:
+        """Update only the editable label fields of one annotation.
+
+        Geometry is immutable (no move/resize). Returns ``None`` when the
+        annotation is missing or belongs to a different image, so callers
+        cannot edit across images by guessing ids.
+        """
+        model = self._session.get(AnnotationModel, annotation_id)
+        if model is None or model.image_id != image_id:
+            return None
+        model.product = product.value if product else None
+        model.step = step
+        model.measurement_name = measurement_name
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_annotation(model)
+
+    def list_by_image(self, image_id: int) -> tuple[Annotation, ...]:
+        """List an image's annotations oldest-first so their display numbers
+        stay stable as new shapes are appended."""
+        statement = (
+            select(AnnotationModel)
+            .where(AnnotationModel.image_id == image_id)
+            .order_by(AnnotationModel.created_at.asc(), AnnotationModel.id.asc())
+        )
+        return tuple(
+            _to_annotation(model) for model in self._session.scalars(statement)
+        )
+
+    def delete_by_image(self, image_id: int) -> int:
+        """Delete every annotation for an image; returns how many were removed."""
+        count = 0
+        statement = select(AnnotationModel).where(
+            AnnotationModel.image_id == image_id
+        )
+        for model in self._session.scalars(statement):
+            self._session.delete(model)
+            count += 1
+        return count
 
 
 def database_clock(session: Session) -> datetime:

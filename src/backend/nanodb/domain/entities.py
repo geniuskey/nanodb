@@ -22,6 +22,18 @@ class ReferenceStatus(StrEnum):
     UNREVIEWED = "unreviewed"
 
 
+class ShapeKind(StrEnum):
+    ARROW = "arrow"
+    CIRCLE = "circle"
+
+
+class ProductType(StrEnum):
+    DRAM = "DRAM"
+    FLASH = "Flash"
+    LOGIC = "Logic"
+    SENSOR = "Sensor"
+
+
 @dataclass(frozen=True, slots=True)
 class Point:
     x: float
@@ -60,6 +72,28 @@ class Measurement:
     created_at: datetime
     measurement_method: str = "manual_two_point"
     reference_status: ReferenceStatus = ReferenceStatus.UNREVIEWED
+
+
+@dataclass(frozen=True, slots=True)
+class Annotation:
+    """A shape drawn on an image for measurement/labeling.
+
+    Geometry is stored in original image pixel coordinates. For an arrow,
+    ``start`` is the tail and ``end`` is the head. For a circle, ``start`` is
+    the centre and ``end`` is a point on the circumference (so the radius is
+    the distance between them). No physical (nm) value is derived here — this
+    is a labeling primitive, distinct from :class:`Measurement`.
+    """
+
+    id: int
+    image_id: int
+    kind: ShapeKind
+    start: Point
+    end: Point
+    product: ProductType | None
+    step: str
+    measurement_name: str
+    created_at: datetime
 
 
 @dataclass(frozen=True, slots=True)

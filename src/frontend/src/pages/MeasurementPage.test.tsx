@@ -60,6 +60,30 @@ async function preparedImage() {
   return image;
 }
 
+// Drag a shape across the annotation overlay. jsdom's pointer-capture rejects
+// unknown pointer ids, so neutralise it before dispatching pointer events.
+function dragShape(from: { x: number; y: number }, to: { x: number; y: number }) {
+  const overlay = screen.getByTestId("annotation-overlay");
+  Object.defineProperty(overlay, "setPointerCapture", { value: () => undefined, configurable: true });
+  fireEvent.pointerDown(overlay, { clientX: from.x, clientY: from.y, pointerId: 1 });
+  fireEvent.pointerMove(overlay, { clientX: to.x, clientY: to.y, pointerId: 1 });
+  fireEvent.pointerUp(overlay, { clientX: to.x, clientY: to.y, pointerId: 1 });
+}
+
+const createdAnnotation = {
+  id: 10,
+  image_id: 1,
+  kind: "arrow",
+  start_x: 100,
+  start_y: 100,
+  end_x: 400,
+  end_y: 500,
+  product: null,
+  step: "",
+  measurement_name: "",
+  created_at: "2026-09-08T05:00:00Z",
+};
+
 describe("MeasurementPage", () => {
   it("previews two points and ignores a third until reset", async () => {
     renderPage();
@@ -249,6 +273,104 @@ describe("MeasurementPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("ZIP을 생성하지 못했습니다");
     expect(createObjectURL).not.toHaveBeenCalled();
     expect(click).not.toHaveBeenCalled();
+  });
+
+  it("renders existing annotations loaded with the image detail", async () => {
+    renderPage(vi.fn().mockResolvedValue(jsonResponse({
+      ...detail,
+      annotations: [
+        { ...createdAnnotation, id: 7, product: "DRAM", step: "S1", measurement_name: "게이트" },
+        { ...createdAnnotation, id: 8, kind: "circle", product: "Sensor", step: "S2", measurement_name: "홀" },
+      ],
+    })));
+    await preparedImage();
+
+    const rows = await screen.findAllByTestId("annotation-row");
+    expect(rows).toHaveLength(2);
+    expect(screen.queryByTestId("annotation-empty")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("annotation-product")[0]).toHaveValue("DRAM");
+    expect(screen.getAllByTestId("annotation-name")[1]).toHaveValue("홀");
+  });
+
+  it("draws a shape, persists it, and adds a numbered row", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(detail))
+      .mockResolvedValueOnce(jsonResponse(createdAnnotation, 201));
+    renderPage(fetchMock);
+    await preparedImage();
+    expect(screen.getByTestId("annotation-empty")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId("tool-arrow"));
+    dragShape({ x: 100, y: 100 }, { x: 400, y: 500 });
+
+    const row = await screen.findByTestId("annotation-row");
+    expect(row).toHaveTextContent("1");
+    const [path, init] = fetchMock.mock.calls[1];
+    expect(String(path)).toBe("/api/images/1/annotations");
+    expect(init).toMatchObject({ method: "POST" });
+    expect(JSON.parse(init.body)).toEqual({
+      kind: "arrow",
+      start: { x: 100, y: 100 },
+      end: { x: 400, y: 500 },
+      product: null,
+      step: "",
+      measurement_name: "",
+    });
+  });
+
+  it("does not create a row for a click without a drag", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(detail));
+    renderPage(fetchMock);
+    await preparedImage();
+
+    await userEvent.click(screen.getByTestId("tool-arrow"));
+    dragShape({ x: 200, y: 200 }, { x: 200, y: 200 });
+
+    expect(screen.getByTestId("annotation-empty")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1); // only the initial getImage
+  });
+
+  it("saves a Sensor product selection with a PATCH", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(detail))
+      .mockResolvedValueOnce(jsonResponse(createdAnnotation, 201))
+      .mockResolvedValueOnce(jsonResponse({ ...createdAnnotation, product: "Sensor" }));
+    renderPage(fetchMock);
+    await preparedImage();
+    await userEvent.click(screen.getByTestId("tool-arrow"));
+    dragShape({ x: 100, y: 100 }, { x: 400, y: 500 });
+    await screen.findByTestId("annotation-row");
+
+    await userEvent.selectOptions(screen.getByTestId("annotation-product"), "Sensor");
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    const [path, init] = fetchMock.mock.calls[2];
+    expect(String(path)).toBe("/api/images/1/annotations/10");
+    expect(init).toMatchObject({ method: "PATCH" });
+    expect(JSON.parse(init.body)).toEqual({ product: "Sensor", step: "", measurement_name: "" });
+    expect(screen.getByTestId("annotation-product")).toHaveValue("Sensor");
+  });
+
+  it("persists a Step edit when the field loses focus", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(detail))
+      .mockResolvedValueOnce(jsonResponse(createdAnnotation, 201))
+      .mockResolvedValueOnce(jsonResponse({ ...createdAnnotation, step: "ETCH" }));
+    renderPage(fetchMock);
+    await preparedImage();
+    await userEvent.click(screen.getByTestId("tool-arrow"));
+    dragShape({ x: 100, y: 100 }, { x: 400, y: 500 });
+    await screen.findByTestId("annotation-row");
+
+    const stepInput = screen.getByTestId("annotation-step");
+    await userEvent.type(stepInput, "ETCH");
+    fireEvent.blur(stepInput);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    const [path, init] = fetchMock.mock.calls[2];
+    expect(String(path)).toBe("/api/images/1/annotations/10");
+    expect(init).toMatchObject({ method: "PATCH" });
+    expect(JSON.parse(init.body)).toMatchObject({ step: "ETCH" });
   });
 
   it("rejects a successful response that is not a ZIP", async () => {

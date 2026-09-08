@@ -6,7 +6,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat
 
-from nanodb.domain.entities import ImageType, ParameterType, ReferenceStatus
+from nanodb.domain.entities import (
+    ImageType,
+    ParameterType,
+    ProductType,
+    ReferenceStatus,
+    ShapeKind,
+)
 
 
 class ErrorDetail(BaseModel):
@@ -50,6 +56,35 @@ class MeasurementView(BaseModel):
     created_at: datetime
 
 
+class AnnotationInputSchema(BaseModel):
+    kind: ShapeKind
+    start: PointInput
+    end: PointInput
+    product: ProductType | None = None
+    step: str = Field(default="", max_length=255)
+    measurement_name: str = Field(default="", max_length=255)
+
+
+class AnnotationUpdateSchema(BaseModel):
+    product: ProductType | None = None
+    step: str = Field(default="", max_length=255)
+    measurement_name: str = Field(default="", max_length=255)
+
+
+class AnnotationView(BaseModel):
+    id: int
+    image_id: int
+    kind: ShapeKind
+    start_x: float
+    start_y: float
+    end_x: float
+    end_y: float
+    product: ProductType | None
+    step: str
+    measurement_name: str
+    created_at: datetime
+
+
 class ImageView(BaseModel):
     id: int
     original_filename: str
@@ -70,6 +105,7 @@ class ImageListView(ImageView):
 
 class ImageDetailView(ImageView):
     measurements: list[MeasurementView]
+    annotations: list[AnnotationView] = Field(default_factory=list)
 
 
 class ParameterSummaryView(BaseModel):

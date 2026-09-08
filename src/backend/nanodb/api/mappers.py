@@ -1,7 +1,7 @@
 """Domain-to-transport mapping without persistence details."""
 
-from nanodb.api.schemas import ImageView, MeasurementView
-from nanodb.domain.entities import Image, Measurement
+from nanodb.api.schemas import AnnotationView, ImageView, MeasurementView
+from nanodb.domain.entities import Annotation, Image, Measurement
 
 
 def image_view(image: Image) -> ImageView:
@@ -36,4 +36,20 @@ def measurement_view(measurement: Measurement) -> MeasurementView:
         measurement_method=measurement.measurement_method,
         reference_status=measurement.reference_status,
         created_at=measurement.created_at,
+    )
+
+
+def annotation_view(annotation: Annotation) -> AnnotationView:
+    return AnnotationView(
+        id=annotation.id,
+        image_id=annotation.image_id,
+        kind=annotation.kind,
+        start_x=annotation.start.x,
+        start_y=annotation.start.y,
+        end_x=annotation.end.x,
+        end_y=annotation.end.y,
+        product=annotation.product,
+        step=annotation.step,
+        measurement_name=annotation.measurement_name,
+        created_at=annotation.created_at,
     )

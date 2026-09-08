@@ -40,6 +40,25 @@ export function toOriginalPoint(
   };
 }
 
+export function toOriginalPointClamped(
+  clientPoint: Point,
+  rendered: RenderedRect,
+  original: OriginalSize,
+): Point | null {
+  if (
+    rendered.width <= 0 ||
+    rendered.height <= 0 ||
+    original.width <= 0 ||
+    original.height <= 0
+  ) return null;
+  const clampedX = Math.min(Math.max(clientPoint.x - rendered.left, 0), rendered.width);
+  const clampedY = Math.min(Math.max(clientPoint.y - rendered.top, 0), rendered.height);
+  return {
+    x: clampedX * original.width / rendered.width,
+    y: clampedY * original.height / rendered.height,
+  };
+}
+
 export function toRenderedPoint(
   originalPoint: Point,
   rendered: RenderedRect,

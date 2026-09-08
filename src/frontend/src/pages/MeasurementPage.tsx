@@ -1,14 +1,30 @@
-import { MouseEvent, useEffect, useRef, useState } from "react";
+import {
+  MouseEvent,
+  PointerEvent as ReactPointerEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { ApiError, api } from "../api/client";
 import type {
+  AnnotationView,
   ImageDetailView,
   MeasurementView,
   ParameterType,
+  ProductType,
+  ShapeKind,
 } from "../api/types";
-import { toOriginalPoint, type Point } from "../measurement/coordinates";
+import { AnnotationLayer, type DraftShape } from "../measurement/AnnotationLayer";
+import {
+  toOriginalPoint,
+  toOriginalPointClamped,
+  type Point,
+} from "../measurement/coordinates";
 import { MeasurementOverlay } from "../measurement/MeasurementOverlay";
+
+const PRODUCTS: ProductType[] = ["DRAM", "Flash", "Logic", "Sensor"];
 
 export function MeasurementPage() {
   const imageId = Number(useParams().imageId);
@@ -26,12 +42,29 @@ export function MeasurementPage() {
   const [deletingImage, setDeletingImage] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [annotations, setAnnotations] = useState<AnnotationView[]>([]);
+  const [tool, setTool] = useState<ShapeKind | null>(null);
+  const [draftShape, setDraftShape] = useState<DraftShape | null>(null);
+  const [activeAnnotationId, setActiveAnnotationId] = useState<number | null>(null);
+  const [annotationError, setAnnotationError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getImage(imageId).then(setDetail).catch((caught) =>
+    api.getImage(imageId).then((loaded) => {
+      setDetail(loaded);
+      setAnnotations(loaded.annotations ?? []);
+    }).catch((caught) =>
       setError(caught instanceof ApiError ? caught.message : "이미지를 불러오지 못했습니다."),
     );
   }, [imageId]);
+
+  useEffect(() => {
+    if (!draftShape) return;
+    const cancel = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setDraftShape(null);
+    };
+    window.addEventListener("keydown", cancel);
+    return () => window.removeEventListener("keydown", cancel);
+  }, [draftShape]);
 
   useEffect(() => {
     const update = () => {
@@ -59,6 +92,79 @@ export function MeasurementPage() {
       { width: detail.pixel_width, height: detail.pixel_height },
     );
     if (point) setDraft((current) => [...current, point]);
+  }
+
+  function originalSize() {
+    return { width: detail!.pixel_width, height: detail!.pixel_height };
+  }
+
+  function startDraw(event: ReactPointerEvent<SVGSVGElement>) {
+    if (!tool) return;
+    const rect = imageRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    // A new shape must start inside the image; ignore presses in the margin.
+    const start = toOriginalPoint({ x: event.clientX, y: event.clientY }, rect, originalSize());
+    if (!start) return;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setDraftShape({ kind: tool, start, end: start });
+  }
+
+  function moveDraw(event: ReactPointerEvent<SVGSVGElement>) {
+    if (!draftShape) return;
+    const rect = imageRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    // Clamp the drag to the image so a shape never escapes its bounds.
+    const end = toOriginalPointClamped({ x: event.clientX, y: event.clientY }, rect, originalSize());
+    if (end) setDraftShape((current) => current && { ...current, end });
+  }
+
+  async function endDraw() {
+    const shape = draftShape;
+    if (!shape) return;
+    setDraftShape(null);
+    // A click without a drag (zero-size shape) does not create a row.
+    if (shape.start.x === shape.end.x && shape.start.y === shape.end.y) return;
+    setAnnotationError(null);
+    try {
+      const created = await api.createAnnotation(imageId, {
+        kind: shape.kind,
+        start: shape.start,
+        end: shape.end,
+        product: null,
+        step: "",
+        measurement_name: "",
+      });
+      setAnnotations((current) => [...current, created]);
+    } catch (caught) {
+      setAnnotationError(
+        caught instanceof ApiError ? caught.message : "도형을 저장하지 못했습니다.",
+      );
+    }
+  }
+
+  function editRow(id: number, changes: Partial<AnnotationView>) {
+    setAnnotations((current) =>
+      current.map((row) => (row.id === id ? { ...row, ...changes } : row)),
+    );
+  }
+
+  function persistRow(row: AnnotationView) {
+    api
+      .updateAnnotation(imageId, row.id, {
+        product: row.product,
+        step: row.step,
+        measurement_name: row.measurement_name,
+      })
+      .then((updated) =>
+        setAnnotations((current) =>
+          current.map((item) => (item.id === updated.id ? updated : item)),
+        ),
+      )
+      .catch((caught) =>
+        setAnnotationError(
+          caught instanceof ApiError ? caught.message : "입력값을 저장하지 못했습니다.",
+        ),
+      );
   }
 
   async function save() {
@@ -133,15 +239,48 @@ export function MeasurementPage() {
   return (
     <main>
       <Link to="/images">← 목록으로</Link>
-      <div className="page-heading"><div><p className="eyebrow">{detail.image_type} measurement</p><h1>{detail.original_filename}</h1></div><div className="heading-actions"><p>{detail.product_id} · {detail.lot_id} · {detail.wafer_id}</p><button type="button" className="heading-delete" data-testid="detail-image-delete" disabled={deletingImage} onClick={removeImage}>{deletingImage ? "삭제 중…" : "이미지 삭제"}</button></div></div>
+      <div className="page-heading"><div><p className="eyebrow">{detail.image_type} 측정·라벨링</p><h1>{detail.original_filename}</h1></div><div className="heading-actions"><p>{detail.product_id} · {detail.lot_id} · {detail.wafer_id}</p><button type="button" className="heading-delete" data-testid="detail-image-delete" disabled={deletingImage} onClick={removeImage}>{deletingImage ? "삭제 중…" : "이미지 삭제"}</button></div></div>
       <div className="measurement-layout">
-        <section className="viewer-panel" aria-label="두 점 측정 이미지">
-          <div className="image-stage">
-            <img ref={imageRef} src={detail.file_url} alt={detail.original_filename} onClick={selectPoint} onLoad={() => { const rect = imageRef.current?.getBoundingClientRect(); if (rect) setRendered({ width: rect.width, height: rect.height }); }} data-testid="measurement-image" />
-            {rendered.width > 0 && <MeasurementOverlay width={rendered.width} height={rendered.height} original={{ width: detail.pixel_width, height: detail.pixel_height }} measurements={detail.measurements} selectedId={selectedId} draft={draft} />}
+        <section className="viewer-panel" aria-label="측정·라벨링 이미지">
+          <div className="editor-column">
+            <div className="annotation-toolbar" role="toolbar" aria-label="도형 도구">
+              <button type="button" className={tool === "arrow" ? "tool-button active" : "tool-button"} aria-pressed={tool === "arrow"} aria-label="화살표 그리기 도구" data-testid="tool-arrow" onClick={() => setTool((current) => (current === "arrow" ? null : "arrow"))}>↗ 화살표</button>
+              <button type="button" className={tool === "circle" ? "tool-button active" : "tool-button"} aria-pressed={tool === "circle"} aria-label="원 그리기 도구" data-testid="tool-circle" onClick={() => setTool((current) => (current === "circle" ? null : "circle"))}>○ 원</button>
+            </div>
+            <div className="image-stage">
+              <img ref={imageRef} src={detail.file_url} alt={detail.original_filename} onClick={selectPoint} onLoad={() => { const rect = imageRef.current?.getBoundingClientRect(); if (rect) setRendered({ width: rect.width, height: rect.height }); }} data-testid="measurement-image" />
+              {rendered.width > 0 && <MeasurementOverlay width={rendered.width} height={rendered.height} original={{ width: detail.pixel_width, height: detail.pixel_height }} measurements={detail.measurements} selectedId={selectedId} draft={draft} />}
+              {rendered.width > 0 && <AnnotationLayer width={rendered.width} height={rendered.height} original={{ width: detail.pixel_width, height: detail.pixel_height }} annotations={annotations} draft={draftShape} interactive={tool !== null} selectedId={activeAnnotationId} onPointerDown={startDraw} onPointerMove={moveDraw} onPointerUp={endDraw} />}
+            </div>
           </div>
         </section>
         <aside className="measurement-controls">
+          <section className="annotation-panel" aria-label="도형별 측정 항목">
+            <h2>도형 라벨링</h2>
+            {annotationError && <p role="alert">{annotationError}</p>}
+            {annotations.length === 0 ? (
+              <p data-testid="annotation-empty">화살표 또는 원을 그리면 도형마다 표에 행이 하나씩 추가됩니다.</p>
+            ) : (
+              <table className="annotation-table">
+                <thead><tr><th scope="col">#</th><th scope="col">제품</th><th scope="col">Step</th><th scope="col">측정 항목 명</th></tr></thead>
+                <tbody>
+                  {annotations.map((row, index) => (
+                    <tr key={row.id} data-testid="annotation-row" className={row.id === activeAnnotationId ? "active" : ""} onFocus={() => setActiveAnnotationId(row.id)} onBlur={() => setActiveAnnotationId(null)}>
+                      <td className="annotation-index">{index + 1}</td>
+                      <td>
+                        <select aria-label={`도형 ${index + 1} 제품`} data-testid="annotation-product" value={row.product ?? ""} onChange={(event) => { const product = (event.target.value || null) as ProductType | null; editRow(row.id, { product }); persistRow({ ...row, product }); }}>
+                          <option value="">선택</option>
+                          {PRODUCTS.map((product) => <option key={product} value={product}>{product}</option>)}
+                        </select>
+                      </td>
+                      <td><input aria-label={`도형 ${index + 1} Step`} data-testid="annotation-step" value={row.step} onChange={(event) => editRow(row.id, { step: event.target.value })} onBlur={() => persistRow(row)} /></td>
+                      <td><input aria-label={`도형 ${index + 1} 측정 항목 명`} data-testid="annotation-name" value={row.measurement_name} onChange={(event) => editRow(row.id, { measurement_name: event.target.value })} onBlur={() => persistRow(row)} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
           <label>측정 항목<select value={parameter} onChange={(event) => setParameter(event.target.value as ParameterType)} data-testid="measurement-parameter"><option>CD</option><option>Depth</option><option>Thickness</option></select></label>
           <p>선택한 점: {draft.length}/2</p>
           {preview !== null && <p data-testid="measurement-preview">{preview.toFixed(2)}px · {(preview * detail.calibration_nm_per_pixel).toFixed(2)}nm</p>}

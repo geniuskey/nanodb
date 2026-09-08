@@ -10,7 +10,16 @@ from nanodb.api.errors import install_error_handlers
 from nanodb.api.middleware import install_request_middleware
 from nanodb.api.routes import router
 from nanodb.domain.calculations import calculate_measurement
-from nanodb.domain.entities import Image, ImageType, Measurement, ParameterType
+from nanodb.domain.entities import (
+    Annotation,
+    Image,
+    ImageType,
+    Measurement,
+    ParameterType,
+    Point,
+    ProductType,
+    ShapeKind,
+)
 from nanodb.domain.errors import DomainError
 from nanodb.persistence.repositories import ImageListItem
 from nanodb.services.summary_service import Summary
@@ -105,6 +114,61 @@ class FakeMeasurementService:
             raise DomainError("MEASUREMENT_NOT_FOUND", "Measurement was not found.")
 
 
+class FakeAnnotationService:
+    def __init__(self) -> None:
+        self.created: list[object] = []
+        self.updates: list[tuple[int, int, object]] = []
+
+    def create(self, image_id: int, value: object) -> Annotation:
+        self.created.append(value)
+        return Annotation(
+            id=7,
+            image_id=image_id,
+            kind=value.kind,
+            start=value.start,
+            end=value.end,
+            product=value.product,
+            step=value.step,
+            measurement_name=value.measurement_name,
+            created_at=NOW,
+        )
+
+    def list_for_image(self, image_id: int) -> tuple[Annotation, ...]:
+        if image_id != 1:
+            raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
+        return (
+            Annotation(
+                id=7,
+                image_id=image_id,
+                kind=ShapeKind.CIRCLE,
+                start=Point(200, 200),
+                end=Point(260, 200),
+                product=ProductType.SENSOR,
+                step="Etch",
+                measurement_name="hole diameter",
+                created_at=NOW,
+            ),
+        )
+
+    def update(self, image_id: int, annotation_id: int, value: object) -> Annotation:
+        self.updates.append((image_id, annotation_id, value))
+        if image_id != 1:
+            raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
+        if annotation_id != 7:
+            raise DomainError("ANNOTATION_NOT_FOUND", "Annotation was not found.")
+        return Annotation(
+            id=annotation_id,
+            image_id=image_id,
+            kind=ShapeKind.ARROW,
+            start=Point(10, 10),
+            end=Point(40, 60),
+            product=value.product,
+            step=value.step,
+            measurement_name=value.measurement_name,
+            created_at=NOW,
+        )
+
+
 def build_client() -> TestClient:
     app = FastAPI()
     app.include_router(router)
@@ -112,6 +176,7 @@ def build_client() -> TestClient:
     install_request_middleware(app)
     app.state.image_service = FakeImageService()
     app.state.measurement_service = FakeMeasurementService()
+    app.state.annotation_service = FakeAnnotationService()
     app.state.summary_service = SimpleNamespace(
         get=lambda: Summary(1, 0, NOW),
     )
@@ -248,6 +313,66 @@ def test_invalid_non_finite_measurement_payload_is_not_accepted() -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_create_annotation_maps_shape_and_returns_server_result() -> None:
+    client = build_client()
+
+    response = client.post(
+        "/api/images/1/annotations",
+        json={
+            "kind": "arrow",
+            "start": {"x": 10, "y": 10},
+            "end": {"x": 40, "y": 60},
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["id"] == 7
+    assert body["kind"] == "arrow"
+    assert body["end_y"] == 60
+    assert body["product"] is None
+    assert body["step"] == ""
+    forwarded = client.app.state.annotation_service.created[0]
+    assert forwarded.kind is ShapeKind.ARROW
+    assert forwarded.start == Point(10, 10)
+
+
+def test_list_annotations_returns_stored_shapes() -> None:
+    response = build_client().get("/api/images/1/annotations")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body[0]["kind"] == "circle"
+    assert body[0]["product"] == "Sensor"
+    assert body[0]["measurement_name"] == "hole diameter"
+
+
+def test_update_annotation_forwards_label_fields() -> None:
+    client = build_client()
+
+    response = client.patch(
+        "/api/images/1/annotations/7",
+        json={"product": "DRAM", "step": "Litho", "measurement_name": "CD"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["product"] == "DRAM"
+    _image_id, annotation_id, value = client.app.state.annotation_service.updates[0]
+    assert annotation_id == 7
+    assert value.product is ProductType.DRAM
+    assert value.step == "Litho"
+
+
+def test_update_missing_annotation_uses_not_found_envelope() -> None:
+    response = build_client().patch(
+        "/api/images/1/annotations/999",
+        json={"product": None, "step": "", "measurement_name": ""},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "ANNOTATION_NOT_FOUND"
 
 
 def test_export_domain_failure_is_not_returned_as_zip() -> None:

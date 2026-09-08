@@ -6,9 +6,24 @@ from pathlib import Path
 import pytest
 from nanodb.adapters.file_store import FileStore
 from nanodb.adapters.image_decoder import ImageDecoder
-from nanodb.domain.entities import ImageType, ParameterType, Point
+from nanodb.domain.entities import (
+    ImageType,
+    ParameterType,
+    Point,
+    ProductType,
+    ShapeKind,
+)
 from nanodb.domain.errors import DomainError
-from nanodb.persistence.repositories import ImageRepository, MeasurementRepository
+from nanodb.persistence.repositories import (
+    AnnotationRepository,
+    ImageRepository,
+    MeasurementRepository,
+)
+from nanodb.services.annotation_service import (
+    AnnotationInput,
+    AnnotationService,
+    AnnotationUpdate,
+)
 from nanodb.services.context_export_service import ContextExportService
 from nanodb.services.image_service import ImageRegistration, ImageService
 from nanodb.services.measurement_service import MeasurementInput, MeasurementService
@@ -280,6 +295,101 @@ def test_png_registration_has_no_display_derivative(
     # Browser can display the PNG directly, so no derivative is generated.
     assert image.display_filename is None
     assert image_service.image_path(image.id) == tmp_path / image.stored_filename
+
+
+def test_annotation_service_persists_and_guards_inputs(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+) -> None:
+    image = ImageRepository(db_session).create(
+        original_filename="sample.png",
+        stored_filename="sample.png",
+        image_type=ImageType.TEM,
+        product_id="P",
+        lot_id="L",
+        wafer_id="W",
+        calibration_nm_per_pixel=0.2,
+        pixel_width=1000,
+        pixel_height=800,
+    )
+    db_session.commit()
+    _, factory = database_engine
+    service = AnnotationService(factory)
+
+    created = service.create(
+        image.id,
+        AnnotationInput(kind=ShapeKind.CIRCLE, start=Point(50, 50), end=Point(70, 50)),
+    )
+    updated = service.update(
+        image.id,
+        created.id,
+        AnnotationUpdate(
+            product=ProductType.SENSOR, step="S1", measurement_name="hole"
+        ),
+    )
+    assert updated.product is ProductType.SENSOR
+    assert [a.id for a in service.list_for_image(image.id)] == [created.id]
+
+    # A zero-size shape is rejected before it reaches the database.
+    with pytest.raises(DomainError) as zero_size:
+        service.create(
+            image.id,
+            AnnotationInput(kind=ShapeKind.ARROW, start=Point(5, 5), end=Point(5, 5)),
+        )
+    assert zero_size.value.code == "INVALID_ANNOTATION"
+
+    # Creating against a missing image is rejected.
+    with pytest.raises(DomainError) as missing_image:
+        service.create(
+            999,
+            AnnotationInput(kind=ShapeKind.ARROW, start=Point(0, 0), end=Point(1, 1)),
+        )
+    assert missing_image.value.code == "IMAGE_NOT_FOUND"
+
+    # Updating an unknown annotation id is reported distinctly.
+    with pytest.raises(DomainError) as missing_annotation:
+        service.update(
+            image.id,
+            999,
+            AnnotationUpdate(product=None, step="", measurement_name=""),
+        )
+    assert missing_annotation.value.code == "ANNOTATION_NOT_FOUND"
+
+
+def test_image_delete_cascades_annotations(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+    tmp_path: Path,
+) -> None:
+    _, factory = database_engine
+    image_service = ImageService(factory, FileStore(tmp_path), ImageDecoder())
+
+    content = BytesIO()
+    PillowImage.new("L", (20, 20)).save(content, format="PNG")
+    content.seek(0)
+    image = image_service.register(
+        content,
+        ImageRegistration(
+            original_filename="labeled.png",
+            image_type=ImageType.TEM,
+            product_id="P",
+            lot_id="L",
+            wafer_id="W",
+            calibration_nm_per_pixel=0.2,
+        ),
+    )
+    AnnotationService(factory).create(
+        image.id,
+        AnnotationInput(kind=ShapeKind.ARROW, start=Point(0, 0), end=Point(10, 10)),
+    )
+
+    # RESTRICT FK means the delete only succeeds if annotations are cascaded first.
+    image_service.delete(image.id)
+
+    assert AnnotationRepository(db_session).list_by_image(image.id) == ()
+    with pytest.raises(DomainError) as caught:
+        image_service.get_image(image.id)
+    assert caught.value.code == "IMAGE_NOT_FOUND"
 
 
 def test_context_export_rejects_image_without_measurements(

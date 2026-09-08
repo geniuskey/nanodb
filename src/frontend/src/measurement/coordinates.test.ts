@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { toOriginalPoint, toRenderedPoint } from "./coordinates";
+import {
+  toOriginalPoint,
+  toOriginalPointClamped,
+  toRenderedPoint,
+} from "./coordinates";
 
 const original = { width: 1000, height: 800 };
 
@@ -34,5 +38,29 @@ describe("coordinate adapter", () => {
 
     expect(toOriginalPoint({ x: 99, y: 200 }, rendered, original)).toBeNull();
     expect(toOriginalPoint({ x: 200, y: 500 }, rendered, original)).toBeNull();
+  });
+
+  it("clamps out-of-bounds drags to the image edge instead of rejecting them", () => {
+    const rendered = { left: 100, top: 100, width: 500, height: 400 };
+
+    // A drag that leaves the image on the top-left snaps to the origin.
+    expect(toOriginalPointClamped({ x: 40, y: 20 }, rendered, original)).toEqual({ x: 0, y: 0 });
+    // A drag past the bottom-right snaps to the far corner (original size).
+    expect(toOriginalPointClamped({ x: 900, y: 900 }, rendered, original)).toEqual({
+      x: 1000,
+      y: 800,
+    });
+    // An in-bounds drag maps like the strict adapter.
+    expect(toOriginalPointClamped({ x: 350, y: 300 }, rendered, original)).toEqual({
+      x: 500,
+      y: 400,
+    });
+  });
+
+  it("returns null only when dimensions are invalid", () => {
+    const original0 = { width: 0, height: 800 };
+    const rendered = { left: 0, top: 0, width: 500, height: 400 };
+
+    expect(toOriginalPointClamped({ x: 10, y: 10 }, rendered, original0)).toBeNull();
   });
 });

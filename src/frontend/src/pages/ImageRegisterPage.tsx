@@ -25,7 +25,7 @@ export function ImageRegisterPage() {
     const form = new FormData(event.currentTarget);
     const calibration = Number(form.get("calibration_nm_per_pixel"));
     const fields = ["product_id", "lot_id", "wafer_id"];
-    if (!file) { setError("PNG 또는 JPEG 이미지 한 장을 선택해 주세요."); return; }
+    if (!file) { setError("PNG, JPEG 또는 TIFF 이미지 한 장을 선택해 주세요."); return; }
     if (file.size > MAX_FILE_SIZE) { setError("이미지는 20MB 이하여야 합니다."); return; }
     if (!fields.every((name) => String(form.get(name) ?? "").trim())) {
       setError("Product, Lot, Wafer는 모두 필수입니다."); return;
@@ -51,10 +51,10 @@ export function ImageRegisterPage() {
       <p className="eyebrow">New image</p><h1>이미지 등록</h1>
       <div className="registration-layout">
         <section className="preview-panel" aria-label="이미지 미리보기">
-          {preview ? <img src={preview} alt="선택한 이미지 미리보기" /> : <p>PNG/JPEG · 최대 20MB</p>}
+          {preview ? <img src={preview} alt="선택한 이미지 미리보기" /> : <p>PNG/JPEG/TIFF · 최대 20MB</p>}
         </section>
         <form className="registration-form" onSubmit={submit} data-testid="image-registration-form">
-          <label>이미지 파일<input data-testid="registration-file" name="file-input" type="file" accept="image/png,image/jpeg" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
+          <label>이미지 파일<input data-testid="registration-file" name="file-input" type="file" accept="image/png,image/jpeg,image/tiff,.tif,.tiff" onChange={(event) => setFile(event.target.files?.[0] ?? null)} /></label>
           <label>이미지 종류<select name="image_type" defaultValue="TEM"><option value="TEM">TEM</option><option value="SEM">SEM</option></select></label>
           <label>Product ID<input name="product_id" data-testid="registration-product" /></label>
           <label>Lot ID<input name="lot_id" /></label>

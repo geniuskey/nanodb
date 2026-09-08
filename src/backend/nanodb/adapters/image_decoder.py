@@ -1,4 +1,4 @@
-"""Pillow adapter that validates actual PNG/JPEG content."""
+"""Pillow adapter that validates actual PNG/JPEG/TIFF content."""
 
 from __future__ import annotations
 
@@ -19,11 +19,11 @@ class DecodedImage:
 
     @property
     def extension(self) -> str:
-        return ".png" if self.format == "PNG" else ".jpg"
+        return {"PNG": ".png", "JPEG": ".jpg", "TIFF": ".tif"}.get(self.format, ".png")
 
 
 class ImageDecoder:
-    supported_formats = frozenset({"PNG", "JPEG"})
+    supported_formats = frozenset({"PNG", "JPEG", "TIFF"})
 
     def inspect(self, path: Path) -> DecodedImage:
         try:
@@ -36,13 +36,13 @@ class ImageDecoder:
         except (OSError, UnidentifiedImageError) as error:
             raise DomainError(
                 "INVALID_IMAGE_FILE",
-                "File must be a decodable PNG or JPEG image.",
+                "File must be a decodable PNG, JPEG or TIFF image.",
                 field="file",
             ) from error
         if image_format not in self.supported_formats:
             raise DomainError(
                 "UNSUPPORTED_IMAGE_FORMAT",
-                "Only PNG and JPEG images are supported.",
+                "Only PNG, JPEG and TIFF images are supported.",
                 field="file",
             )
         if width <= 0 or height <= 0:

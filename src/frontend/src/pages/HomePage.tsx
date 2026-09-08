@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import logo from "../../../../assets/logo/nanodb_logo_horizontal.svg";
+import logo from "../../../../assets/logo/nanodb_logo_horizontal.png";
 import { api } from "../api/client";
 import { useSummary } from "../api/summary-context";
 import type { ImageListView, ParameterSummary, ParameterType } from "../api/types";
@@ -390,6 +390,18 @@ function RecentImages() {
 export function HomePage() {
   return (
     <main>
+      <section aria-labelledby="video-title" className="video-section">
+        <div className="video-frame">
+          <iframe
+            src="https://www.youtube.com/embed/x1iTw_qvHB0?autoplay=1&mute=1&rel=0&playsinline=1"
+            title="NANoDB 소개 영상"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        </div>
+        <h2 id="video-title" className="visually-hidden">NANoDB 소개 영상</h2>
+      </section>
+
       <section className="hero-card" aria-labelledby="home-title">
         <div className="hero-grid">
           <img className="hero-logo" src={logo} alt="NANoDB — Nano Assets, Never orphaned" />

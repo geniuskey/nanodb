@@ -63,6 +63,22 @@ describe("HomePage", () => {
     expect(breakdown).toHaveTextContent("21.00");
   });
 
+  it("embeds the autoplaying intro video at the top of the page", () => {
+    stubApi({
+      image_count: 0,
+      measurement_count: 0,
+      calculated_at: "2026-09-08T04:00:00Z",
+      parameters: [],
+    });
+
+    renderWithRouter(<HomePage />);
+
+    const frame = document.querySelector('iframe[title="NANoDB 소개 영상"]');
+    expect(frame?.getAttribute("src")).toContain("youtube.com/embed/x1iTw_qvHB0");
+    expect(frame?.getAttribute("src")).toContain("autoplay=1");
+    expect(frame?.getAttribute("src")).toContain("mute=1");
+  });
+
   it("shows a text failure without example KPI values but keeps static sections", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
 

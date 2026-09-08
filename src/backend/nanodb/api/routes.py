@@ -8,8 +8,10 @@ from fastapi import APIRouter, File, Form, Query, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 from sqlalchemy import text
 
-from nanodb.api.mappers import image_view, measurement_view
+from nanodb.api.mappers import catalog_option_view, image_view, measurement_view
 from nanodb.api.schemas import (
+    CatalogCreateSchema,
+    CatalogOptionView,
     ImageDetailView,
     ImageListView,
     ImageView,
@@ -20,7 +22,7 @@ from nanodb.api.schemas import (
     ReadinessView,
     SummaryView,
 )
-from nanodb.domain.entities import ImageType, Point
+from nanodb.domain.entities import Point
 from nanodb.services.image_service import ImageRegistration
 from nanodb.services.measurement_service import MeasurementInput
 
@@ -57,7 +59,7 @@ def summary(request: Request) -> SummaryView:
 def register_image(
     request: Request,
     file: Annotated[UploadFile, File()],
-    image_type: Annotated[ImageType, Form()],
+    image_type: Annotated[str, Form()],
     product_id: Annotated[str, Form()],
     lot_id: Annotated[str, Form()],
     wafer_id: Annotated[str, Form()],
@@ -83,7 +85,7 @@ def register_image(
 def list_images(
     request: Request,
     q: Annotated[str | None, Query(max_length=200)] = None,
-    image_type: Annotated[ImageType | None, Query()] = None,
+    image_type: Annotated[str | None, Query(max_length=64)] = None,
 ) -> list[ImageListView]:
     return [
         ImageListView(
@@ -184,6 +186,32 @@ def delete_measurement(
     request: Request,
 ) -> Response:
     request.app.state.measurement_service.delete(image_id, measurement_id)
+    return Response(status_code=204)
+
+
+@router.get("/catalog", response_model=list[CatalogOptionView])
+def list_catalog(request: Request) -> list[CatalogOptionView]:
+    return [
+        catalog_option_view(option)
+        for option in request.app.state.catalog_service.list_all()
+    ]
+
+
+@router.post("/catalog", response_model=CatalogOptionView, status_code=201)
+def create_catalog_option(
+    payload: CatalogCreateSchema,
+    request: Request,
+) -> CatalogOptionView:
+    option = request.app.state.catalog_service.create(
+        payload.category,
+        payload.value,
+    )
+    return catalog_option_view(option)
+
+
+@router.delete("/catalog/{option_id}", status_code=204)
+def delete_catalog_option(option_id: int, request: Request) -> Response:
+    request.app.state.catalog_service.delete(option_id)
     return Response(status_code=204)
 
 

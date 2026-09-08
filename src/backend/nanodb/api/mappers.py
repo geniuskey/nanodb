@@ -1,7 +1,16 @@
 """Domain-to-transport mapping without persistence details."""
 
-from nanodb.api.schemas import ImageView, MeasurementView
-from nanodb.domain.entities import Image, Measurement
+from nanodb.api.schemas import CatalogOptionView, ImageView, MeasurementView
+from nanodb.domain.entities import CatalogOption, Image, Measurement
+
+
+def catalog_option_view(option: CatalogOption) -> CatalogOptionView:
+    return CatalogOptionView(
+        id=option.id,
+        category=option.category,
+        value=option.value,
+        is_predefined=option.is_predefined,
+    )
 
 
 def image_view(image: Image) -> ImageView:

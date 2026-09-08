@@ -8,9 +8,10 @@ from nanodb.domain.calculations import (
     validate_export_snapshot,
 )
 from nanodb.domain.entities import (
+    CatalogCategory,
+    CatalogOption,
     ExportSnapshot,
     Image,
-    ImageType,
     Measurement,
     ParameterType,
     Point,
@@ -19,10 +20,11 @@ from nanodb.domain.entities import (
 from nanodb.domain.errors import DomainError
 
 __all__ = [
+    "CatalogCategory",
+    "CatalogOption",
     "DomainError",
     "ExportSnapshot",
     "Image",
-    "ImageType",
     "Measurement",
     "MeasurementCalculation",
     "ParameterType",

@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     Float,
@@ -13,6 +14,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -25,7 +27,6 @@ class Base(DeclarativeBase):
 class ImageModel(Base):
     __tablename__ = "images"
     __table_args__ = (
-        CheckConstraint("image_type IN ('SEM', 'TEM')", name="ck_images_type"),
         CheckConstraint(
             "calibration_nm_per_pixel > 0",
             name="ck_images_positive_calibration",
@@ -43,7 +44,7 @@ class ImageModel(Base):
     display_filename: Mapped[str | None] = mapped_column(
         String(255), unique=True, nullable=True
     )
-    image_type: Mapped[str] = mapped_column(String(3), nullable=False)
+    image_type: Mapped[str] = mapped_column(String(64), nullable=False)
     product_id: Mapped[str] = mapped_column(String(255), nullable=False)
     lot_id: Mapped[str] = mapped_column(String(255), nullable=False)
     wafer_id: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -108,4 +109,31 @@ class MeasurementModel(Base):
         server_default=func.now(),
     )
     image: Mapped[ImageModel] = relationship(back_populates="measurements")
+
+
+class CatalogOptionModel(Base):
+    """A selectable value in one managed lookup list (registration comboboxes)."""
+
+    __tablename__ = "catalog_options"
+    __table_args__ = (
+        CheckConstraint(
+            "category IN "
+            "('image_type', 'product_id', 'lot_id', 'wafer_id', 'process_step')",
+            name="ck_catalog_options_category",
+        ),
+        UniqueConstraint("category", "value", name="uq_catalog_options_category_value"),
+        Index("ix_catalog_options_category", "category"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    value: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_predefined: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
 

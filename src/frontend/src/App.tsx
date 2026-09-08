@@ -2,6 +2,7 @@ import { NavLink, Outlet, Route, Routes, useLocation } from "react-router-dom";
 
 import logo from "../../../assets/logo/nanodb_logo_horizontal.svg";
 import { SummaryContext, useSummary, useSummaryFetch } from "./api/summary-context";
+import { CatalogPage } from "./pages/CatalogPage";
 import { HomePage } from "./pages/HomePage";
 import { ImageListPage } from "./pages/ImageListPage";
 import { ImageRegisterPage } from "./pages/ImageRegisterPage";
@@ -16,6 +17,7 @@ const REAL_TABS = [
   // current location at once.
   { to: "/images", label: "이미지DB", hint: "찾기", end: false, notOn: "/images/new" },
   { to: "/images/new", label: "이미지 등록", hint: "작업", end: false },
+  { to: "/catalog", label: "목록 관리", hint: "설정", end: false },
 ];
 
 function StatusPill() {
@@ -87,6 +89,7 @@ export function App() {
         <Route index element={<HomePage />} />
         <Route path="images" element={<ImageListPage />} />
         <Route path="images/new" element={<ImageRegisterPage />} />
+        <Route path="catalog" element={<CatalogPage />} />
         <Route path="images/:imageId" element={<MeasurementPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

@@ -7,9 +7,19 @@ from datetime import datetime
 from enum import StrEnum
 
 
-class ImageType(StrEnum):
-    SEM = "SEM"
-    TEM = "TEM"
+class CatalogCategory(StrEnum):
+    """Managed lookup lists that feed the registration comboboxes.
+
+    ``image_type`` used to be a fixed SEM/TEM enum; it is now a managed list so
+    operators can register new imaging modalities without a code change. The
+    original SEM/TEM values are seeded as predefined options.
+    """
+
+    IMAGE_TYPE = "image_type"
+    PRODUCT_ID = "product_id"
+    LOT_ID = "lot_id"
+    WAFER_ID = "wafer_id"
+    PROCESS_STEP = "process_step"
 
 
 class ParameterType(StrEnum):
@@ -33,7 +43,7 @@ class Image:
     id: int
     original_filename: str
     stored_filename: str
-    image_type: ImageType
+    image_type: str
     product_id: str
     lot_id: str
     wafer_id: str
@@ -67,6 +77,22 @@ class Measurement:
     created_at: datetime
     measurement_method: str = "manual_two_point"
     reference_status: ReferenceStatus = ReferenceStatus.UNREVIEWED
+
+
+@dataclass(frozen=True, slots=True)
+class CatalogOption:
+    """A single selectable value in one managed lookup list.
+
+    ``is_predefined`` marks seeded values (e.g. TEM/SEM, W01-W25) that are part
+    of the shipped defaults and are protected from deletion; values added by
+    operators are removable.
+    """
+
+    id: int
+    category: CatalogCategory
+    value: str
+    is_predefined: bool
+    created_at: datetime
 
 
 @dataclass(frozen=True, slots=True)

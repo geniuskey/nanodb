@@ -25,7 +25,7 @@ def _data_json(snapshot: ExportSnapshot) -> str:
         "image": {
             "id": image.id,
             "original_filename": image.original_filename,
-            "image_type": image.image_type.value,
+            "image_type": image.image_type,
             "product_id": image.product_id,
             "lot_id": image.lot_id,
             "wafer_id": image.wafer_id,

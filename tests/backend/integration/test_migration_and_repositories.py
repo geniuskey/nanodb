@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 from nanodb.domain.calculations import calculate_measurement
-from nanodb.domain.entities import ImageType, ParameterType, Point
+from nanodb.domain.entities import ParameterType, Point
 from nanodb.persistence.repositories import ImageRepository, MeasurementRepository
 from sqlalchemy import Engine, inspect, text
 from sqlalchemy.exc import IntegrityError
@@ -17,7 +17,7 @@ def create_image(
     return repository.create(
         original_filename=f"sample-{suffix}.png",
         stored_filename=f"stored-{suffix}.png",
-        image_type=ImageType.TEM,
+        image_type="TEM",
         product_id="PRODUCT-01",
         lot_id="LOT-01",
         wafer_id="WAFER-01",
@@ -102,7 +102,7 @@ def test_list_filters_by_partial_text_and_image_type(db_session: Session) -> Non
     images.create(
         original_filename="alpha.png",
         stored_filename="stored-alpha.png",
-        image_type=ImageType.SEM,
+        image_type="SEM",
         product_id="PRODUCT-42",
         lot_id="LOT-A",
         wafer_id="WAFER-1",
@@ -113,7 +113,7 @@ def test_list_filters_by_partial_text_and_image_type(db_session: Session) -> Non
     images.create(
         original_filename="beta.png",
         stored_filename="stored-beta.png",
-        image_type=ImageType.TEM,
+        image_type="TEM",
         product_id="PRODUCT-99",
         lot_id="LOT-B",
         wafer_id="WAFER-2",
@@ -128,7 +128,7 @@ def test_list_filters_by_partial_text_and_image_type(db_session: Session) -> Non
     assert [item.image.original_filename for item in by_product] == ["alpha.png"]
 
     # Type filter narrows to a single kind.
-    tem_only = images.list_with_measurement_count(image_type=ImageType.TEM)
+    tem_only = images.list_with_measurement_count(image_type="TEM")
     assert [item.image.original_filename for item in tem_only] == ["beta.png"]
 
     # Blank query keeps the whole catalog visible.
@@ -136,7 +136,7 @@ def test_list_filters_by_partial_text_and_image_type(db_session: Session) -> Non
 
     # Combined filters intersect (no SEM image matches LOT-B).
     assert images.list_with_measurement_count(
-        query="LOT-B", image_type=ImageType.SEM
+        query="LOT-B", image_type="SEM"
     ) == ()
 
 

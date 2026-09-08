@@ -14,7 +14,6 @@ from nanodb.domain.calculations import (
 from nanodb.domain.entities import (
     ExportSnapshot,
     Image,
-    ImageType,
     Measurement,
     ParameterType,
     Point,
@@ -29,7 +28,7 @@ def make_image(*, image_id: int = 1) -> Image:
         id=image_id,
         original_filename="측정 이미지.png",
         stored_filename="8af4a44f.png",
-        image_type=ImageType.TEM,
+        image_type="TEM",
         product_id="PRODUCT-01",
         lot_id="LOT-01",
         wafer_id="WAFER-01",

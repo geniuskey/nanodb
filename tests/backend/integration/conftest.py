@@ -47,6 +47,11 @@ def db_session(
                 "TRUNCATE TABLE measurements, images RESTART IDENTITY CASCADE"
             )
         )
+        # Keep the migration-seeded defaults, but drop any custom options a
+        # previous test added so catalog assertions start from a known list.
+        connection.execute(
+            text("DELETE FROM catalog_options WHERE is_predefined = false")
+        )
     with factory() as session:
         yield session
         session.rollback()

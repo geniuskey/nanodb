@@ -462,3 +462,31 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
   .hero-card { padding: 24px; }
   .app-shell > .app-header { flex-direction: column; align-items: flex-start; gap: 12px; }
 }
+
+/* ---------- Combobox (type-to-search single select) ---------- */
+.combobox { position: relative; }
+.combobox > input { width: 100%; padding: 12px; border: 1px solid #b7bdc8; border-radius: 8px; font: inherit; }
+.combobox-list {
+  position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0;
+  margin: 0; padding: 4px; list-style: none; max-height: 240px; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(25, 26, 44, 0.14);
+}
+.combobox-option { padding: 9px 10px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+.combobox-option:hover, .combobox-option.active { background: var(--accent-tint); color: var(--accent); }
+.combobox-option[aria-selected="true"] { color: var(--accent); }
+.combobox-create { color: var(--ink-muted); font-weight: 600; }
+.combobox-create-label { color: var(--accent); font-weight: 800; }
+
+/* ---------- Catalog management ---------- */
+.catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+.catalog-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
+.catalog-card h2 { margin: 0 0 12px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
+.catalog-count { color: var(--ink-muted); font-weight: 700; font-size: 0.85rem; }
+.catalog-values { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 6px; max-height: 260px; overflow-y: auto; }
+.catalog-value { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+.catalog-empty { color: var(--ink-muted); font-size: 0.85rem; padding: 6px 2px; }
+.catalog-delete { border: 0; background: none; color: var(--danger); font-weight: 700; cursor: pointer; font-size: 0.82rem; }
+.catalog-add { display: flex; gap: 8px; }
+.catalog-add input { flex: 1; padding: 10px; border: 1px solid #b7bdc8; border-radius: 8px; font: inherit; }
+.catalog-add .button { white-space: nowrap; }

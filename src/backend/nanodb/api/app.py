@@ -14,6 +14,7 @@ from nanodb.api.errors import install_error_handlers
 from nanodb.api.middleware import install_request_middleware
 from nanodb.api.routes import router
 from nanodb.persistence.database import create_session_factory
+from nanodb.services.catalog_service import CatalogService
 from nanodb.services.context_export_service import ContextExportService
 from nanodb.services.image_service import ImageService
 from nanodb.services.measurement_service import MeasurementService
@@ -42,6 +43,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ImageDecoder(),
     )
     app.state.measurement_service = MeasurementService(session_factory)
+    app.state.catalog_service = CatalogService(session_factory)
     app.state.summary_service = SummaryService(session_factory)
     app.state.context_export_service = ContextExportService(session_factory)
     app.include_router(router)

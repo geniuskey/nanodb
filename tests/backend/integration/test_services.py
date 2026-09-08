@@ -8,9 +8,10 @@ from zipfile import ZipFile
 import pytest
 from nanodb.adapters.file_store import FileStore
 from nanodb.adapters.image_decoder import ImageDecoder
-from nanodb.domain.entities import ImageType, ParameterType, Point
+from nanodb.domain.entities import CatalogCategory, ParameterType, Point
 from nanodb.domain.errors import DomainError
 from nanodb.persistence.repositories import ImageRepository, MeasurementRepository
+from nanodb.services.catalog_service import CatalogService
 from nanodb.services.context_export_service import ContextExportService
 from nanodb.services.image_service import ImageRegistration, ImageService
 from nanodb.services.measurement_service import MeasurementInput, MeasurementService
@@ -27,7 +28,7 @@ def test_measurement_service_recalculates_from_stored_image_calibration(
     image = ImageRepository(db_session).create(
         original_filename="sample.png",
         stored_filename="sample.png",
-        image_type=ImageType.TEM,
+        image_type="TEM",
         product_id="P",
         lot_id="L",
         wafer_id="W",
@@ -58,7 +59,7 @@ def test_summary_aggregates_per_parameter_mean_in_contract_order(
     image = ImageRepository(db_session).create(
         original_filename="sample.png",
         stored_filename="sample.png",
-        image_type=ImageType.SEM,
+        image_type="SEM",
         product_id="P",
         lot_id="L",
         wafer_id="W",
@@ -107,7 +108,7 @@ def test_measurement_delete_is_scoped_to_its_image(
     kept_image = repository.create(
         original_filename="kept.png",
         stored_filename="kept.png",
-        image_type=ImageType.SEM,
+        image_type="SEM",
         product_id="P",
         lot_id="L",
         wafer_id="W",
@@ -118,7 +119,7 @@ def test_measurement_delete_is_scoped_to_its_image(
     other_image = repository.create(
         original_filename="other.png",
         stored_filename="other.png",
-        image_type=ImageType.TEM,
+        image_type="TEM",
         product_id="P",
         lot_id="L",
         wafer_id="W",
@@ -175,7 +176,7 @@ def test_image_delete_cascades_measurements_and_removes_stored_file(
         content,
         ImageRegistration(
             original_filename="doomed.png",
-            image_type=ImageType.SEM,
+            image_type="SEM",
             product_id="P",
             lot_id="L",
             wafer_id="W",
@@ -227,7 +228,7 @@ def test_tiff_registration_stores_original_and_serves_png_derivative(
         content,
         ImageRegistration(
             original_filename="cross-section.tiff",
-            image_type=ImageType.TEM,
+            image_type="TEM",
             product_id="P",
             lot_id="L",
             wafer_id="W",
@@ -271,7 +272,7 @@ def test_png_registration_has_no_display_derivative(
         content,
         ImageRegistration(
             original_filename="wafer.png",
-            image_type=ImageType.SEM,
+            image_type="SEM",
             product_id="P",
             lot_id="L",
             wafer_id="W",
@@ -291,7 +292,7 @@ def test_measurement_annotation_is_editable_while_its_evidence_is_not(
     image = ImageRepository(db_session).create(
         original_filename="sample.png",
         stored_filename="sample.png",
-        image_type=ImageType.TEM,
+        image_type="TEM",
         product_id="P",
         lot_id="L",
         wafer_id="W",
@@ -342,7 +343,7 @@ def test_context_export_carries_measurement_annotations(
     image = ImageRepository(db_session).create(
         original_filename="sample.png",
         stored_filename="sample.png",
-        image_type=ImageType.TEM,
+        image_type="TEM",
         product_id="P",
         lot_id="L",
         wafer_id="W",
@@ -409,7 +410,7 @@ def test_image_delete_cascades_measurements(
         content,
         ImageRegistration(
             original_filename="measured.png",
-            image_type=ImageType.TEM,
+            image_type="TEM",
             product_id="P",
             lot_id="L",
             wafer_id="W",
@@ -442,7 +443,7 @@ def test_context_export_rejects_image_without_measurements(
     image = ImageRepository(db_session).create(
         original_filename="sample.png",
         stored_filename="sample.png",
-        image_type=ImageType.TEM,
+        image_type="TEM",
         product_id="P",
         lot_id="L",
         wafer_id="W",
@@ -457,3 +458,80 @@ def test_context_export_rejects_image_without_measurements(
         ContextExportService(factory).build(image.id)
 
     assert caught.value.code == "NO_MEASUREMENTS"
+
+
+def test_catalog_seeds_defaults_and_grows_from_registration(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+    tmp_path: Path,
+) -> None:
+    _, factory = database_engine
+    service = CatalogService(factory)
+
+    # The migration seeds TEM/SEM and W01-W25 as predefined baselines.
+    seeded = service.list_all()
+    image_types = {o.value for o in seeded if o.category is CatalogCategory.IMAGE_TYPE}
+    wafer_ids = {o.value for o in seeded if o.category is CatalogCategory.WAFER_ID}
+    assert {"TEM", "SEM"} <= image_types
+    assert {"W01", "W25"} <= wafer_ids
+    assert all(o.is_predefined for o in seeded if o.value in {"TEM", "W01"})
+
+    # Registering an image records its free-text values so the lists grow.
+    store = FileStore(tmp_path)
+    buffer = BytesIO()
+    PillowImage.new("RGB", (1000, 800), "white").save(buffer, format="PNG")
+    buffer.seek(0)
+    ImageService(factory, store, ImageDecoder()).register(
+        buffer,
+        ImageRegistration(
+            original_filename="sample.png",
+            image_type="STEM",
+            product_id="P-NEW",
+            lot_id="L-NEW",
+            wafer_id="W07",
+            process_step="Gate Etch",
+            calibration_nm_per_pixel=0.2,
+        ),
+    )
+
+    after = service.list_all()
+    before_pairs = {(o.category, o.value) for o in seeded}
+    added = {(o.category, o.value) for o in after} - before_pairs
+    assert (CatalogCategory.IMAGE_TYPE, "STEM") in added
+    assert (CatalogCategory.PRODUCT_ID, "P-NEW") in added
+    assert (CatalogCategory.PROCESS_STEP, "Gate Etch") in added
+    # W07 was already a predefined wafer id, so it is not duplicated.
+    assert sum(1 for o in after if o.value == "W07") == 1
+    assert all(not o.is_predefined for o in after if o.value in {"STEM", "P-NEW"})
+
+
+def test_catalog_create_rejects_duplicate_and_delete_protects_predefined(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+) -> None:
+    _, factory = database_engine
+    service = CatalogService(factory)
+
+    created = service.create(CatalogCategory.LOT_ID, "  L-42  ")
+    assert created.value == "L-42"
+    assert created.is_predefined is False
+
+    with pytest.raises(DomainError) as duplicate:
+        service.create(CatalogCategory.LOT_ID, "L-42")
+    assert duplicate.value.code == "DUPLICATE_OPTION"
+
+    predefined = next(
+        o
+        for o in service.list_all()
+        if o.category is CatalogCategory.IMAGE_TYPE and o.value == "TEM"
+    )
+    with pytest.raises(DomainError) as protected:
+        service.delete(predefined.id)
+    assert protected.value.code == "PREDEFINED_OPTION"
+
+    with pytest.raises(DomainError) as missing:
+        service.delete(999999)
+    assert missing.value.code == "OPTION_NOT_FOUND"
+
+    service.delete(created.id)
+    assert all(o.id != created.id for o in service.list_all())

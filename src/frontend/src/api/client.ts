@@ -1,5 +1,7 @@
 import type {
   ApiErrorEnvelope,
+  CatalogCreateInput,
+  CatalogOption,
   ImageDetailView,
   ImageListView,
   ImageType,
@@ -126,5 +128,14 @@ export const api = {
     requestVoid(`/api/images/${imageId}`, { method: "DELETE" }),
   registerImage: (form: FormData) =>
     request<ImageView>("/api/images", { method: "POST", body: form }),
+  getCatalog: () => request<CatalogOption[]>("/api/catalog"),
+  createCatalogOption: (value: CatalogCreateInput) =>
+    request<CatalogOption>("/api/catalog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    }),
+  deleteCatalogOption: (optionId: number) =>
+    requestVoid(`/api/catalog/${optionId}`, { method: "DELETE" }),
   downloadContext: contextDownload,
 };

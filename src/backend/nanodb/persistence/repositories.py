@@ -6,18 +6,24 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import Select, func, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from nanodb.domain.calculations import MeasurementCalculation
 from nanodb.domain.entities import (
+    CatalogCategory,
+    CatalogOption,
     Image,
-    ImageType,
     Measurement,
     ParameterStat,
     ParameterType,
     Point,
 )
-from nanodb.persistence.models import ImageModel, MeasurementModel
+from nanodb.persistence.models import (
+    CatalogOptionModel,
+    ImageModel,
+    MeasurementModel,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,7 +38,7 @@ def _to_image(model: ImageModel) -> Image:
         original_filename=model.original_filename,
         stored_filename=model.stored_filename,
         display_filename=model.display_filename,
-        image_type=ImageType(model.image_type),
+        image_type=model.image_type,
         product_id=model.product_id,
         lot_id=model.lot_id,
         wafer_id=model.wafer_id,
@@ -60,6 +66,84 @@ def _to_measurement(model: MeasurementModel) -> Measurement:
     )
 
 
+def _to_catalog_option(model: CatalogOptionModel) -> CatalogOption:
+    return CatalogOption(
+        id=model.id,
+        category=CatalogCategory(model.category),
+        value=model.value,
+        is_predefined=model.is_predefined,
+        created_at=model.created_at,
+    )
+
+
+class CatalogRepository:
+    """Managed lookup lists for the registration comboboxes."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def list_all(self) -> tuple[CatalogOption, ...]:
+        """Every option, grouped-friendly: by category, predefined first, then
+        by value so each list reads in a stable order."""
+        statement = select(CatalogOptionModel).order_by(
+            CatalogOptionModel.category.asc(),
+            CatalogOptionModel.is_predefined.desc(),
+            CatalogOptionModel.value.asc(),
+        )
+        return tuple(
+            _to_catalog_option(model) for model in self._session.scalars(statement)
+        )
+
+    def find(self, option_id: int) -> CatalogOption | None:
+        model = self._session.get(CatalogOptionModel, option_id)
+        return _to_catalog_option(model) if model else None
+
+    def create(self, category: CatalogCategory, value: str) -> CatalogOption:
+        model = CatalogOptionModel(
+            category=category.value,
+            value=value,
+            is_predefined=False,
+        )
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_catalog_option(model)
+
+    def exists(self, category: CatalogCategory, value: str) -> bool:
+        statement = select(CatalogOptionModel.id).where(
+            CatalogOptionModel.category == category.value,
+            CatalogOptionModel.value == value,
+        )
+        return self._session.scalar(statement) is not None
+
+    def delete(self, option_id: int) -> bool:
+        model = self._session.get(CatalogOptionModel, option_id)
+        if model is None:
+            return False
+        self._session.delete(model)
+        return True
+
+    def ensure_many(self, values: dict[CatalogCategory, str]) -> None:
+        """Add any not-yet-seen values as custom (non-predefined) options.
+
+        Called during registration so a value an operator types becomes part of
+        the list for next time. Existing values (including predefined ones) are
+        left untouched via an idempotent upsert that ignores conflicts.
+        """
+        rows = [
+            {"category": category.value, "value": value, "is_predefined": False}
+            for category, value in values.items()
+            if value
+        ]
+        if not rows:
+            return
+        statement = pg_insert(CatalogOptionModel).values(rows)
+        statement = statement.on_conflict_do_nothing(
+            constraint="uq_catalog_options_category_value"
+        )
+        self._session.execute(statement)
+
+
 class ImageRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -69,7 +153,7 @@ class ImageRepository:
         *,
         original_filename: str,
         stored_filename: str,
-        image_type: ImageType,
+        image_type: str,
         product_id: str,
         lot_id: str,
         wafer_id: str,
@@ -83,7 +167,7 @@ class ImageRepository:
             original_filename=original_filename,
             stored_filename=stored_filename,
             display_filename=display_filename,
-            image_type=image_type.value,
+            image_type=image_type,
             product_id=product_id,
             lot_id=lot_id,
             wafer_id=wafer_id,
@@ -117,14 +201,14 @@ class ImageRepository:
         self,
         *,
         query: str | None = None,
-        image_type: ImageType | None = None,
+        image_type: str | None = None,
     ) -> tuple[ImageListItem, ...]:
         """List images newest-first, optionally filtered.
 
         ``query`` is a case-insensitive partial match against original filename,
-        product, lot, wafer and process step. ``image_type`` narrows to SEM or
-        TEM. A blank query matches everything so the catalog stays visible
-        while typing.
+        product, lot, wafer and process step. ``image_type`` narrows to an exact
+        imaging modality. A blank query matches everything so the catalog stays
+        visible while typing.
         """
         statement: Select[tuple[ImageModel, int]] = (
             select(ImageModel, func.count(MeasurementModel.id))
@@ -133,7 +217,7 @@ class ImageRepository:
             .order_by(ImageModel.created_at.desc(), ImageModel.id.desc())
         )
         if image_type is not None:
-            statement = statement.where(ImageModel.image_type == image_type.value)
+            statement = statement.where(ImageModel.image_type == image_type)
         if query and query.strip():
             pattern = f"%{query.strip()}%"
             statement = statement.where(

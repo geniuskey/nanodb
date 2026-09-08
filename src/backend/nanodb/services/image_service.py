@@ -13,9 +13,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from nanodb.adapters.file_store import FileStore
 from nanodb.adapters.image_decoder import ImageDecoder
-from nanodb.domain.entities import Image, ImageType
+from nanodb.domain.entities import CatalogCategory, Image
 from nanodb.domain.errors import DomainError
 from nanodb.persistence.repositories import (
+    CatalogRepository,
     ImageListItem,
     ImageRepository,
     MeasurementRepository,
@@ -25,7 +26,7 @@ from nanodb.persistence.repositories import (
 @dataclass(frozen=True, slots=True)
 class ImageRegistration:
     original_filename: str
-    image_type: ImageType
+    image_type: str
     product_id: str
     lot_id: str
     wafer_id: str
@@ -48,6 +49,7 @@ class ImageService:
     def _validate_registration(registration: ImageRegistration) -> None:
         fields = {
             "original_filename": registration.original_filename,
+            "image_type": registration.image_type,
             "product_id": registration.product_id,
             "lot_id": registration.lot_id,
             "wafer_id": registration.wafer_id,
@@ -86,19 +88,35 @@ class ImageService:
                     BytesIO(preview)
                 )
                 display_key = f"{uuid4().hex}.png"
+            image_type = registration.image_type.strip()
+            product_id = registration.product_id.strip()
+            lot_id = registration.lot_id.strip()
+            wafer_id = registration.wafer_id.strip()
+            process_step = (registration.process_step or "").strip() or None
             image = ImageRepository(session).create(
                 original_filename=registration.original_filename,
                 stored_filename=final_key,
                 display_filename=display_key,
-                image_type=registration.image_type,
-                product_id=registration.product_id.strip(),
-                lot_id=registration.lot_id.strip(),
-                wafer_id=registration.wafer_id.strip(),
-                process_step=(registration.process_step or "").strip() or None,
+                image_type=image_type,
+                product_id=product_id,
+                lot_id=lot_id,
+                wafer_id=wafer_id,
+                process_step=process_step,
                 calibration_nm_per_pixel=registration.calibration_nm_per_pixel,
                 pixel_width=decoded.pixel_width,
                 pixel_height=decoded.pixel_height,
             )
+            # Remember any value the operator typed so it appears in the
+            # combobox next time. Idempotent: existing values are ignored.
+            catalog_values: dict[CatalogCategory, str] = {
+                CatalogCategory.IMAGE_TYPE: image_type,
+                CatalogCategory.PRODUCT_ID: product_id,
+                CatalogCategory.LOT_ID: lot_id,
+                CatalogCategory.WAFER_ID: wafer_id,
+            }
+            if process_step:
+                catalog_values[CatalogCategory.PROCESS_STEP] = process_step
+            CatalogRepository(session).ensure_many(catalog_values)
             self._file_store.promote(temporary_key, final_key)
             if display_temporary_key is not None and display_key is not None:
                 self._file_store.promote(display_temporary_key, display_key)
@@ -121,7 +139,7 @@ class ImageService:
         self,
         *,
         query: str | None = None,
-        image_type: ImageType | None = None,
+        image_type: str | None = None,
     ) -> tuple[ImageListItem, ...]:
         with self._session_factory() as session:
             return ImageRepository(session).list_with_measurement_count(

@@ -11,7 +11,6 @@ from nanodb.domain.calculations import build_expected_summary
 from nanodb.domain.entities import (
     ExportSnapshot,
     Image,
-    ImageType,
     Measurement,
     ParameterType,
     Point,
@@ -27,7 +26,7 @@ def snapshot() -> ExportSnapshot:
         id=7,
         original_filename="측정 & sample.png",
         stored_filename="must-not-export.png",
-        image_type=ImageType.TEM,
+        image_type="TEM",
         product_id="PRODUCT-01",
         lot_id="LOT-01",
         wafer_id="WAFER-01",

@@ -11,8 +11,9 @@ from nanodb.api.middleware import install_request_middleware
 from nanodb.api.routes import router
 from nanodb.domain.calculations import calculate_measurement
 from nanodb.domain.entities import (
+    CatalogCategory,
+    CatalogOption,
     Image,
-    ImageType,
     Measurement,
     ParameterType,
     Point,
@@ -29,7 +30,7 @@ def sample_image() -> Image:
         id=1,
         original_filename="sample.png",
         stored_filename="private-key.png",
-        image_type=ImageType.TEM,
+        image_type="TEM",
         product_id="P1",
         lot_id="L1",
         wafer_id="W1",
@@ -44,7 +45,7 @@ def sample_image() -> Image:
 class FakeImageService:
     def __init__(self) -> None:
         self.registration = None
-        self.list_calls: list[tuple[str | None, ImageType | None]] = []
+        self.list_calls: list[tuple[str | None, str | None]] = []
         self.delete_calls: list[int] = []
 
     def register(self, stream: BytesIO, registration: object) -> Image:
@@ -56,7 +57,7 @@ class FakeImageService:
         self,
         *,
         query: str | None = None,
-        image_type: ImageType | None = None,
+        image_type: str | None = None,
     ) -> tuple[ImageListItem, ...]:
         self.list_calls.append((query, image_type))
         return (ImageListItem(sample_image(), 0),)
@@ -139,6 +140,42 @@ class FakeMeasurementService:
             raise DomainError("MEASUREMENT_NOT_FOUND", "Measurement was not found.")
 
 
+class FakeCatalogService:
+    def __init__(self) -> None:
+        self.created: list[tuple[str, str]] = []
+        self.deleted: list[int] = []
+
+    def list_all(self) -> tuple[CatalogOption, ...]:
+        return (
+            CatalogOption(
+                id=1,
+                category=CatalogCategory.IMAGE_TYPE,
+                value="TEM",
+                is_predefined=True,
+                created_at=NOW,
+            ),
+        )
+
+    def create(self, category: CatalogCategory, value: str) -> CatalogOption:
+        self.created.append((category.value, value))
+        return CatalogOption(
+            id=9,
+            category=category,
+            value=value,
+            is_predefined=False,
+            created_at=NOW,
+        )
+
+    def delete(self, option_id: int) -> None:
+        self.deleted.append(option_id)
+        if option_id == 1:
+            raise DomainError(
+                "PREDEFINED_OPTION", "Predefined options cannot be deleted."
+            )
+        if option_id == 999:
+            raise DomainError("OPTION_NOT_FOUND", "Option was not found.")
+
+
 def build_client() -> TestClient:
     app = FastAPI()
     app.include_router(router)
@@ -146,6 +183,7 @@ def build_client() -> TestClient:
     install_request_middleware(app)
     app.state.image_service = FakeImageService()
     app.state.measurement_service = FakeMeasurementService()
+    app.state.catalog_service = FakeCatalogService()
     app.state.summary_service = SimpleNamespace(
         get=lambda: Summary(1, 0, NOW),
     )
@@ -171,7 +209,7 @@ def test_catalog_forwards_search_and_type_filters_to_service() -> None:
     response = client.get("/api/images", params={"q": "lot42", "image_type": "SEM"})
 
     assert response.status_code == 200
-    assert client.app.state.image_service.list_calls == [("lot42", ImageType.SEM)]
+    assert client.app.state.image_service.list_calls == [("lot42", "SEM")]
 
 
 def test_catalog_without_filters_forwards_none() -> None:
@@ -371,3 +409,66 @@ def test_export_domain_failure_is_not_returned_as_zip() -> None:
     assert response.status_code == 422
     assert response.headers["content-type"].startswith("application/json")
     assert response.json()["code"] == "NO_MEASUREMENTS"
+
+
+def test_catalog_list_returns_options() -> None:
+    response = build_client().get("/api/catalog")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body == [
+        {
+            "id": 1,
+            "category": "image_type",
+            "value": "TEM",
+            "is_predefined": True,
+        }
+    ]
+
+
+def test_catalog_create_forwards_category_and_value() -> None:
+    client = build_client()
+
+    response = client.post(
+        "/api/catalog",
+        json={"category": "product_id", "value": "P-NEW"},
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["value"] == "P-NEW"
+    assert body["is_predefined"] is False
+    assert client.app.state.catalog_service.created == [("product_id", "P-NEW")]
+
+
+def test_catalog_create_rejects_unknown_category() -> None:
+    response = build_client().post(
+        "/api/catalog",
+        json={"category": "not_a_category", "value": "x"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_catalog_delete_returns_no_content() -> None:
+    client = build_client()
+
+    response = client.delete("/api/catalog/9")
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert client.app.state.catalog_service.deleted == [9]
+
+
+def test_catalog_delete_predefined_is_rejected() -> None:
+    response = build_client().delete("/api/catalog/1")
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "PREDEFINED_OPTION"
+
+
+def test_catalog_delete_missing_uses_not_found_envelope() -> None:
+    response = build_client().delete("/api/catalog/999")
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "OPTION_NOT_FOUND"

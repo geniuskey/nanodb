@@ -6,7 +6,11 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat
 
-from nanodb.domain.entities import ImageType, ParameterType, ReferenceStatus
+from nanodb.domain.entities import (
+    CatalogCategory,
+    ParameterType,
+    ReferenceStatus,
+)
 
 
 class ErrorDetail(BaseModel):
@@ -67,7 +71,7 @@ class MeasurementView(BaseModel):
 class ImageView(BaseModel):
     id: int
     original_filename: str
-    image_type: ImageType
+    image_type: str
     product_id: str
     lot_id: str
     wafer_id: str
@@ -108,3 +112,17 @@ class ReadinessView(BaseModel):
     status: str
     database: str
     upload_root: str
+
+
+class CatalogOptionView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    category: CatalogCategory
+    value: str
+    is_predefined: bool
+
+
+class CatalogCreateSchema(BaseModel):
+    category: CatalogCategory
+    value: str = Field(min_length=1, max_length=255)

@@ -6,13 +6,17 @@ from pathlib import Path
 import pytest
 from nanodb.adapters.file_store import FileStore
 from nanodb.adapters.image_decoder import ImageDecoder
-from nanodb.domain.entities import ImageType
 from nanodb.domain.errors import DomainError
 from nanodb.services.image_service import ImageRegistration, ImageService
 from PIL import Image as PillowImage
 
 
 class FailingCommitSession:
+    def execute(self, *_args: object, **_kwargs: object) -> None:
+        # Registration upserts catalog values via the same session before
+        # committing; accept and ignore that statement here.
+        return None
+
     def rollback(self) -> None:
         pass
 
@@ -26,7 +30,7 @@ class FailingCommitSession:
 def registration() -> ImageRegistration:
     return ImageRegistration(
         original_filename="sample.png",
-        image_type=ImageType.TEM,
+        image_type="TEM",
         product_id="P1",
         lot_id="L1",
         wafer_id="W1",

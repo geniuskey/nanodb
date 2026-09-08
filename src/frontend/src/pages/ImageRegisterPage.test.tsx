@@ -7,6 +7,33 @@ import { ImageRegisterPage } from "./ImageRegisterPage";
 
 afterEach(() => vi.unstubAllGlobals());
 
+const CATALOG = [
+  { id: 1, category: "image_type", value: "TEM", is_predefined: true },
+  { id: 2, category: "image_type", value: "SEM", is_predefined: true },
+  { id: 3, category: "product_id", value: "P-DRAM", is_predefined: false },
+  { id: 4, category: "wafer_id", value: "W01", is_predefined: true },
+];
+
+/** GET /api/catalog is answered from a fixture; other calls go to `rest`. */
+function stubFetch(rest: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) {
+  const mock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/api/catalog") && (!init?.method || init.method === "GET")) {
+      return Promise.resolve(jsonResponse(CATALOG));
+    }
+    return rest(input, init);
+  });
+  vi.stubGlobal("fetch", mock);
+  return mock;
+}
+
+/** Calls that registered an image (POST /api/images). */
+function registerCalls(mock: ReturnType<typeof vi.fn>) {
+  return mock.mock.calls.filter(
+    (call) => String(call[0]).endsWith("/api/images") && call[1]?.method === "POST",
+  );
+}
+
 function field(name: string) {
   return document.querySelector<HTMLInputElement>(`[name="${name}"]`)!;
 }
@@ -22,8 +49,8 @@ async function fillValidForm(calibration = "0.2") {
 }
 
 describe("ImageRegisterPage", () => {
-  it("reports every missing input beside its own field, without calling the server", async () => {
-    const fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock);
+  it("reports every missing input beside its own field, without registering", async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse({})));
     renderWithRouter(<ImageRegisterPage />);
 
     fireEvent.submit(screen.getByTestId("image-registration-form"));
@@ -34,11 +61,11 @@ describe("ImageRegisterPage", () => {
     expect(screen.getByTestId("error-lot_id")).toHaveTextContent("Lot ID는 필수입니다");
     expect(screen.getByTestId("error-wafer_id")).toHaveTextContent("Wafer ID는 필수입니다");
     expect(screen.getByTestId("error-calibration_nm_per_pixel")).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(registerCalls(fetchMock)).toHaveLength(0);
   });
 
   it("marks invalid fields for assistive technology and focuses the first one", async () => {
-    vi.stubGlobal("fetch", vi.fn());
+    stubFetch(() => Promise.resolve(jsonResponse({})));
     renderWithRouter(<ImageRegisterPage />);
     const product = screen.getByTestId("registration-product");
 
@@ -53,7 +80,7 @@ describe("ImageRegisterPage", () => {
   });
 
   it("rejects a non-positive calibration next to that field", async () => {
-    const fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock);
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse({})));
     renderWithRouter(<ImageRegisterPage />);
     const user = await fillValidForm("0");
 
@@ -62,52 +89,64 @@ describe("ImageRegisterPage", () => {
     expect(await screen.findByTestId("error-calibration_nm_per_pixel"))
       .toHaveTextContent("0보다 큰 숫자");
     expect(screen.queryByTestId("error-product_id")).not.toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(registerCalls(fetchMock)).toHaveLength(0);
   });
 
   it("submits multipart data once and disables while pending", async () => {
     let resolveRequest!: (value: Response) => void;
     const pending = new Promise<Response>((resolve) => { resolveRequest = resolve; });
-    const fetchMock = vi.fn().mockReturnValue(pending); vi.stubGlobal("fetch", fetchMock);
+    const fetchMock = stubFetch(() => pending);
     renderWithRouter(<ImageRegisterPage />);
     const user = await fillValidForm();
     await user.click(screen.getByTestId("registration-submit"));
     expect(screen.getByTestId("registration-submit")).toBeDisabled();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(registerCalls(fetchMock)).toHaveLength(1);
     resolveRequest(jsonResponse({ id: 5 }));
     await waitFor(() => expect(screen.getByTestId("registration-submit")).not.toBeDisabled());
   });
 
+  it("defaults the image type and can pick a catalog option", async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse({ id: 5 }, 201)));
+    renderWithRouter(<ImageRegisterPage />);
+    // The image type combobox starts on the predefined TEM value.
+    expect(field("image_type")).toHaveValue("TEM");
+    const user = await fillValidForm();
+    await user.click(screen.getByTestId("registration-submit"));
+
+    await waitFor(() => expect(registerCalls(fetchMock)).toHaveLength(1));
+    const body = registerCalls(fetchMock)[0][1]!.body as FormData;
+    expect(body.get("image_type")).toBe("TEM");
+  });
+
   it("sends the optional process step with the image", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ id: 5 }, 201));
-    vi.stubGlobal("fetch", fetchMock);
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse({ id: 5 }, 201)));
     renderWithRouter(<ImageRegisterPage />);
     const user = await fillValidForm();
     await user.type(screen.getByTestId("registration-process-step"), "Gate Etch");
     await user.click(screen.getByTestId("registration-submit"));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    const body = fetchMock.mock.calls[0][1].body as FormData;
+    await waitFor(() => expect(registerCalls(fetchMock)).toHaveLength(1));
+    const body = registerCalls(fetchMock)[0][1]!.body as FormData;
     // One step for the whole image: the operator picks it once at registration
     // instead of retyping it on every figure drawn later.
     expect(body.get("process_step")).toBe("Gate Etch");
   });
 
   it("registers without a process step because the field is optional", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ id: 5 }, 201));
-    vi.stubGlobal("fetch", fetchMock);
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse({ id: 5 }, 201)));
     renderWithRouter(<ImageRegisterPage />);
     const user = await fillValidForm();
     await user.click(screen.getByTestId("registration-submit"));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    expect(screen.queryByTestId("error-process_step")).not.toBeInTheDocument();
-    const body = fetchMock.mock.calls[0][1].body as FormData;
+    await waitFor(() => expect(registerCalls(fetchMock)).toHaveLength(1));
+    const body = registerCalls(fetchMock)[0][1]!.body as FormData;
     expect(body.get("process_step")).toBe("");
   });
 
   it("keeps entered values when the server rejects registration", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ code: "INVALID_IMAGE_FILE", message: "실제 PNG/JPEG가 아닙니다." }, 422)));
+    stubFetch(() =>
+      Promise.resolve(jsonResponse({ code: "INVALID_IMAGE_FILE", message: "실제 PNG/JPEG가 아닙니다." }, 422)),
+    );
     renderWithRouter(<ImageRegisterPage />);
     const user = await fillValidForm();
     await user.click(screen.getByTestId("registration-submit"));

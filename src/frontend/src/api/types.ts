@@ -1,4 +1,24 @@
-export type ImageType = "SEM" | "TEM";
+/** image_type is now free text managed via the catalog, not a fixed union. */
+export type ImageType = string;
+
+export type CatalogCategory =
+  | "image_type"
+  | "product_id"
+  | "lot_id"
+  | "wafer_id"
+  | "process_step";
+
+export interface CatalogOption {
+  id: number;
+  category: CatalogCategory;
+  value: string;
+  is_predefined: boolean;
+}
+
+export interface CatalogCreateInput {
+  category: CatalogCategory;
+  value: string;
+}
 
 export interface ParameterSummary {
   parameter_type: ParameterType;

@@ -225,7 +225,6 @@ def load_into_demo(rows: list[dict[str, str]]) -> int:
     """Seed prepared derivatives into the demo database and upload root."""
     # Imported lazily so the offline prepare path needs no backend dependency.
     from nanodb.adapters import FileStore, ImageDecoder
-    from nanodb.domain.entities import ImageType
     from nanodb.persistence.database import create_session_factory
     from nanodb.services.image_service import ImageRegistration, ImageService
     from nanodb.settings import Settings
@@ -252,7 +251,7 @@ def load_into_demo(rows: list[dict[str, str]]) -> int:
         demo_path = DEMO_IMAGE_ROOT / row["demo_filename"]
         registration = ImageRegistration(
             original_filename=row["demo_filename"],
-            image_type=ImageType(row["image_type"]),
+            image_type=row["image_type"],
             product_id=row["product_id"],
             lot_id=row["lot_id"],
             wafer_id=row["wafer_id"],

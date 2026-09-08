@@ -6,12 +6,15 @@ from nanodb.api.schemas import (
     MeasurementItemView,
     MeasurementView,
     PointView,
+    SegmentationClassStatView,
+    SegmentationResultView,
 )
 from nanodb.domain.entities import (
     CatalogOption,
     Image,
     Measurement,
     MeasurementItem,
+    SegmentationResult,
 )
 
 
@@ -56,6 +59,39 @@ def measurement_view(measurement: Measurement) -> MeasurementView:
         measurement_method=measurement.measurement_method,
         reference_status=measurement.reference_status,
         created_at=measurement.created_at,
+    )
+
+
+def segmentation_result_view(
+    result: SegmentationResult,
+    *,
+    replaced: bool = False,
+) -> SegmentationResultView:
+    return SegmentationResultView(
+        image_id=result.image_id,
+        method=result.method,
+        classes=result.classes,
+        denoise_weight=result.denoise_weight,
+        min_size=result.min_size,
+        thresholds=list(result.thresholds),
+        class_stats=[
+            SegmentationClassStatView(
+                class_index=stat.class_index,
+                intensity_range=list(stat.intensity_range),
+                pixels=stat.pixels,
+                area_fraction=stat.area_fraction,
+                mean_intensity=stat.mean_intensity,
+                area_nm2=stat.area_nm2,
+            )
+            for stat in result.class_stats
+        ],
+        duration_ms=result.duration_ms,
+        downscaled=result.downscaled,
+        has_tagged_tiff=result.tagged_path is not None,
+        map_url=f"/api/images/{result.image_id}/segmentation/map",
+        boundary_url=f"/api/images/{result.image_id}/segmentation/boundary",
+        created_at=result.created_at,
+        replaced=replaced,
     )
 
 

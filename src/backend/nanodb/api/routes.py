@@ -13,6 +13,7 @@ from nanodb.api.mappers import (
     image_view,
     measurement_item_view,
     measurement_view,
+    segmentation_result_view,
 )
 from nanodb.api.schemas import (
     CatalogCreateSchema,
@@ -29,11 +30,14 @@ from nanodb.api.schemas import (
     MeasurementTypeSummaryView,
     MeasurementView,
     ReadinessView,
+    SegmentationRequestSchema,
+    SegmentationResultView,
     SummaryView,
 )
 from nanodb.domain.entities import Point
 from nanodb.services.image_service import ImageRegistration
 from nanodb.services.measurement_service import MeasurementInput
+from nanodb.services.segmentation_service import SegmentationParams
 
 router = APIRouter(prefix="/api")
 
@@ -278,6 +282,55 @@ def update_measurement_item(
 def delete_measurement_item(item_id: int, request: Request) -> Response:
     request.app.state.measurement_item_service.delete(item_id)
     return Response(status_code=204)
+
+
+@router.post(
+    "/images/{image_id}/segmentation",
+    response_model=SegmentationResultView,
+)
+def run_segmentation(
+    image_id: int,
+    request: Request,
+    payload: SegmentationRequestSchema | None = None,
+) -> SegmentationResultView:
+    options = payload or SegmentationRequestSchema()
+    run = request.app.state.segmentation_service.run(
+        image_id,
+        SegmentationParams(
+            classes=options.classes,
+            denoise_weight=options.denoise_weight,
+            min_size=options.min_size,
+        ),
+    )
+    return segmentation_result_view(run.result, replaced=run.replaced)
+
+
+@router.get(
+    "/images/{image_id}/segmentation",
+    response_model=SegmentationResultView,
+)
+def get_segmentation(image_id: int, request: Request) -> SegmentationResultView:
+    result = request.app.state.segmentation_service.get(image_id)
+    return segmentation_result_view(result)
+
+
+@router.get("/images/{image_id}/segmentation/{variant}")
+def segmentation_variant(
+    image_id: int,
+    variant: str,
+    request: Request,
+) -> FileResponse:
+    return FileResponse(
+        request.app.state.segmentation_service.variant_path(image_id, variant)
+    )
+
+
+@router.get("/images/{image_id}/tagged")
+def tagged_image(image_id: int, request: Request) -> FileResponse:
+    return FileResponse(
+        request.app.state.segmentation_service.tagged_path(image_id),
+        media_type="image/tiff",
+    )
 
 
 @router.get("/images/{image_id}/context-export")

@@ -437,11 +437,14 @@ source = { editable = "." }
 dependencies = [
     { name = "alembic" },
     { name = "fastapi" },
+    { name = "numpy" },
     { name = "pillow" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
+    { name = "scikit-image" },
+    { name = "scipy" },
     { name = "sqlalchemy" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -456,21 +459,21 @@ dev = [
 ]
 segmentation = [
     { name = "matplotlib" },
-    { name = "numpy" },
-    { name = "scikit-image" },
     { name = "scikit-learn" },
-    { name = "scipy" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = "==1.16.5" },
     { name = "fastapi", specifier = "==0.128.8" },
+    { name = "numpy", specifier = ">=2" },
     { name = "pillow", specifier = "==11.3.0" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.2.13" },
     { name = "pydantic", specifier = "==2.13.5" },
     { name = "pydantic-settings", specifier = "==2.11.0" },
     { name = "python-multipart", specifier = "==0.0.20" },
+    { name = "scikit-image", specifier = ">=0.26" },
+    { name = "scipy", specifier = ">=1.13" },
     { name = "sqlalchemy", specifier = "==2.0.52" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.39.0" },
 ]
@@ -485,10 +488,7 @@ dev = [
 ]
 segmentation = [
     { name = "matplotlib", specifier = ">=3.9" },
-    { name = "numpy", specifier = ">=2" },
-    { name = "scikit-image", specifier = ">=0.24" },
     { name = "scikit-learn", specifier = ">=1.5" },
-    { name = "scipy", specifier = ">=1.13" },
 ]
 
 [[package]]

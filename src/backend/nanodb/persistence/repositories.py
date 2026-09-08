@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import cast
 
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -17,15 +18,19 @@ from nanodb.domain.entities import (
     Image,
     Measurement,
     MeasurementItem,
+    MeasurementSource,
     MeasurementType,
     MeasurementTypeStat,
     Point,
+    SegmentationClassStat,
+    SegmentationResult,
 )
 from nanodb.persistence.models import (
     CatalogOptionModel,
     ImageModel,
     MeasurementItemModel,
     MeasurementModel,
+    SegmentationResultModel,
 )
 
 
@@ -65,6 +70,8 @@ def _to_measurement(model: MeasurementModel) -> Measurement:
         calibration_nm_per_pixel=model.calibration_nm_per_pixel,
         label=model.label,
         note=model.note,
+        source=MeasurementSource(model.source),
+        confidence=model.confidence,
         created_at=model.created_at,
     )
 
@@ -344,6 +351,8 @@ class MeasurementRepository:
         calibration_nm_per_pixel: float,
         label: str | None,
         note: str | None,
+        source: MeasurementSource = MeasurementSource.MANUAL,
+        confidence: float | None = None,
     ) -> Measurement:
         model = MeasurementModel(
             image_id=image_id,
@@ -355,6 +364,8 @@ class MeasurementRepository:
             calibration_nm_per_pixel=calibration_nm_per_pixel,
             label=label,
             note=note,
+            source=source.value,
+            confidence=confidence,
         )
         self._session.add(model)
         self._session.flush()
@@ -466,9 +477,171 @@ class MeasurementRepository:
             count += 1
         return count
 
+    def delete_auto_by_image(self, image_id: int) -> int:
+        """Delete only the auto (feature-extractor) measurements for an image.
+
+        Human-drawn ('manual') measurements are never touched, so re-running the
+        feature extractor replaces machine output without erasing evidence a
+        person recorded.
+        """
+        count = 0
+        statement = select(MeasurementModel).where(
+            MeasurementModel.image_id == image_id,
+            MeasurementModel.source == MeasurementSource.AUTO.value,
+        )
+        for model in self._session.scalars(statement):
+            self._session.delete(model)
+            count += 1
+        return count
+
     def delete_all(self) -> None:
         for model in self._session.scalars(select(MeasurementModel)):
             self._session.delete(model)
+
+
+def _class_stat_from_entry(entry: dict[str, object]) -> SegmentationClassStat:
+    """Rebuild a class statistic from its JSONB representation.
+
+    JSONB values arrive typed as ``object``; each field is coerced back to its
+    concrete numeric type. ``mean_intensity`` and ``area_nm2`` may be null.
+    """
+    intensity_range = cast("list[float]", entry["intensity_range"])
+    mean_intensity = entry["mean_intensity"]
+    area_nm2 = entry["area_nm2"]
+    return SegmentationClassStat(
+        class_index=int(cast("int", entry["class_index"])),
+        intensity_range=(float(intensity_range[0]), float(intensity_range[1])),
+        pixels=int(cast("int", entry["pixels"])),
+        area_fraction=float(cast("float", entry["area_fraction"])),
+        mean_intensity=(
+            None if mean_intensity is None else float(cast("float", mean_intensity))
+        ),
+        area_nm2=(None if area_nm2 is None else float(cast("float", area_nm2))),
+    )
+
+
+def _to_segmentation_result(model: SegmentationResultModel) -> SegmentationResult:
+    return SegmentationResult(
+        id=model.id,
+        image_id=model.image_id,
+        method=model.method,
+        classes=model.classes,
+        denoise_weight=model.denoise_weight,
+        min_size=model.min_size,
+        thresholds=tuple(float(value) for value in model.thresholds),
+        class_stats=tuple(
+            _class_stat_from_entry(entry) for entry in model.class_stats
+        ),
+        map_path=model.map_path,
+        boundary_path=model.boundary_path,
+        labels_path=model.labels_path,
+        tagged_path=model.tagged_path,
+        duration_ms=model.duration_ms,
+        downscaled=model.downscaled,
+        created_at=model.created_at,
+    )
+
+
+class SegmentationResultRepository:
+    """At most one multi-Otsu segmentation per image."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def find_by_image(self, image_id: int) -> SegmentationResult | None:
+        model = self._session.scalar(
+            select(SegmentationResultModel).where(
+                SegmentationResultModel.image_id == image_id
+            )
+        )
+        return _to_segmentation_result(model) if model else None
+
+    def delete_by_image(self, image_id: int) -> SegmentationResult | None:
+        """Remove an image's segmentation row, returning the prior value.
+
+        The caller uses the returned paths to delete the now-orphaned derived
+        files after the row is committed.
+        """
+        model = self._session.scalar(
+            select(SegmentationResultModel).where(
+                SegmentationResultModel.image_id == image_id
+            )
+        )
+        if model is None:
+            return None
+        prior = _to_segmentation_result(model)
+        self._session.delete(model)
+        self._session.flush()
+        return prior
+
+    def upsert(
+        self,
+        *,
+        image_id: int,
+        method: str,
+        classes: int,
+        denoise_weight: float,
+        min_size: int,
+        thresholds: tuple[float, ...],
+        class_stats: tuple[SegmentationClassStat, ...],
+        map_path: str,
+        boundary_path: str,
+        labels_path: str,
+        tagged_path: str | None,
+        duration_ms: int,
+        downscaled: bool,
+    ) -> SegmentationResult:
+        """Insert or replace the single segmentation row for an image.
+
+        Uses an ON CONFLICT upsert on ``image_id`` so two concurrent runs on the
+        same image resolve to one row rather than a unique-constraint failure.
+        """
+        payload = {
+            "image_id": image_id,
+            "method": method,
+            "classes": classes,
+            "denoise_weight": denoise_weight,
+            "min_size": min_size,
+            "thresholds": list(thresholds),
+            "class_stats": [
+                {
+                    "class_index": stat.class_index,
+                    "intensity_range": list(stat.intensity_range),
+                    "pixels": stat.pixels,
+                    "area_fraction": stat.area_fraction,
+                    "mean_intensity": stat.mean_intensity,
+                    "area_nm2": stat.area_nm2,
+                }
+                for stat in class_stats
+            ],
+            "map_path": map_path,
+            "boundary_path": boundary_path,
+            "labels_path": labels_path,
+            "tagged_path": tagged_path,
+            "duration_ms": duration_ms,
+            "downscaled": downscaled,
+        }
+        statement = pg_insert(SegmentationResultModel).values(**payload)
+        statement = statement.on_conflict_do_update(
+            index_elements=[SegmentationResultModel.image_id],
+            set_={key: statement.excluded[key] for key in payload if key != "image_id"},
+        )
+        self._session.execute(statement)
+        self._session.flush()
+        result = self.find_by_image(image_id)
+        if result is None:  # pragma: no cover - upsert always leaves a row
+            raise RuntimeError("Segmentation upsert did not persist a row.")
+        return result
+
+    def set_tagged_path(self, image_id: int, tagged_path: str | None) -> None:
+        model = self._session.scalar(
+            select(SegmentationResultModel).where(
+                SegmentationResultModel.image_id == image_id
+            )
+        )
+        if model is not None:
+            model.tagged_path = tagged_path
+            self._session.flush()
 
 
 def database_clock(session: Session) -> datetime:

@@ -104,6 +104,13 @@ class MeasurementModel(Base):
             name="ck_measurements_positive_calibration",
         ),
         CheckConstraint("value > 0", name="ck_measurements_positive_value"),
+        CheckConstraint(
+            "source IN ('manual', 'auto')", name="ck_measurements_source"
+        ),
+        CheckConstraint(
+            "confidence IS NULL OR (confidence >= 0 AND confidence <= 1)",
+            name="ck_measurements_confidence_range",
+        ),
         Index("ix_measurements_image_created", "image_id", "created_at", "id"),
     )
 
@@ -127,6 +134,12 @@ class MeasurementModel(Base):
     calibration_nm_per_pixel: Mapped[float] = mapped_column(Float, nullable=False)
     label: Mapped[str | None] = mapped_column(String(255), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Provenance of the measurement: 'manual' (human-drawn) or 'auto' (feature
+    # extractor). 'confidence' is a 0..1 self-estimate, present only for 'auto'.
+    source: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="manual"
+    )
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -153,6 +166,51 @@ class CatalogOptionModel(Base):
     category: Mapped[str] = mapped_column(String(32), nullable=False)
     value: Mapped[str] = mapped_column(String(255), nullable=False)
     is_predefined: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+
+class SegmentationResultModel(Base):
+    """The multi-Otsu segmentation of one image; at most one per image.
+
+    Deleting the image cascades to this row (ON DELETE CASCADE); the service
+    removes the derived files separately, since the database does not own them.
+    """
+
+    __tablename__ = "segmentation_results"
+    __table_args__ = (
+        CheckConstraint(
+            "classes >= 2 AND classes <= 6", name="ck_segmentation_classes"
+        ),
+        CheckConstraint("denoise_weight > 0", name="ck_segmentation_denoise_weight"),
+        CheckConstraint("min_size >= 0", name="ck_segmentation_min_size"),
+        CheckConstraint("duration_ms >= 0", name="ck_segmentation_duration"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    image_id: Mapped[int] = mapped_column(
+        ForeignKey("images.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    method: Mapped[str] = mapped_column(String(64), nullable=False)
+    classes: Mapped[int] = mapped_column(Integer, nullable=False)
+    denoise_weight: Mapped[float] = mapped_column(Float, nullable=False)
+    min_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    thresholds: Mapped[list[float]] = mapped_column(JSONB, nullable=False)
+    class_stats: Mapped[list[dict[str, object]]] = mapped_column(JSONB, nullable=False)
+    map_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    boundary_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    labels_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    tagged_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    downscaled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false"
     )
     created_at: Mapped[datetime] = mapped_column(

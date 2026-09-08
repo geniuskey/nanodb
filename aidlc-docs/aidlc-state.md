@@ -29,6 +29,36 @@
 | Security Baseline | No | Requirements Analysis |
 | Property-Based Testing | No | Requirements Analysis |
 
+## Hackathon Demo — Auto Analysis Feature (2026-09-09)
+
+New requirement: automatic TEM/SEM analysis in the app (multi-Otsu brightness
+segmentation, per-class statistics, six boundary structural features, TIFF
+private-tag derivative copies, a web UI distinguishing auto vs manual
+measurements, and batch processing). Split into three units:
+
+- **Unit A — Segmentation + TIFF Tag**: DONE and verified 2026-09-09. Ported
+  `load_gray`/`segment`/`summarize` from `scripts/segment_tem_demo` (Pillow for
+  PNGs, never matplotlib), added `DerivedStore` (atomic writes under
+  `<upload_root>/derived/{image_id}/`, originals never touched), private-tag TIFF
+  derivation (65010-65013), `SegmentationResultModel` + migration 0007,
+  `SegmentationService`, and the segmentation/tagged routes. `uv run pytest`
+  (149 passed, 26 DB-skipped), `uv run mypy` (strict) and `uv run ruff` all green.
+- **Unit B — Feature Extraction**: not started.
+- **Unit C — UI & Batch**: not started.
+
+**Infrastructure Design skipped** (all units): no new infrastructure. The feature
+reuses the existing FastAPI + PostgreSQL + local file store; derived artifacts
+live under the existing upload root in a new `derived/` subtree owned by
+`DerivedStore`, and the only schema change is additive migrations.
+
+Approved deltas (2026-09-09): measurement `source`/`confidence` reconciled with
+the existing `measurement_method`; new `DerivedStore` adapter; numpy/scikit-image
+(>=0.26)/scipy promoted to main dependencies with matplotlib server-excluded;
+mypy overrides for skimage/scipy with `NDArray` annotations; six features mapped
+to length/angle/curvature; skimage `min_size`/`area_threshold` deprecation fixed
+via `max_size`; image delete cascades segmentation + derived dir + auto
+measurements. `git push` intentionally not performed.
+
 ## Stage Progress
 
 ### INCEPTION PHASE

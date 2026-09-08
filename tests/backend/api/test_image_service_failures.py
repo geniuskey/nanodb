@@ -4,6 +4,7 @@ from io import BytesIO
 from pathlib import Path
 
 import pytest
+from nanodb.adapters.derived_store import DerivedStore
 from nanodb.adapters.file_store import FileStore
 from nanodb.adapters.image_decoder import ImageDecoder
 from nanodb.domain.errors import DomainError
@@ -57,7 +58,9 @@ def test_bounded_write_removes_partial_oversized_file(tmp_path: Path) -> None:
 
 def test_invalid_image_removes_temporary_file(tmp_path: Path) -> None:
     store = FileStore(tmp_path)
-    service = ImageService(lambda: FailingCommitSession(), store, ImageDecoder())
+    service = ImageService(
+        lambda: FailingCommitSession(), store, ImageDecoder(), DerivedStore(tmp_path)
+    )
 
     with pytest.raises(DomainError) as caught:
         service.register(BytesIO(b"not an image"), registration())
@@ -71,7 +74,9 @@ def test_database_commit_failure_removes_promoted_file(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     store = FileStore(tmp_path)
-    service = ImageService(lambda: FailingCommitSession(), store, ImageDecoder())
+    service = ImageService(
+        lambda: FailingCommitSession(), store, ImageDecoder(), DerivedStore(tmp_path)
+    )
 
     class FakeRepository:
         def __init__(self, _session: object) -> None:
@@ -88,5 +93,9 @@ def test_database_commit_failure_removes_promoted_file(
     with pytest.raises(RuntimeError, match="commit failed"):
         service.register(png_bytes(), registration())
 
-    assert [path for path in tmp_path.iterdir() if path.name != ".staging"] == []
+    assert [
+        path
+        for path in tmp_path.iterdir()
+        if path.name not in {".staging", "derived"}
+    ] == []
     assert list(store.staging_root.iterdir()) == []

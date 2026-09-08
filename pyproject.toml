@@ -7,11 +7,14 @@ requires-python = "==3.12.*"
 dependencies = [
   "alembic==1.16.5",
   "fastapi==0.128.8",
+  "numpy>=2",
   "pillow==11.3.0",
   "psycopg[binary]==3.2.13",
   "pydantic==2.13.5",
   "pydantic-settings==2.11.0",
   "python-multipart==0.0.20",
+  "scikit-image>=0.26",
+  "scipy>=1.13",
   "sqlalchemy==2.0.52",
   "uvicorn[standard]==0.39.0",
 ]
@@ -26,10 +29,7 @@ dev = [
 ]
 segmentation = [
     "matplotlib>=3.9",
-    "numpy>=2",
-    "scikit-image>=0.24",
     "scikit-learn>=1.5",
-    "scipy>=1.13",
 ]
 
 [build-system]
@@ -60,6 +60,13 @@ python_version = "3.12"
 strict = true
 mypy_path = "src/backend"
 packages = ["nanodb"]
+
+# Scientific image libraries ship no type information; segmentation code annotates
+# its own array types with numpy.typing instead of leaking Any across the boundary.
+[[tool.mypy.overrides]]
+module = ["skimage.*", "scipy.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
 
 [tool.coverage.run]
 source = ["src/backend/nanodb"]

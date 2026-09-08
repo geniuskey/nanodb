@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from nanodb.adapters import FileStore, ImageDecoder
+from nanodb.adapters import DerivedStore, FileStore, ImageDecoder
 from nanodb.api.errors import install_error_handlers
 from nanodb.api.middleware import install_request_middleware
 from nanodb.api.routes import router
@@ -19,6 +19,7 @@ from nanodb.services.context_export_service import ContextExportService
 from nanodb.services.image_service import ImageService
 from nanodb.services.measurement_item_service import MeasurementItemService
 from nanodb.services.measurement_service import MeasurementService
+from nanodb.services.segmentation_service import SegmentationService
 from nanodb.services.summary_service import SummaryService
 from nanodb.settings import Settings
 
@@ -33,17 +34,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         pool_timeout=resolved.database_pool_timeout,
     )
     file_store = FileStore(resolved.upload_root)
+    derived_store = DerivedStore(resolved.upload_root)
 
     app = FastAPI(title="NANoDB Core", version="0.1.0")
     app.state.engine = engine
     app.state.session_factory = session_factory
     app.state.file_store = file_store
+    app.state.derived_store = derived_store
     app.state.image_service = ImageService(
         session_factory,
         file_store,
         ImageDecoder(),
+        derived_store,
     )
     app.state.measurement_service = MeasurementService(session_factory)
+    app.state.segmentation_service = SegmentationService(
+        session_factory,
+        file_store,
+        derived_store,
+    )
     app.state.measurement_item_service = MeasurementItemService(session_factory)
     app.state.catalog_service = CatalogService(session_factory)
     app.state.summary_service = SummaryService(session_factory)

@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from nanodb.adapters.derived_store import DerivedStore
 from nanodb.adapters.file_store import FileStore
 from nanodb.adapters.image_decoder import ImageDecoder
 from nanodb.domain.entities import CatalogCategory, Image
@@ -40,10 +41,12 @@ class ImageService:
         session_factory: sessionmaker[Session],
         file_store: FileStore,
         decoder: ImageDecoder,
+        derived_store: DerivedStore,
     ) -> None:
         self._session_factory = session_factory
         self._file_store = file_store
         self._decoder = decoder
+        self._derived_store = derived_store
 
     @staticmethod
     def _validate_registration(registration: ImageRegistration) -> None:
@@ -157,10 +160,11 @@ class ImageService:
     def delete(self, image_id: int) -> None:
         """Delete an image with its measurements, then its file.
 
-        Child rows are removed first because the foreign key uses RESTRICT.
-        The file is deleted only after the rows are committed, so a failure
-        leaves an orphan file (recoverable) rather than a row pointing at a
-        missing file.
+        Measurements are removed first because their foreign key uses RESTRICT;
+        the segmentation row is removed by ON DELETE CASCADE. Files (original,
+        display derivative and the whole derived directory) are deleted only
+        after the rows are committed, so a failure leaves recoverable orphan
+        files rather than rows pointing at missing files.
         """
         with self._session_factory() as session:
             repository = ImageRepository(session)
@@ -173,6 +177,7 @@ class ImageService:
         self._file_store.delete_if_exists(image.stored_filename)
         if image.display_filename is not None:
             self._file_store.delete_if_exists(image.display_filename)
+        self._derived_store.remove_image_dir(image_id)
 
     def image_path(self, image_id: int) -> Path:
         """Path to serve for the image: the browser-renderable display

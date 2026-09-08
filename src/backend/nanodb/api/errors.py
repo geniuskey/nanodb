@@ -19,7 +19,7 @@ def install_error_handlers(app: FastAPI) -> None:
         _request: Request,
         error: DomainError,
     ) -> JSONResponse:
-        status = 404 if error.code.endswith("NOT_FOUND") else 422
+        status = error.status or (404 if error.code.endswith("NOT_FOUND") else 422)
         envelope = ErrorEnvelope(
             code=error.code,
             message=error.message,

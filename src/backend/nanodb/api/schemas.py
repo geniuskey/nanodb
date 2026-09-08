@@ -144,6 +144,42 @@ class ReadinessView(BaseModel):
     upload_root: str
 
 
+class SegmentationRequestSchema(BaseModel):
+    """Optional overrides for a segmentation run; each field keeps its default."""
+
+    classes: int = Field(default=4, ge=2, le=6)
+    denoise_weight: float = Field(default=0.08, gt=0)
+    min_size: int = Field(default=400, ge=0)
+
+
+class SegmentationClassStatView(BaseModel):
+    class_index: int
+    intensity_range: list[float]
+    pixels: int
+    area_fraction: float
+    mean_intensity: float | None
+    area_nm2: float | None
+
+
+class SegmentationResultView(BaseModel):
+    image_id: int
+    method: str
+    classes: int
+    denoise_weight: float
+    min_size: int
+    thresholds: list[float]
+    class_stats: list[SegmentationClassStatView]
+    duration_ms: int
+    downscaled: bool
+    has_tagged_tiff: bool
+    map_url: str
+    boundary_url: str
+    created_at: datetime
+    # True when this run replaced a prior segmentation of the same image. Always
+    # false on a plain GET.
+    replaced: bool = False
+
+
 class CatalogOptionView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

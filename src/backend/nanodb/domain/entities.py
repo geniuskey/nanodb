@@ -56,6 +56,18 @@ class ReferenceStatus(StrEnum):
     UNREVIEWED = "unreviewed"
 
 
+class MeasurementSource(StrEnum):
+    """Who produced a measurement.
+
+    ``MANUAL`` is a human-drawn measurement; ``AUTO`` is derived by the feature
+    extractor from a segmentation label map. Auto values are never presented as
+    a verified reference: the two are kept distinct in storage and on screen.
+    """
+
+    MANUAL = "manual"
+    AUTO = "auto"
+
+
 @dataclass(frozen=True, slots=True)
 class Point:
     x: float
@@ -119,8 +131,16 @@ class Measurement:
     label: str | None
     note: str | None
     created_at: datetime
-    measurement_method: str = "manual"
+    # Provenance: manual (human-drawn) or auto (feature extractor). ``confidence``
+    # is a 0..1 self-estimate populated only for auto measurements.
+    source: MeasurementSource = MeasurementSource.MANUAL
+    confidence: float | None = None
     reference_status: ReferenceStatus = ReferenceStatus.UNREVIEWED
+
+    @property
+    def measurement_method(self) -> str:
+        """Backwards-compatible alias for ``source`` used by the transport view."""
+        return self.source.value
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,6 +181,50 @@ class MeasurementTypeStat:
     mean: float
     min: float
     max: float
+
+
+@dataclass(frozen=True, slots=True)
+class SegmentationClassStat:
+    """Per-class statistics of a multi-Otsu segmentation.
+
+    ``intensity_range`` is the normalized [0, 1] brightness band the class
+    covers. ``area_nm2`` is ``pixels * calibration**2`` and is ``None`` when the
+    image has no calibration. ``mean_intensity`` is ``None`` for an empty class.
+    """
+
+    class_index: int
+    intensity_range: tuple[float, float]
+    pixels: int
+    area_fraction: float
+    mean_intensity: float | None
+    area_nm2: float | None
+
+
+@dataclass(frozen=True, slots=True)
+class SegmentationResult:
+    """A stored multi-Otsu segmentation of one image and its derived artifacts.
+
+    Paths are stored keys under the derived-file root, not absolute paths, so a
+    relocated data directory keeps working. ``downscaled`` records whether the
+    image was processed at reduced resolution to meet the time budget; the
+    stored label map is always at original resolution.
+    """
+
+    id: int
+    image_id: int
+    method: str
+    classes: int
+    denoise_weight: float
+    min_size: int
+    thresholds: tuple[float, ...]
+    class_stats: tuple[SegmentationClassStat, ...]
+    map_path: str
+    boundary_path: str
+    labels_path: str
+    tagged_path: str | None
+    duration_ms: int
+    downscaled: bool
+    created_at: datetime
 
 
 @dataclass(frozen=True, slots=True)

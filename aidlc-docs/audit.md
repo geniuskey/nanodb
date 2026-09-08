@@ -1894,3 +1894,27 @@ UIX-009: 목록과 홈 KPI의 첫 조회에 결과와 같은 모양의 자리 �
 **Context**: CONSTRUCTION - Code Generation: requirement 2 measurement scaled from representative to all images
 
 ---
+
+## Hackathon Demo — Requirements Analysis & Unit A Approval
+**Timestamp**: 2026-09-09T02:00:00Z
+**User Input**: "해커톤 데모 시나리오가 정해졌어. 아래는 데모 시나리오로부터 만들어진 요구사항인데 네가 이를 반영해서 sw 업데이트 해줘. (자동 TEM/SEM 분석: multi-Otsu 밝기 분할 4클래스, 클래스별 픽셀·면적·평균강도·실면적, 경계 6개 구조 특징, TIFF 사설태그 파생본, 웹 UI에서 분할 결과·자동/수동 구분, 배치. 제약: 원본 절대 미변경·모든 산출물 derived/ 신규파일, git push 금지, 서버코드 matplotlib import 금지, 분할 알고리즘 재설계 금지(scripts/segment_tem_demo의 load_gray/segment/summarize 포팅), 자동값을 검증된 것으로 표기 금지. Unit A/B/C 분할, 각 단계 Functional→NFR→Code, Infrastructure Design 생략. 완료조건: pytest·frontend·playwright·ruff·mypy·typecheck 전부 통과. Unit A부터 시작하라.)"
+**AI Response**: "요구사항 분석 제시 + 7개 델타 신고(measurement source/measurement_method 정합, DerivedStore 신규 어댑터, numpy/scikit-image/scipy 메인 의존성 이동·matplotlib 서버 제외, skimage/scipy mypy override + NDArray 주석, 6개 특징을 length/angle/curvature로 매핑, 스크립트 함수 포팅하며 skimage deprecation 수정, 이미지 삭제 시 segmentation·derived·auto measurement 연쇄 삭제). Infrastructure Design 생략 사유: 신규 인프라 없음(기존 FastAPI+PostgreSQL+로컬 파일스토어 재사용, 파생물은 upload_root 하위 derived/에 저장)."
+**Context**: INCEPTION - Requirements Analysis for the hackathon demo auto-analysis feature; approval gate
+
+---
+
+## Hackathon Demo — Unit A Approval
+**Timestamp**: 2026-09-09T02:05:00Z
+**User Input**: "승인, Unit A 시작"
+**AI Response**: "요구사항 분석과 7개 델타 승인 접수. Unit A(Segmentation + TIFF Tag) 착수."
+**Context**: INCEPTION - Requirements Analysis approved; proceeding to Unit A
+
+---
+
+## Hackathon Demo — Unit A Code Generation Complete
+**Timestamp**: 2026-09-09T02:45:00Z
+**User Input**: (없음 — 승인된 Unit A 실행)
+**AI Response**: "Unit A 구현·검증 완료. 도메인: domain/segmentation.py(load_gray/segment/summarize를 scripts/segment_tem_demo에서 포팅, matplotlib 미사용·Pillow로 PNG 생성, 결정론적, 1.2M px 초과 시 다운스케일 후 nearest 업스케일, UNSEGMENTABLE_IMAGE 처리, skimage 0.26 deprecation을 max_size로 교체). 엔티티: MeasurementSource(MANUAL/AUTO)+confidence, SegmentationClassStat/SegmentationResult. 어댑터: derived_store.py(원자적 쓰기·경로탈출 가드·이미지 단위 삭제, 원본 미변경), tiff_tags.py(사설태그 65000-65004 복사 + 65010-65013 추가, source==destination 거부, 원본 무결성). 영속: SegmentationResultModel + migration 0007(source/confidence 컬럼·CHECK, segmentation_results 테이블), SegmentationResultRepository(upsert on_conflict, delete_auto_by_image는 manual 미삭제). 서비스: segmentation_service.py(run/get/variant_path/tagged_path/refresh_tags, 구조화 JSON 로깅, 400/409 status). API: POST/GET /api/images/{id}/segmentation, GET .../segmentation/{variant}, GET .../tagged + 스키마/매퍼. 검증: uv run pytest 149 passed·26 skipped(DB 없음), uv run mypy 통과(strict, Any 미사용), uv run ruff check 통과. 신규 테스트 46개(도메인 결정론·합성패턴 정확도·다운스케일·실패경로, DerivedStore 경로가드·원자성, TIFF 원본불변·태그왕복·source_sha256, 라우트 replaced 플래그·404/400/409 봉투). git push 안 함."
+**Context**: CONSTRUCTION - Unit A Code Generation complete and verified; awaiting approval gate
+
+---

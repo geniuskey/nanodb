@@ -7,22 +7,32 @@
 //
 // 사용법: BASE_URL 기동 후
 //   node scripts/capture_screenshots.mjs
-// 환경변수 BASE_URL (기본 http://127.0.0.1:8000)로 대상 주소를 바꿀 수 있다.
+// 환경변수 BASE_URL (기본 http://127.0.0.1:8000)로 대상 주소를,
+// CHROMIUM_PATH로 이미 설치된 Chromium 실행 파일을 지정할 수 있다.
 
 import { fileURLToPath } from "node:url";
-import { mkdir } from "node:fs/promises";
+import { copyFile, mkdir, readdir } from "node:fs/promises";
 
 import { chromium } from "playwright";
 
 const BASE_URL = process.env.BASE_URL ?? "http://127.0.0.1:8000";
 const OUT_DIR = fileURLToPath(new URL("../screenshots", import.meta.url));
+// The evidence site serves its own copy from docs/public. Writing both here
+// keeps the published images from drifting behind the repository ones.
+const SITE_DIR = fileURLToPath(
+  new URL("../docs/public/screenshots", import.meta.url),
+);
 const SAMPLE_IMAGE = fileURLToPath(
   new URL("../tests/e2e/fixtures/sample.png", import.meta.url),
 );
 
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
-  const browser = await chromium.launch();
+  await mkdir(SITE_DIR, { recursive: true });
+  // CHROMIUM_PATH lets the script run where a browser is already installed but
+  // Playwright's own download is unavailable (offline or restricted network).
+  const executablePath = process.env.CHROMIUM_PATH || undefined;
+  const browser = await chromium.launch(executablePath ? { executablePath } : {});
   const context = await browser.newContext({
     baseURL: BASE_URL,
     viewport: { width: 1280, height: 860 },
@@ -74,7 +84,13 @@ async function main() {
   await shot("05-measurement-saved.png");
 
   await browser.close();
-  console.log(`screenshots written to ${OUT_DIR}`);
+
+  for (const name of await readdir(OUT_DIR)) {
+    if (name.endsWith(".png")) {
+      await copyFile(`${OUT_DIR}/${name}`, `${SITE_DIR}/${name}`);
+    }
+  }
+  console.log(`screenshots written to ${OUT_DIR} and ${SITE_DIR}`);
 }
 
 main().catch((err) => {

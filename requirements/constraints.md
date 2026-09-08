@@ -40,15 +40,16 @@ MVP에서는 Product ID, Lot ID, Wafer ID를 이미지에 직접 연결된 문�
 
 ## 4. 고급 이미지 뷰어와 Annotation
 
-- Deep zoom, image tile, minimap
+- Deep zoom, image tile, minimap (단순 확대·이동은 MEA-013으로 포함)
 - 회전, 밝기, 대비, 필터 조절
-- Point, polyline, rectangle, polygon, circle, arc, free curve
+- Point, polyline, rectangle, polygon, arc, free curve (화살표와 원은 ANN-001로 포함)
 - 평행선 거리, 각도, 면적, 반경, 곡률 계산
-- Annotation 이동, 크기 조절 및 편집 이력
+- 도형의 이동, 크기 조절 및 편집 이력 (삭제 후 다시 그리기만 지원)
+- 저장된 측정의 좌표·항목 수정과 수정 이력 (메모 수정만 RES-007로 지원)
 - 단축키, 측정 Template, 반복 측정 자동화
 - 다중 레이어와 이미지 비교 보기
 
-MVP에서는 원본 이미지 기준의 **두 점 직선 측정**만 지원한다.
+MVP에서 계산되는 측정은 원본 이미지 기준의 **두 점 직선 측정**뿐이다. 화살표·원 도형은 계산값을 만들지 않는 참고 라벨이며 3.7절 ANN 요구사항을 따른다.
 
 ## 5. Calibration 고급 기능
 
@@ -92,7 +93,7 @@ MVP의 측정 결과는 저장 즉시 조회 가능하지만 미검토 수동 �
 
 ## 9. 제품 온톨로지 및 홈 로드맵 기능
 
-- Hole 윤곽 라벨링, 라벨 버전과 라벨 검수 상태
+- Hole 자유 윤곽(폴리곤) 라벨링, 라벨 버전과 라벨 검수 상태 (화살표·원 도형 라벨링은 ANN-001~008로 구현 범위에 포함)
 - CDx, CDy, 대각 CD, EPE, 곡률, 링 두께, Pitch 자동 계산
 - Image → Label → Feature → Tool → Owner 전체 계보 그래프
 - Tool 입출력 계약, 코드 위치, 실행 이력, active/dormant 상태와 생존율
@@ -134,7 +135,9 @@ MVP의 측정 결과는 저장 즉시 조회 가능하지만 미검토 수동 �
 
 ## 12. 비지원 환경
 
-- 모바일과 태블릿 전용 UI
+- 모바일과 태블릿 전용 UI, 터치 입력만으로 하는 측정과 도형 그리기
+- 다크모드 (`prefers-color-scheme` 대응)
+- 포인터 장치 없이 하는 측정 (좌표 직접 입력 대안은 UIX-003으로 P2 범위)
 - Internet Explorer 및 구형 브라우저
 - 동시 다중 사용자 편집
 - 폐쇄망 운영 설치 자동화

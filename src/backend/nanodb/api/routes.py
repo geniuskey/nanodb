@@ -17,6 +17,7 @@ from nanodb.api.schemas import (
     ImageListView,
     ImageView,
     MeasurementInputSchema,
+    MeasurementNoteSchema,
     MeasurementView,
     ParameterSummaryView,
     ReadinessView,
@@ -154,6 +155,26 @@ def list_measurements(image_id: int, request: Request) -> list[MeasurementView]:
     ]
 
 
+@router.patch(
+    "/images/{image_id}/measurements/{measurement_id}",
+    response_model=MeasurementView,
+)
+def update_measurement_note(
+    image_id: int,
+    measurement_id: int,
+    payload: MeasurementNoteSchema,
+    request: Request,
+) -> MeasurementView:
+    note = payload.note.strip() if payload.note else None
+    return measurement_view(
+        request.app.state.measurement_service.update_note(
+            image_id,
+            measurement_id,
+            note or None,
+        )
+    )
+
+
 @router.delete(
     "/images/{image_id}/measurements/{measurement_id}",
     status_code=204,
@@ -222,6 +243,19 @@ def update_annotation(
         ),
     )
     return annotation_view(result)
+
+
+@router.delete(
+    "/images/{image_id}/annotations/{annotation_id}",
+    status_code=204,
+)
+def delete_annotation(
+    image_id: int,
+    annotation_id: int,
+    request: Request,
+) -> Response:
+    request.app.state.annotation_service.delete(image_id, annotation_id)
+    return Response(status_code=204)
 
 
 @router.get("/images/{image_id}/context-export")

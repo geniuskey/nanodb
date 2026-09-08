@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { jsonResponse, renderWithRouter } from "../test/helpers";
@@ -77,6 +77,75 @@ describe("HomePage", () => {
     expect(frame?.getAttribute("src")).toContain("youtube.com/embed/x1iTw_qvHB0");
     expect(frame?.getAttribute("src")).toContain("autoplay=1");
     expect(frame?.getAttribute("src")).toContain("mute=1");
+    // The frame is always explained, so a blocked network leaves a labelled
+    // area rather than an unexplained black box (HOM-040).
+    expect(screen.getByTestId("video-caption")).toHaveTextContent("네트워크가 차단된 환경");
+  });
+
+  it("does not autoplay for a reduced-motion viewer", () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("prefers-reduced-motion"),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })));
+    stubApi({
+      image_count: 0,
+      measurement_count: 0,
+      calculated_at: "2026-09-08T04:00:00Z",
+      parameters: [],
+    });
+
+    renderWithRouter(<HomePage />);
+
+    expect(document.querySelector("iframe")).toBeNull();
+    expect(screen.getByTestId("video-play")).toBeInTheDocument();
+    // The video is still reachable, just on the viewer's terms.
+    fireEvent.click(screen.getByTestId("video-play"));
+    expect(document.querySelector('iframe[title="NANoDB 소개 영상"]')).not.toBeNull();
+  });
+
+  it("puts the only in-body links at the end of the usage flow", () => {
+    stubApi({
+      image_count: 0,
+      measurement_count: 0,
+      calculated_at: "2026-09-08T04:00:00Z",
+      parameters: [],
+    });
+
+    renderWithRouter(<HomePage />);
+
+    expect(screen.getByTestId("home-register-image")).toHaveAttribute("href", "/images/new");
+    expect(screen.getByTestId("home-browse-images")).toHaveAttribute("href", "/images");
+    // HOM-005: those two are the whole set. Nothing else in the body navigates.
+    const links = [...document.querySelectorAll("main a[href^='/']")];
+    expect(links).toHaveLength(2);
+  });
+
+  it("names the screen in the document title", () => {
+    stubApi({
+      image_count: 0,
+      measurement_count: 0,
+      calculated_at: "2026-09-08T04:00:00Z",
+      parameters: [],
+    });
+
+    renderWithRouter(<HomePage />);
+
+    expect(document.title).toBe("홈 · NANoDB");
+  });
+
+  it("offers a retry when the data cannot be loaded", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error("offline"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithRouter(<HomePage />);
+
+    const retry = await screen.findByTestId("retry-images");
+    const before = fetchMock.mock.calls.length;
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(before));
   });
 
   it("shows a text failure without example KPI values but keeps static sections", async () => {

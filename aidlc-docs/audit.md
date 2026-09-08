@@ -1629,3 +1629,132 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **User Input**: "응"
 **AI Response**: "직전 제안(업로드 시 TIFF→PNG 표시용 파생본 생성, 원본 TIFF 보존)을 승인받아 구현. 브라우저 <img>가 TIFF를 못 그리는 문제를 해결하되 원본은 read-only로 보존. 백엔드: images에 display_filename(String(255), nullable, unique) 컬럼 추가(Alembic 20260908_0002, uq_images_display_filename) + ImageModel·Image 엔티티·_to_image·ImageRepository.create에 반영(엔티티는 기본값 None인 후행 필드라 기존 생성 호출 무영향). ImageDecoder에 DecodedImage.browser_renderable(PNG/JPEG만 True)과 render_web_preview(path)->PNG bytes(원본 픽셀 크기 그대로라 저장 측정 좌표가 파생본에 1:1 매핑; PNG 비호환 모드는 RGB로 flatten). ImageService.register: 디코딩 포맷이 browser_renderable이 아니면(=TIFF) 원본은 그대로 최종 저장하고 별도 PNG 파생본을 staging에 쓴 뒤 promote, display_filename에 파생 키 저장(PNG/JPEG는 None); 실패 시 임시/최종/파생 파일 모두 정리. image_path는 display_filename이 있으면 그것을, 없으면 원본을 서빙(GET /api/images/{id}/file 계약 그대로, mappers는 display_filename 비노출로 내부 전용). delete는 원본과 파생본 파일을 함께 제거. 프런트 변경 없음(file_url이 이미 서빙 라우트를 가리켜 TIFF 업로드분이 목록 썸네일·측정 뷰어·홈 최근 이미지에서 PNG로 표시됨). 테스트: unit/test_image_decoder 4건 추가(browser_renderable 플래그, render_web_preview가 원본 크기 PNG 반환, I;16 등 비표준 모드 flatten), 통합 test_services 2건 추가(실제 Postgres+FileStore로 TIFF 등록→원본 .tif 보존+PNG 파생 생성·서빙 대상이 파생본·삭제 시 둘 다 제거; PNG 등록은 파생본 없음). 검증: 백엔드 85 passed(로컬 Postgres, TEST_DATABASE_URL 지정), ruff·mypy clean; 프런트 vitest 33 passed; build 성공."
 **Context**: Post-Phase 2; TIFF now displays in-app via preserved-original + PNG derivative on main
+
+## Session Resume — Project Review + UI/UX Gap Requirements Amendment (Request)
+**Timestamp**: 2026-09-08T09:31:14Z
+**User Input**: "프로젝트 리뷰하고 ui/ux 미구현 된 부분들 어떻게 반영할지 고민하고 요구사항 업데이트해서 프로젝트 완성도 높여줘."
+**AI Response**: "기존 AI-DLC 프로젝트 재개로 판정하고 Workspace Detection(Step 1 resume) → Requirements Analysis 경로를 선택했다. aidlc-state.md와 이전 단계 산출물(requirements.md, stories.md, application-design, nanodb-core functional/nfr/infra design, code summary)을 로드하고, 실제 구현(src/backend, src/frontend, alembic, tests, README, docs)과 요구사항 4종(requirements/nanodb-mvp-requirements.md, requirements/home-tab-requirements.md, requirements/constraints.md, aidlc-docs/inception/requirements/requirements.md)을 대조 검토했다. 검토 결과를 aidlc-docs/inception/requirements/ui-ux-review-2026-09-08.md에 기록하고, 미결정 UI/UX 결정 사항을 requirement-verification-questions.md에 추가했다(Requirements Analysis Step 6 게이트)."
+**Context**: INCEPTION - Workspace Detection (resume) + Requirements Analysis Step 1~6; brownfield review of implemented UI/UX vs approved requirements
+
+---
+
+## UI/UX Amendment — Recommended Options Accepted
+**Timestamp**: 2026-09-08T09:52:00Z
+**User Input**: "추천. 대신 해커톤이니 너무 빡빡하게 제한을 두지마. 최우선은 앱이 사용자에게 주는 가치야"
+**AI Response**: "Question 1~7 전부 추천안(A)으로 확정하고 Requirements Analysis Step 7(요구사항 문서 갱신)을 실행한다. 사용자 지시에 따라 요구사항 문체를 게이트·차단형이 아니라 사용자 가치 우선의 우선순위형으로 쓴다. 신규 UX 요구사항은 P0(데모 가치 직결) / P1 / P2(미구현이어도 데모 실패로 보지 않음)로 등급을 나누고, 3일 타임박스에서 새 하드 게이트를 추가하지 않는다. 확정 사항: Q1=A 도형 라벨링 P1 정식 승격(제외 범위의 '윤곽 라벨링'을 자유 폴리곤·검수·버전으로 한정, 도형 삭제 추가), Q2=A 도형을 data.json annotations[]로 ZIP에 포함하고 schema_version 갱신, Q3=A 홈 영상 유지 + 실패 대체·prefers-reduced-motion·오프라인 경로, Q4=A HOM v2 정본 유지 + '이렇게 쓰세요' 섹션에만 CTA 1쌍 허용, Q5=A 확대·이동 + 배율당 원본 픽셀 표시, Q6=A 메모만 수정(좌표·항목은 불변), Q7=A 좌표 직접 입력 대안."
+**Context**: Requirements Analysis Step 6 gate passed; proceeding to Step 7 requirement document updates
+
+---
+
+## Requirements Analysis Step 7 — UI/UX Amendment Applied
+**Timestamp**: 2026-09-08T10:18:00Z
+**User Input**: (Step 6 게이트 답변 "추천"에 따른 후속 실행, 추가 입력 없음)
+**AI Response**: "Q1~Q7 A안대로 요구사항 5개 문서를 갱신했다. requirements/nanodb-mvp-requirements.md: 우선순위 표를 P0/P1/P2와 구현 상태로 재작성, IMG-001·005에 TIFF 추가, IMG-007~010·CAT-006~009·MEA-012~014·RES-007 신규, CAT-003/RES-005/SUM-002를 구현 완료로 표기하고 SUM-002를 min/max로 확장, 3.7절 도형 라벨링(ANN-001~008)과 3.8절 공통 UI/UX(UIX-001~009) 신설, CTX-004·005·012를 도형 포함과 schema_version 상향으로 개정, 5.1·5.2·5.3·5.5·7.1·7.2절 갱신. home-tab-requirements.md: HOM-005를 '사용 흐름 섹션에만 CTA 1쌍 허용'으로 개정하고 HOM-034a 신설, HOM-011에서 구현된 화살표·원 라벨링과 로드맵 폴리곤 라벨링을 분리, HOM-009에 PNG 히어로 자산 명기, 3.9.1절 HOM-040(소개 영상 실패 대체·reduced-motion·오프라인 경로) 신설, 수용 기준과 v1↔v2 표 갱신. constraints.md: 4절에서 화살표·원과 단순 확대를 제외 목록에서 분리하고 저장 측정 좌표·항목 수정을 제외로 명시, 9절 '윤곽 라벨링'을 자유 폴리곤·검수·버전으로 한정, 12절에 터치 측정·다크모드·포인터 없는 측정 추가. aidlc-docs/inception/requirements/requirements.md: 핵심 결정 4·14·15 개정·신설, 홈 CTA 정합화, 4.4·4.9·5·6·7·7.1절과 10절 검토 표 갱신. README.md: 데모 흐름에 TIFF·검색·도형 라벨링·확장 통계 반영, 낡은 'P1 미구현'·'TIFF 후속 범위' 문장 정정, 알려진 제한을 실제 격차(확대 없음·측정 수정 불가·도형 삭제 불가·키보드 측정 불가·터치/다크모드 미지원)로 교체. 요구사항 ID 중복 검사 통과(MVP 81개, 홈 41개, 중복 0). 새 하드 게이트는 추가하지 않았고 P2 미구현은 데모 실패가 아님을 문서에 명시했다."
+**Context**: INCEPTION - Requirements Analysis Step 7-8 complete; awaiting approval before Workflow Planning
+
+---
+
+## Measurement UX — Code Generation (Priority 1-4)
+**Timestamp**: 2026-09-08T10:58:00Z
+**User Input**: "4까지 진행. 승인"
+**AI Response**: "승인 순서 ①~④를 구현했다. 계획: construction/plans/measurement-ux-code-generation-plan.md (22단계, 전부 완료). Functional/NFR/Infra Design은 새 도메인 개념·기술스택·배포 변화가 없어 생략하고 사유를 계획서에 기록했다.
+
+백엔드(ANN-005): AnnotationRepository.delete(image_id, annotation_id)->bool을 이미지 스코프로 추가(다른 이미지의 id는 not found 취급해 교차 삭제 차단), AnnotationService.delete(이미지 없으면 IMAGE_NOT_FOUND, 도형 없으면 ANNOTATION_NOT_FOUND, 성공 시 commit), DELETE /api/images/{image_id}/annotations/{annotation_id} -> 204. errors.py의 NOT_FOUND 접미사 매핑을 그대로 사용.
+
+프런트 공통(UIX-001, UIX-002): ui/ConfirmDialog.tsx 신설 — role=dialog + aria-modal, 열릴 때 확인 버튼으로 포커스 이동, 닫힐 때 호출자에게 포커스 복귀, Esc 취소, Tab 순환 트랩, 삭제될 파생 데이터 건수를 본문에 명시. ui/StatusBanner.tsx 신설 — 쓰기 성공을 role=status로 알림(실패는 기존 role=alert 유지). window.confirm 3곳(측정 삭제, 이미지 삭제 상세·목록)을 전부 대체.
+
+측정 화면(MEA-012/013/014, ANN-005/006): 이미지 정보 패널에 보정값·원본 픽셀 크기·등록 시각 상시 표시. 뷰어를 스크롤 컨테이너(.image-viewport)로 바꾸고 fitScale=min(vw/w, vh/h, 1)에 배율을 곱해 이미지 표시 폭을 명시적으로 계산 — 좌표 변환은 기존 toOriginalPoint(렌더 rect 기준) 경로를 그대로 쓰므로 배율이 바뀌어도 원본 좌표 계약이 유지된다. 배율 단계 [1, 1.5, 2, 3, 4, 6, 8]과 축소/확대/맞춤 버튼, 현재 배율과 '화면 1px ≈ 원본 N.NNpx' 표시(원본보다 축소된 상태에서는 '원본 1px 단위로는 지정할 수 없습니다'를 그대로 노출). 도형 행별 삭제 버튼과 확인 대화상자, AnnotationLayer에 onSelect를 추가해 도형 클릭으로 행 선택(CSS pointer-events: stroke로 히트 영역을 획으로 제한해 측정 클릭을 뺏지 않음). 측정·도형 저장/삭제와 ZIP 다운로드에 성공 알림.
+
+레이아웃 결함 2건을 구현 중 스크린샷으로 발견해 함께 수정: 확대 시 뷰어가 grid 열을 밀어내 사이드바를 침범하던 문제(.viewer-panel에 minmax(0,1fr)·min-width:0), 도형 표 삭제 버튼이 좁은 사이드바에서 두 줄로 깨지던 문제.
+
+검증(전부 실제 실행): ruff 통과, mypy 27파일 이상 없음, pytest 97 passed(로컬 PostgreSQL 16 기동해 통합 테스트 skip 없이 실행), vitest 47 passed, vite build 성공, Playwright e2e 6 passed(실제 앱+PostgreSQL+Chromium). e2e는 이번에 처음 실제 실행했고, 그 과정에서 TIFF 등록 추가 시점부터 낡아 있던 기존 단언 1건('PNG 또는 JPEG')을 현재 문구로 고쳤다. 신규 e2e 2건은 확대가 좌표계를 깨지 않음(저장 측정 선이 이미지와 같은 비율로 확대되며 같은 위치 유지)과 도형 삭제의 취소·확인 경로를 검증한다.
+
+미포함: ⑤ ANN-008(도형의 ZIP 포함), RES-007, CAT-008~009, UIX-008, P2 전체."
+**Context**: CONSTRUCTION - Measurement UX unit complete; all gates green including browser e2e
+
+---
+
+## Context Export + Remaining P1 (ANN-008, RES-007, CAT-008~009, UIX-008)
+**Timestamp**: 2026-09-08T12:05:00Z
+**User Input**: "응"
+**AI Response**: "⑤ ANN-008부터 이어 P1 잔여분을 완결했다. 계획: construction/plans/context-and-p1-completion-plan.md (23단계 전부 완료).
+
+ANN-008 + CTX 계약 개정: ExportSnapshot에 기본값 ()인 후행 필드 annotations를 추가해 기존 생성 호출을 깨지 않고, validate_export_snapshot에 도형 ID 순서·이미지 소속 검증을 넣었다. data.json에 annotations[](id, image_id, kind, 두 점 좌표, product, step, measurement_name, created_at)를 추가하고 ContextExportService가 도형을 ID 순으로 로드하며 schema_version을 1.0 → 1.1로 올렸다. context.md에 화살표(꼬리→머리)·원(중심과 원주 위 한 점, 반지름은 두 점 거리)의 좌표 의미와 '도형은 계산값이 없고 어떤 측정 요약에도 포함하지 않는다'를 명시했고, task.md에 'measurements만 쓰고 annotations는 무시하라'를 추가했다. 도형은 checks.json의 기대 요약에 넣지 않는다 — 생성 코드가 라벨을 측정값으로 세면 안 되기 때문이다. 측정 화면 Export 안내 문구에도 도형·도형 라벨 포함을 반영했다.
+
+RES-007: MeasurementRepository.update_note(이미지 스코프, 메모만 갱신)와 MeasurementService.update_note(이미지·측정 not found 구분), MeasurementNoteSchema와 PATCH /api/images/{image_id}/measurements/{measurement_id}(공백만 있는 메모는 null로 저장). 프런트는 저장 측정 행별 '메모' 버튼으로 인라인 편집하며 '좌표·항목·값·보정값은 측정한 그대로 유지됩니다'를 편집 영역에 표시한다. 좌표·항목·거리·값·보정값·생성 시각은 서버에서 수정 경로 자체가 없다.
+
+CAT-008: 최초 로딩만 화면을 비우고 필터 재조회는 refreshing 상태로 이전 결과를 유지 — 타이핑마다 목록이 사라지던 문제를 없앴다. CAT-009: 현재 조건의 결과 건수 표시. UIX-008: 홈 빈 상태의 'No images yet.'을 한국어와 다음 행동 안내로 교체.
+
+낡은 Construction 산출물 갱신(검토 B-2에서 지적한 항목): frontend-components.md를 홈 v2 CTA 규칙·검색/필터/삭제·도형 라벨링·배율과 정확도·메모 수정·공용 컴포넌트로 다시 썼고, frontend-components-summary.md의 data-testid 계약 표를 실제 DOM과 일치시켰다(존재하지 않던 home-browse-images/home-register-image 제거, 신규 선택자 반영). 테스트 매핑도 실제 개수(50건)와 e2e 7건으로 갱신했다.
+
+검증(전부 실제 실행): ruff 통과, mypy 27파일 이상 없음, pytest 104 passed(로컬 PostgreSQL 16), vitest 50 passed, build 성공, Playwright e2e 7 passed. 신규 e2e는 브라우저가 내려받은 ZIP을 unzip으로 실제로 풀어 data.json의 schema_version 1.1·도형 라벨·수정된 메모를 확인한다 — 계약을 바꾼 변경이라 직렬화 결과를 실제 산출물로 검증했다.
+
+남은 범위: P1 HOM-040(홈 영상 실패 대체·reduced-motion·오프라인 경로), P2 전체(IMG-009~010, UIX-003~007, UIX-009). P2 미구현은 데모 실패 조건이 아님을 요구사항에 명시해 두었다."
+**Context**: CONSTRUCTION - P1 group complete except HOM-040; stale Construction artifacts refreshed
+
+---
+
+## HOM-040 + P2 Polish (UIX-004~007, IMG-009~010)
+**Timestamp**: 2026-09-08T13:20:00Z
+**User Input**: "p2로 된것들 구현 검토해줘" / "계속해줘"
+**AI Response**: "먼저 P2 8건을 실제 코드 기준으로 검토해 보고했다. 8건 전부 착수 0%였고(aria-invalid·required·document.title·ErrorBoundary·path=\"*\"·재시도·건너뛰기 링크가 저장소에 전무), 작업량·데모 가치로 등급을 매겨 UIX-006(에러 경계·404)을 최우선으로, UIX-003·UIX-009는 보류로 권고했다. 또한 아직 미구현이던 HOM-040(P1)이 대부분의 P2보다 값이 크다고 짚었다. 사용자가 '계속해줘'로 권장 순서를 승인해 구현했다. 계획: construction/plans/p2-polish-plan.md (19단계 전부 완료).
+
+HOM-040: prefers-reduced-motion에서는 자동 재생 대신 재생 버튼을 제공하고(matchMedia가 없는 환경은 '선호 없음'으로 처리), 영상 프레임 아래에 항상 보이는 설명 문구를 두어 네트워크 차단 시 빈 검은 상자로 남지 않게 했다. README에 오프라인 진행 방법을 기록했다.
+
+UIX-006: ui/ErrorBoundary.tsx(getDerivedStateFromError로 복구 화면, 오류 원인 미노출, 다시 시도로 재렌더)와 pages/NotFoundPage.tsx + Route path=\"*\". Shell의 Outlet을 ErrorBoundary로 감쌌다. 지금까지 렌더 예외는 흰 화면, 미정의 경로는 헤더만 남은 빈 shell이었다.
+
+UIX-004: ui/useDocumentTitle.ts를 만들어 네 화면에 적용(측정 화면은 파일명). MeasurementPage에서는 훅을 early return 뒤에 두면 detail이 도착하는 순간 훅 순서가 바뀌므로, 조건부 호출이 되지 않게 early return 위로 옮겼다.
+
+UIX-005: 포커스 전에는 보이지 않는 건너뛰기 링크와 #main-content 대상. 조상 스택 영향을 받지 않도록 position: fixed로 고정했다.
+
+UIX-007: 홈 요약·홈 최근 이미지·목록·측정 상세 네 곳의 실패에 다시 시도 추가. 홈은 이미지 목록 fetch를 KPI·구성·최근 그리드가 공유하도록 한 번만 호출하게 정리해 재시도 한 번으로 셋이 함께 회복된다.
+
+IMG-009/010: 등록 폼을 필드별 오류 상태로 재작성. 별표 + aria-required로 필수를 표시하고, 오류를 해당 입력 옆에 표시하며 aria-invalid·aria-describedby로 연결하고 제출 실패 시 첫 오류 입력으로 포커스를 옮긴다. 서버가 field를 지정한 오류도 같은 자리에 표시한다. 네이티브 required는 의도적으로 쓰지 않았다 — 브라우저 기본 검증이 먼저 막으면 기존 e2e가 기대하는 앱 오류 메시지가 렌더되지 않기 때문이며, 대신 form에 noValidate를 뒀다.
+
+구현 중 발견해 함께 고친 결함 2건: (1) /images/new에서 '이미지DB'와 '이미지 등록' 탭이 동시에 현재 위치로 표시되던 HOM-004 위반 — 실제 브라우저에서 라우트별 활성 탭을 뽑아 확인했고, '이미지DB' 탭에 /images/new 제외 규칙을 넣어 어느 경로에서도 활성 탭이 하나가 되게 했다(HOM-004에 이 규칙을 명문화). (2) 건너뛰기 링크의 위치 기준 문제.
+
+보류: UIX-003(좌표 직접 입력)과 UIX-009(로딩 자리 확보). 전자는 마우스 데모에서 보여줄 일이 없고 한계가 이미 README에 기록돼 있으며, 후자는 로컬·100건 전제라 체감이 작다. 둘 다 요구사항에 미구현으로 명시했다.
+
+검증(전부 실제 실행): ruff 통과, mypy 27파일 이상 없음, pytest 104 passed(서버 무변경), vitest 62 passed, build 성공, Playwright e2e 7 passed. 등록 폼 오류·404·건너뛰기 링크는 실제 브라우저 스크린샷으로도 확인했다."
+**Context**: CONSTRUCTION - HOM-040 and the P2 group complete except UIX-003/UIX-009
+
+---
+
+## Demo, Container and Publishing Path Verification
+**Timestamp**: 2026-09-08T14:40:00Z
+**User Input**: "해줘. 발견된 모든 리스크 다 제거해줘"
+**AI Response**: "한 번도 실행된 적 없던 세 경로(make demo, 컨테이너 스택, VitePress/Pages)를 실제로 돌렸다. 계획과 상세 결과: construction/plans/demo-and-deploy-verification-plan.md.
+
+실행 통과: uv sync --frozen, make preflight, make migrate, make seed-demo(원천 샘플 불변 확인), make reset, make lint, mypy, make test-backend(104 passed, 로컬 PostgreSQL 16으로 skip 없음), make test-frontend(63), make build-frontend, make test-e2e(7), docs:build(dead-link 검사 on), docs:preview의 /nanodb_mvp/ base 라우팅과 자산 로딩.
+
+제거한 결함 7건.
+(1) 치명: .python-version이 3.12.12로 고정돼 있는데 uv가 받을 수 있는 리눅스 최신 빌드는 3.12.11이라, 시스템에 3.12.12가 없는 새 머신에서 uv sync --frozen이 'No interpreter found'로 실패했다. make install부터 막히므로 '명령 1~2개로 실행' 요구사항이 성립하지 않았다. pyproject의 requires-python이 이미 ==3.12.*이므로 .python-version을 3.12로 완화하고, 비기능 요구사항에 '인터프리터 고정은 실제 설치 가능한 범위여야 한다'를 명문화했다. Dockerfile의 python:3.12.12-slim-bookworm은 실재하는 태그라 유지.
+(2) 요구사항만 있고 구현이 없던 HOM-034a(홈 사용 흐름 끝의 CTA 2개). 스크린샷 재캡처 과정에서 드러났다. 직전 개정에서 내가 요구사항을 쓰고 구현하지 않은 항목이다. 구현하고 '홈 본문 이동 링크는 이 둘뿐'을 테스트로 고정했다.
+(3) 평가용 스크린샷 5장이 working tree 19b2af6 시점(홈 v2·TIFF·라벨링·확대 이전) — 심사자가 존재하지 않는 화면을 보고 있었다. 현재 앱으로 재캡처.
+(4) 사이트는 docs/public/screenshots/를, README는 screenshots/를 참조하는데 동기화 장치가 없어 구조적으로 어긋날 수 있었다. 캡처 스크립트가 두 곳을 함께 쓰도록 바꿔 재발 방지.
+(5) 캡처 스크립트가 Playwright 전용 브라우저 다운로드에만 의존해 제한된 네트워크에서 실행 불가였다. CHROMIUM_PATH 선택적 지원 추가.
+(6) 건너뛰기 링크의 position: fixed가 full-page 캡처에서 스크롤 위치에 그려져 평가 스크린샷에 노출됐다. 표준 패턴인 absolute로 환원.
+(7) 문서 낡은 사실 — README(schema_version 1.0→1.1, 캡처 커밋, PNG/JPEG→TIFF 포함), docs/index.md('검색·삭제·평균은 P0 범위 밖' → 구현 완료), docs/evidence.md(schema_version, 테스트 수 57/23 → 104/63/7, 통합 테스트·e2e 미검증 표기 해제).
+
+환경 제약으로 실행 불가 2건(우회하지 않고 보고): 컨테이너 스택 기동은 Docker 이미지 레이어 호스트 production.cloudfront.docker.com이 조직 egress 정책 403으로 차단이다. 대신 docker compose config 유효성과 네 이미지 태그의 실재를 레지스트리 API로 확인했다. GitHub Pages 실제 배포는 저장소 Settings의 Pages Source를 GitHub Actions로 바꾸는 관리자 설정과 main push가 필요하다(DOC-012). workflow 자체는 DOC-006~011 충족을 확인했다. 두 항목은 요구사항과 평가 자료에 미검증으로 남겼다."
+**Context**: CONSTRUCTION - runnable paths verified end to end; two items blocked by environment, reported not worked around
+
+---
+
+## P2 Completion — UIX-003 and UIX-009
+**Timestamp**: 2026-09-08T15:30:00Z
+**User Input**: "멈추지말고 할것 마무리해줘. 다하면 pr 생성 및 머지"
+**AI Response**: "보류했던 P2 2건을 마무리해 이번 개정의 코드 작업을 전부 닫았다.
+
+UIX-003: 측정 화면에 '좌표로 직접 지정' 영역을 추가했다. 시작·끝 원본 좌표 네 개를 입력해 draft를 만들며, 값이 비었거나 숫자가 아니면, 원본 범위(0 이상 X pixel_width, Y pixel_height 미만)를 벗어나면, 두 점이 같으면 각각 이유를 표시하고 draft를 만들지 않는다. 이후 흐름은 클릭 측정과 동일하게 서버가 재계산한다. 포인터 없는 유일한 측정 경로이자, 이미지가 축소돼 화면에서 집을 수 없는 픽셀을 지정하는 수단을 겸한다.
+
+UIX-009: 목록과 홈 KPI의 첫 조회에 결과와 같은 모양의 자리 표시를 넣어 도착 시 레이아웃이 밀리지 않게 했다. 자리 표시는 장식이므로 aria-hidden이고 상태 안내는 기존 role=status 텍스트가 그대로 담당한다. prefers-reduction-motion을 존중해 애니메이션은 선호가 없을 때만 적용한다.
+
+검증: ruff 통과, mypy 27파일 이상 없음, pytest 104 passed(로컬 PostgreSQL 16), vitest 66 passed, build 성공, Playwright e2e 7 passed. 좌표 입력은 실제 브라우저에서 400×300 이미지에 (40,40)~(300,200)을 입력해 305.29px · 152.64nm draft와 '선택한 점: 2/2'까지 확인했다.
+
+정직하게 남기는 사항: 전체 게이트를 처음 묶어 돌릴 때 make test-backend가 한 번 Error 1로 실패했으나 이후 직접 pytest 3회와 make 1회 모두 104 passed로 통과했고 재현되지 않았다. 원인을 특정하지 못했으므로 'flake'로 단정하지 않고 관찰 사실만 기록한다.
+
+문서: 요구사항 우선순위 표에서 P2 전 항목을 구현 완료로 표기하고 UIX-003·UIX-009 본문을 구현 기준으로 갱신, README와 docs/index.md의 '마우스 클릭 전용' 한계 문장 정정, frontend-components.md에 좌표 입력·자리 확보 절 추가, frontend-components-summary.md의 testid 계약과 테스트 수(66) 갱신, p2-polish-plan.md에 후속 완료 절 추가."
+**Context**: CONSTRUCTION - P2 group closed; amendment code work complete
+
+---

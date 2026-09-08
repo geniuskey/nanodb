@@ -4,7 +4,7 @@
 
 - **Project Type**: Greenfield
 - **Start Date**: 2026-09-07T11:50:01Z
-- **Current Stage**: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
+- **Current Stage**: CONSTRUCTION complete for the 2026-09-08 UI/UX amendment. Every requirement in it (P0 reconciliation, P1 and P2) is implemented, and every runnable path — make demo, quality gates, browser e2e, evidence site build and preview — has been executed end to end. Only the container stack and the actual Pages deploy remain unverified, both blocked by this environment rather than by the project. The 2026-09-08 UI/UX requirements amendment was approved on the same day. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
 
 ## Workspace State
 
@@ -53,13 +53,48 @@
 
 ## Current Request Assessment
 
-- **Request**: Replace SQLite with PostgreSQL while keeping local file storage and all other approved scope unchanged.
-- **Request Type**: User-authorized targeted Requirements Analysis and Application Design amendment.
-- **Scope**: Use local PostgreSQL for the hackathon and retain PostgreSQL for an initial internal beta target of about 1,000 registered users; keep files on the single app host.
-- **Complexity**: Moderate for the hackathon profile; high for the internal service profile because concurrency, identity, backup and shared storage become relevant.
+- **Request**: "프로젝트 리뷰하고 ui/ux 미구현 된 부분들 어떻게 반영할지 고민하고 요구사항 업데이트해서 프로젝트 완성도 높여줘."
+- **Request Type**: Enhancement — brownfield review of the implemented UI/UX against approved requirements, followed by a requirements amendment.
+- **Scope**: Multiple components — frontend screens (home, catalog, register, measurement), the requirement documents (`requirements/nanodb-mvp-requirements.md`, `requirements/home-tab-requirements.md`, `requirements/constraints.md`, consolidated `requirements.md`), README and the stale Construction design artifacts.
+- **Complexity**: Moderate — no new backend capability is implied, but requirement drift runs in both directions (code without requirements, and requirements without code).
 - **Requirements Depth**: Standard
-- **Authorization**: NANoDB Core Code Generation Part 1 plan approved on 2026-09-08. Part 2 generation may execute in the approved 26-step sequence.
-- **Unknowns**: Expected concurrent active and writing users, internal hosting platform, PostgreSQL deployment model, connection-pool sizing and load-test target. Other infrastructure, security, retention and integrated submission questions remain deferred because the user requested no other scope change.
+- **Review Result**: [ui-ux-review-2026-09-08.md](inception/requirements/ui-ux-review-2026-09-08.md) — 3 finding groups (A: implemented but unspecified, B: document conflicts, C: UI/UX quality gaps) and a 4-bundle amendment plan (R1 reconciliation, R2 decisions, R3 scope declarations, R4 common UX).
+- **Decisions**: Questions 1-7 answered "추천" on 2026-09-08 — every recommended option (A) accepted. Added instruction: this is a hackathon, so do not add tight constraints; the value the app gives users comes first.
+- **Grading rule applied**: New UI/UX requirements add no new hard gate. Items that raise user value are P1; accessibility, recovery and presentation polish are P2, and P2 gaps are explicitly not demo failures.
+- **Authorization**: Requirements Analysis Step 7 executed. Requirement documents, constraints and README are updated. Awaiting approval before Workflow Planning.
+- **Unknowns**: None blocking. Implementation sequencing for the new P1 items is a Workflow Planning decision.
+
+## UI/UX Completeness Review Progress
+
+- [x] Workspace Detection (resume from existing aidlc-state.md; brownfield with current artifacts, no re-run of Reverse Engineering)
+- [x] Load prior artifacts (requirements, stories, application design, per-unit construction design, code summaries)
+- [x] Compare implementation against the four requirement documents and README
+- [x] Record findings: [ui-ux-review-2026-09-08.md](inception/requirements/ui-ux-review-2026-09-08.md)
+- [x] Raise clarifying questions: [requirement-verification-questions.md](inception/requirements/requirement-verification-questions.md) Questions 1-7
+- [x] Receive and validate answers (Step 6 gate; "추천" = all A, 2026-09-08)
+- [x] Apply R1/R3/R4 requirement edits
+- [x] Apply R2 requirement edits per the answers
+- [x] Update README known limitations and demo flow
+- [x] Requirements amendment approved 2026-09-08 ("4까지 진행. 승인")
+- [x] Implement priority 1-4: MEA-012/013/014, UIX-001/002, ANN-005/006 — see [measurement-ux-code-generation-plan.md](construction/plans/measurement-ux-code-generation-plan.md)
+- [x] Refresh stale Construction artifacts (`frontend-components.md`, `frontend-components-summary.md`)
+- [x] ANN-008 (annotations in the context ZIP, contract version 1.1), RES-007 (note editing), CAT-008~009, UIX-008 — see [context-and-p1-completion-plan.md](construction/plans/context-and-p1-completion-plan.md)
+- [x] HOM-040 (intro video caption, reduced-motion play button, offline path in README)
+- [x] P2: UIX-006 (error boundary + catch-all route), UIX-004 (document titles), UIX-005 (skip link), UIX-007 (retry), IMG-009~010 (required marks and per-field errors) — see [p2-polish-plan.md](construction/plans/p2-polish-plan.md)
+- [x] UIX-003 (numeric coordinate entry) and UIX-009 (loading placeholders) — the P2 group is now closed
+- [x] Verify the demo path, container definitions and publishing path — see [demo-and-deploy-verification-plan.md](construction/plans/demo-and-deploy-verification-plan.md)
+- [ ] Run `make up` once where Docker image layers are reachable
+- [ ] Set the repository's Pages Source to GitHub Actions and push to main (DOC-012)
+
+### Applied requirement changes (2026-09-08)
+
+| Document | Change |
+| --- | --- |
+| `requirements/nanodb-mvp-requirements.md` | Priority table rebuilt with P0/P1/P2 and implementation status; IMG-001/005 extended to TIFF; new IMG-007~010, CAT-006~009, MEA-012~014, RES-007; CAT-003/RES-005/SUM-002 marked implemented; SUM-002 extended to min/max; new section 3.7 (ANN-001~008 annotation labeling) and 3.8 (UIX-001~009 common UX); CTX-004/005/012 extended to carry annotations and bump `schema_version`; sections 5.1/5.2/5.3/5.5 and 7.1/7.2 updated |
+| `requirements/home-tab-requirements.md` | HOM-005 now allows exactly one CTA pair in the usage-flow section (new HOM-034a); HOM-011 separates implemented arrow/circle labeling from roadmap polygon labeling; HOM-009 records the PNG hero asset; new section 3.9.1 with HOM-040 for the intro video; acceptance criteria and the v1-v2 table updated |
+| `requirements/constraints.md` | Section 4 carves the implemented arrow/circle shapes and simple zoom out of the exclusion list; section 9 narrows "윤곽 라벨링" to free polygon plus review/versioning; section 12 adds touch-only measurement, dark mode and pointer-free measurement |
+| `aidlc-docs/inception/requirements/requirements.md` | Decisions 4, 14-15 added or amended; home CTA rule reconciled with HOM v2; 4.4 demo features, 4.9 export scope, NFR summary, exclusions, acceptance criteria, timebox gates and the section 10 readiness table updated |
+| `README.md` | Demo flow lists TIFF, search/filter, annotation labeling and the extended statistics; the stale "P1 not yet implemented" and "TIFF out of scope" claims corrected; known limitations now state the real gaps (no zoom, no measurement edit, no shape delete, no keyboard measurement, no touch or dark mode) |
 
 ## Current Requirements Decisions
 
@@ -74,6 +109,13 @@
 - Keep image binaries in a local directory on the single application host. Multi-instance storage and high availability remain out of scope.
 - Treat about 1,000 registered beta users as a target, not a verified concurrency guarantee.
 - All three extension choices remain disabled (B/B/C), N/A; full rules were not loaded.
+- Arrow and circle annotation labeling is an implemented P1 feature (ANN-001~008), separate from roadmap free-polygon labeling and label review.
+- Registration accepts PNG, JPEG and TIFF. A TIFF original is preserved and served through a PNG derivative that keeps the original pixel dimensions, so stored coordinates map 1:1.
+- Image delete is in scope with cascade disclosure and confirmation; a saved measurement's coordinates, parameter, value and calibration are immutable and only its note can be edited.
+- Annotations travel in the context ZIP, which bumps the export `schema_version`.
+- The home body stays a reading document; the only in-body CTAs are the pair at the end of the usage-flow section. `home-tab-requirements.md` is the source of truth for the home screen.
+- The home intro video is the single permitted external runtime dependency and must degrade to readable text.
+- Supported surface is mouse input on desktop at 1280px or wider in current Chrome or Edge. Touch-only measurement and dark mode are out of scope.
 
 ## Amendment Plan Progress
 
@@ -134,9 +176,48 @@ See [contest-alignment-plan.md](inception/requirements/contest-alignment-plan.md
 - Code Generation Part 1 plan: [nanodb-core-code-generation-plan.md](construction/plans/nanodb-core-code-generation-plan.md)
 - The plan contains 26 ordered generation steps for US-01~US-07 and was approved on 2026-09-08.
 
+## Measurement UX Unit (2026-09-08)
+
+- Plan: [measurement-ux-code-generation-plan.md](construction/plans/measurement-ux-code-generation-plan.md) — 22/22 steps complete. Functional, NFR and Infrastructure Design were skipped with reasons recorded in the plan.
+- Delivered: `DELETE /api/images/{id}/annotations/{id}`; an in-app confirmation dialog replacing all three `window.confirm` sites; success announcements via `role="status"`; the calibration, original pixel size and registration time on the measurement screen; zoom and pan with a fixed step ladder and a "screen 1px = N original px" readout; per-shape delete; and shape-to-row selection in both directions.
+- Coordinate contract unchanged: zoom sets an explicit rendered width, and every conversion still goes through the rendered `<img>` rectangle, so stored coordinates stay in original pixels at any magnification.
+- Verified: ruff clean, mypy clean (27 files), pytest 97 passed against a local PostgreSQL 16 with no skips, vitest 47 passed, vite build succeeded, Playwright e2e 6 passed against the running app in Chromium.
+- Browser e2e ran for the first time in this session. It surfaced one stale assertion left from the earlier TIFF work (`PNG 또는 JPEG`), now corrected, and two layout defects found by screenshot (the zoomed viewer overflowing its grid column, and the annotation table's delete button wrapping) that were fixed before commit.
+
+## Context Export + P1 Completion Unit (2026-09-08)
+
+- Plan: [context-and-p1-completion-plan.md](construction/plans/context-and-p1-completion-plan.md) — 23/23 steps complete.
+- The export contract changed: `data.json` now carries `annotations[]` and `schema_version` moved from 1.0 to 1.1. `context.md` explains the arrow and circle coordinate meanings and states that shapes carry no calculated value; `task.md` tells the generated code to ignore them; `checks.json` deliberately excludes them so a label is never counted as a measurement.
+- A saved measurement's note is editable through `PATCH /api/images/{id}/measurements/{id}`. Coordinates, parameter, distance, value and calibration have no write path at all, so the evidence stays immutable by construction rather than by convention.
+- The catalog keeps its results on screen through a filter refetch and reports the result count; the home empty state is Korean with a next action.
+- Verified: ruff clean, mypy clean (27 files), pytest 104 passed against a local PostgreSQL 16, vitest 50 passed, vite build succeeded, Playwright e2e 7 passed. The new browser test unzips the downloaded archive and asserts on the real `data.json`, since this change altered an interface with an external consumer.
+
+## HOM-040 + P2 Polish Unit (2026-09-08)
+
+- Plan: [p2-polish-plan.md](construction/plans/p2-polish-plan.md) — 19/19 steps complete. Frontend only; the backend is untouched.
+- A render crash and an unknown address now land on recovery screens instead of a white page and an empty shell. The boundary never shows the error itself, matching the server's error-envelope rule.
+- Registration marks required fields and puts each message next to its input with `aria-invalid`/`aria-describedby`, focusing the first offender. Native `required` is deliberately avoided so the browser cannot pre-empt the app's own messages; the form carries `noValidate` instead.
+- The intro video keeps autoplay for most viewers but always carries a caption explaining it comes from an external service, so a blocked network leaves a labelled area rather than a black box. A reduced-motion viewer gets a play button.
+- Two defects were found while building this and fixed here: `/images/new` lit both the catalog and the register tab as the current location (a HOM-004 violation, now written into the requirement), and the skip link was positioned against the wrong ancestor.
+- Verified: ruff clean, mypy clean, pytest 104 passed, vitest 62 passed, vite build, Playwright e2e 7 passed, plus browser screenshots of the form errors, the not-found screen and the skip link.
+- Closed later the same day: UIX-003 adds typed original coordinates as a second route to a draft — the only pointer-free path to measuring, and the way to hit an exact pixel when the image is displayed smaller than its original. UIX-009 reserves the catalog grid and the home KPI row during a first load. Re-verified with vitest 66 and the browser: typing (40,40)-(300,200) on a 400x300 image produced a 305.29px / 152.64nm draft.
+
+## Demo and Publishing Verification (2026-09-08)
+
+- Plan and results: [demo-and-deploy-verification-plan.md](construction/plans/demo-and-deploy-verification-plan.md).
+- Executed successfully: `uv sync --frozen`, `make preflight`, `make migrate`, `make seed-demo`, `make reset` (source samples untouched), `make lint`, `mypy`, `make test-backend` (104 passed, no skips), `make test-frontend` (63), `make build-frontend`, `make test-e2e` (7), `docs:build` with dead-link checking, and `docs:preview` serving under `/nanodb_mvp/`.
+- Seven defects removed. The serious one: `.python-version` pinned 3.12.12, which uv cannot install on Linux (its newest build is 3.12.11), so `uv sync --frozen` failed on any machine without that exact system interpreter — `make install` was the first thing a new contributor would hit. `pyproject.toml` already allows any 3.12, so the pin is now `3.12`.
+- The second notable one: HOM-034a, written into the requirements during this same amendment, had never been implemented. Regenerating the screenshots is what exposed it.
+- The evidence screenshots were four commits stale, and the site's own copies could drift from the repository's; the capture script now writes both.
+- Blocked by the environment and reported rather than worked around: the container stack (Docker Hub's layer host is denied by egress policy — compose config and all four image tags were validated instead) and the actual Pages deploy (needs the repository Pages Source set to GitHub Actions plus a push to main).
+
 ## Next Stage Assessment
 
-Review and approve or revise the NANoDB Core Code Generation plan. Application code generation, database provisioning, load testing and deployment remain unperformed.
+The UI/UX amendment is finished apart from UIX-003 (numeric coordinate entry, the remaining accessibility gap) and UIX-009 (loading placeholders). Both are recorded as unimplemented in the requirements and in the README's known limitations, and neither is a demo gate.
+
+No code work remains in this amendment. Two things remain, and neither can be closed from here. Someone with Docker image access should run `make up` once to prove the container stack; an administrator must set the repository's Pages Source to GitHub Actions and push to main for DOC-012. Both are recorded as `미검증` in the requirements and on the evidence site.
+
+Separately, and by design, the external AI development demo (US-07, EVL-006~008) stays independent of app completeness: the prompts, generated code, run commands and pass/fail results still have to be produced and recorded by hand.
 
 ## Execution Plan Summary
 

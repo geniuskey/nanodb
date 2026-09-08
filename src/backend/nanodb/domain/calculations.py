@@ -190,6 +190,19 @@ def validate_export_snapshot(snapshot: ExportSnapshot) -> None:
                 "Stored measurement values do not match their source coordinates.",
             )
 
+    annotation_ids = [annotation.id for annotation in snapshot.annotations]
+    if annotation_ids != sorted(annotation_ids):
+        raise DomainError(
+            "INVALID_ANNOTATION_ORDER",
+            "Export annotations must be ordered by ID.",
+        )
+    for annotation in snapshot.annotations:
+        if annotation.image_id != snapshot.image.id:
+            raise DomainError(
+                "MIXED_IMAGE_EXPORT",
+                "Every annotation must belong to the selected image.",
+            )
+
     if snapshot.expected_summary != build_expected_summary(snapshot.measurements):
         raise DomainError(
             "INCONSISTENT_SUMMARY",

@@ -65,7 +65,8 @@ AI-DLC v1.0.1 워크플로우로 INCEPTION → CONSTRUCTION을 단계별로 수�
   내보내, 외부 AI 개발 도구가 사람의 반복 설명 없이 소비하도록 설계.
 - **산출물**: 컨텍스트 내보내기 구현과 계약
   (`GET /api/images/{id}/context-export`, 4파일 ZIP: `context.md`/`data.json`/`task.md`/
-  `checks.json`, `schema_version 1.0`), `aidlc-docs/construction/nanodb-core/code/api-reference.md`,
+  `checks.json`, `schema_version 1.1` — 저장 측정과 도형 라벨을 함께 포함),
+  `aidlc-docs/construction/nanodb-core/code/api-reference.md`,
   외부 검증 자산 `validation/external-ai/`.
 - **상태**: `pass` (엔드포인트·스키마·검증 자산 존재).
 
@@ -90,16 +91,20 @@ AI-DLC v1.0.1 워크플로우로 INCEPTION → CONSTRUCTION을 단계별로 수�
 - **스크린샷 ↔ README 정합**: README 시연 화면 절과 각 화면의 대응 기능을 일치시킴.
 - **핵심 경로 stub/TODO 없음**: 등록 → 측정 → 저장·복원 → 내보내기 경로가 구현됨.
 - **테스트·정적 게이트(이 저장소에서 실행)**:
-  - Backend `pytest`: **57 passed / 7 skipped** — `pass` (PostgreSQL integration test는
-    `TEST_DATABASE_URL` 없을 때 skip).
-  - Frontend `vitest`: **23 passed** — `pass`.
+  - Backend `pytest`: 로컬 PostgreSQL 16을 기동해 **104 passed / skip 없음** — `pass`
+    (`TEST_DATABASE_URL` 미지정 시에는 PostgreSQL integration test가 skip됩니다).
+  - Frontend `vitest`: **63 passed** — `pass`.
+  - Browser e2e `npm run test:e2e`(Chromium, 실행 중인 앱): **7 passed** — `pass`.
   - Frontend `vite build` / `tsc` / `mypy` / `ruff` / demo `preflight`: **통과** — `pass`.
+  - Demo 경로 `make migrate` → `make seed-demo` → `make reset`: **통과** — `pass`
+    (원천 샘플 `data/samples/`는 변경되지 않음).
+- **검증 완료**: PostgreSQL 통합 테스트(로컬 PostgreSQL 16, skip 없음)와 브라우저
+  e2e(`npm run test:e2e`, Chromium)를 실제로 실행해 통과를 확인했습니다.
 - **미검증(unverified) — 별도 환경 필요**:
-  - PostgreSQL integration test 실제 실행(`TEST_DATABASE_URL` 필요).
-  - 브라우저 e2e(`npm run test:e2e`)의 CI 자동 실행.
+  - 통합 테스트·브라우저 e2e의 CI 자동 실행(로컬 실행은 통과).
   - 컨테이너 이미지 build와 Compose 스택(`make up`/`make demo`) 기동.
   - 재현 절차는 `aidlc-docs/construction/build-and-test/`에 기록. 상태는 정직하게 `미검증`.
-- **상태**: 동작·빌드·정적 게이트·스크린샷은 `pass`, 컨테이너·통합/e2e CI는 `unverified`.
+- **상태**: 동작·빌드·정적 게이트·스크린샷·통합 테스트·브라우저 e2e는 `pass`, 컨테이너 스택 기동과 CI 자동 실행은 `unverified`.
 
 ## 5. 사용성 (15%)
 

@@ -98,7 +98,6 @@ describe("ImageListPage", () => {
   });
 
   it("deletes an image after confirmation and drops it from the catalog", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     const fetchMock = vi.fn().mockImplementation((_input, init?: RequestInit) => {
       if (init?.method === "DELETE") {
         return Promise.resolve(new Response(null, { status: 204 }));
@@ -109,6 +108,11 @@ describe("ImageListPage", () => {
 
     renderWithRouter(<ImageListPage />);
     fireEvent.click(await screen.findByTestId("catalog-image-delete"));
+    // The dialog names the derived data that disappears with the image.
+    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(
+      "저장된 측정 2개가 함께 삭제됩니다",
+    );
+    fireEvent.click(screen.getByTestId("confirm-accept"));
 
     await waitFor(() =>
       expect(screen.queryByTestId("catalog-image-card")).not.toBeInTheDocument(),
@@ -116,10 +120,10 @@ describe("ImageListPage", () => {
     const deleteCall = fetchMock.mock.calls.find((call) => call[1]?.method === "DELETE");
     expect(String(deleteCall?.[0])).toBe("/api/images/9");
     expect(screen.getByText("등록된 이미지가 없습니다")).toBeInTheDocument();
+    expect(screen.getByTestId("status-banner")).toHaveTextContent("삭제했습니다");
   });
 
   it("keeps the image when the delete is not confirmed", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
     const fetchMock = vi.fn().mockImplementation(() =>
       Promise.resolve(jsonResponse([sampleImage])),
     );
@@ -127,9 +131,59 @@ describe("ImageListPage", () => {
 
     renderWithRouter(<ImageListPage />);
     fireEvent.click(await screen.findByTestId("catalog-image-delete"));
+    fireEvent.click(screen.getByTestId("confirm-cancel"));
 
+    expect(screen.queryByTestId("confirm-dialog")).not.toBeInTheDocument();
     expect(screen.getByTestId("catalog-image-card")).toBeInTheDocument();
     expect(fetchMock.mock.calls.some((call) => call[1]?.method === "DELETE")).toBe(false);
+  });
+
+  it("reports the result count and keeps results visible while refetching", async () => {
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(jsonResponse([sampleImage])),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithRouter(<ImageListPage />);
+    expect(await screen.findByTestId("catalog-count")).toHaveTextContent(
+      "등록된 이미지 1건",
+    );
+
+    fireEvent.click(screen.getByTestId("filter-sem"));
+
+    // The previous card stays on screen through the refetch instead of the
+    // page blanking back to its loading state.
+    expect(screen.getByTestId("catalog-image-card")).toBeInTheDocument();
+    expect(screen.queryByText("이미지를 불러오는 중입니다.")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("catalog-count")).toHaveTextContent(
+        "조건에 맞는 이미지 1건",
+      ),
+    );
+  });
+
+  it("reserves the grid while the first load is in flight", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => undefined)));
+
+    renderWithRouter(<ImageListPage />);
+
+    // Placeholders hold the layout, and they are decorative only.
+    const skeleton = await screen.findByTestId("catalog-skeleton");
+    expect(skeleton).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("불러오는 중");
+  });
+
+  it("offers a retry when the catalog cannot be loaded", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error("offline"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithRouter(<ImageListPage />);
+
+    const retry = await screen.findByTestId("retry-catalog");
+    const before = fetchMock.mock.calls.length;
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(before));
   });
 
   it("distinguishes a filtered empty result from an empty catalog", async () => {

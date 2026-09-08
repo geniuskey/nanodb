@@ -16,7 +16,7 @@ test("registration without a file is rejected before submit", async ({
   await page.getByTestId("registration-submit").click();
 
   await expect(page).toHaveURL(/\/images\/new$/);
-  await expect(page.getByRole("alert")).toContainText("PNG 또는 JPEG");
+  await expect(page.getByRole("alert")).toContainText("PNG, JPEG 또는 TIFF");
 });
 
 // Export stays disabled with a stated reason until a measurement exists (US-06).

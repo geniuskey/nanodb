@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import logo from "../../../../assets/logo/nanodb_logo_horizontal.png";
 import { api } from "../api/client";
 import { useSummary } from "../api/summary-context";
 import type { ImageListView, ParameterSummary, ParameterType } from "../api/types";
+import { useDocumentTitle } from "../ui/useDocumentTitle";
 
 // --- Static content (대의 / 왜 지금인가 / Phase / AI-DLC / 사용 흐름) ---
 
@@ -134,14 +136,17 @@ const PARAM_LABEL: Record<ParameterType, string> = {
 interface ImagesState {
   images: ImageListView[] | null;
   state: "loading" | "success" | "failure";
+  reload: () => void;
 }
 
 function useImages(): ImagesState {
   const [images, setImages] = useState<ImageListView[] | null>(null);
   const [state, setState] = useState<ImagesState["state"]>("loading");
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
+    setState("loading");
     api
       .listImages()
       .then((value) => {
@@ -154,9 +159,10 @@ function useImages(): ImagesState {
     return () => {
       active = false;
     };
-  }, []);
+  }, [attempt]);
 
-  return { images, state };
+  const reload = useCallback(() => setAttempt((current) => current + 1), []);
+  return { images, state, reload };
 }
 
 function dayKey(iso: string): string {
@@ -168,9 +174,8 @@ function topParameters(parameters: ParameterSummary[]): (ParameterSummary | null
   return [sorted[0] ?? null, sorted[1] ?? null];
 }
 
-function KpiSection() {
+function KpiSection({ images, reloadImages }: { images: ImageListView[] | null; reloadImages: () => void }) {
   const { summary, state } = useSummary();
-  const { images } = useImages();
 
   const at = summary
     ? new Date(summary.calculated_at).toLocaleString()
@@ -187,8 +192,27 @@ function KpiSection() {
       </h2>
       <p className="section-note">현재 저장된 데이터만 집계합니다. 예시 숫자를 대입하지 않습니다.</p>
 
-      {state === "loading" && <p role="status">실제 데이터를 불러오는 중입니다.</p>}
-      {state === "failure" && <p role="alert">데이터를 불러오지 못했습니다.</p>}
+      {state === "loading" && (
+        <>
+          <p role="status">실제 데이터를 불러오는 중입니다.</p>
+          <div className="kpi-grid four" aria-hidden="true" data-testid="kpi-skeleton">
+            {[0, 1, 2, 3].map((slot) => (
+              <article className="kpi-card" key={slot}>
+                <span className="skeleton skeleton-value" />
+                <span className="skeleton skeleton-line short" />
+              </article>
+            ))}
+          </div>
+        </>
+      )}
+      {state === "failure" && (
+        <p role="alert">
+          데이터를 불러오지 못했습니다.{" "}
+          <button type="button" className="retry" data-testid="retry-summary" onClick={reloadImages}>
+            다시 시도
+          </button>
+        </p>
+      )}
 
       {state === "success" && summary && (
         <div data-testid="home-summary">
@@ -358,16 +382,22 @@ function CompositionBars({
   );
 }
 
-function RecentImages() {
-  const { images, state } = useImages();
+function RecentImages({ images, state, reload }: ImagesState) {
   const recent = (images ?? []).slice(0, 6);
 
   return (
     <section aria-labelledby="recent-title">
       <h2 id="recent-title">최근 등록된 이미지</h2>
-      {state === "failure" && <p role="alert">이미지 목록을 불러오지 못했습니다.</p>}
+      {state === "failure" && (
+        <p role="alert">
+          이미지 목록을 불러오지 못했습니다.{" "}
+          <button type="button" className="retry" data-testid="retry-images" onClick={reload}>
+            다시 시도
+          </button>
+        </p>
+      )}
       {state !== "failure" && recent.length === 0 ? (
-        <p className="empty-state">No images yet.</p>
+        <p className="empty-state">아직 등록된 이미지가 없습니다. `이미지 등록` 탭에서 첫 SEM/TEM 이미지를 올려 보세요.</p>
       ) : (
         <div className="recent-grid">
           {recent.map((image) => (
@@ -387,20 +417,60 @@ function RecentImages() {
   );
 }
 
-export function HomePage() {
+const VIDEO_EMBED = "https://www.youtube.com/embed/x1iTw_qvHB0";
+
+/** True when the viewer asked their system to reduce motion. */
+function prefersReducedMotion(): boolean {
+  // jsdom and older browsers have no matchMedia; treat that as "no preference".
+  return typeof window.matchMedia === "function"
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
+ * Intro video (HOM-040). It is the one external runtime dependency on this
+ * page, so it never gets to be a mystery black box: the caption below always
+ * describes it, and if the embed cannot load, everything else on the home page
+ * still reads. Autoplay is skipped for a reduced-motion viewer, who gets a
+ * play button instead.
+ */
+function IntroVideo() {
+  const [reduced] = useState(prefersReducedMotion);
+  const [started, setStarted] = useState(false);
+  const playing = started || !reduced;
+
   return (
-    <main>
-      <section aria-labelledby="video-title" className="video-section">
-        <div className="video-frame">
+    <section aria-labelledby="video-title" className="video-section">
+      <h2 id="video-title" className="visually-hidden">NANoDB 소개 영상</h2>
+      <div className="video-frame">
+        {playing ? (
           <iframe
-            src="https://www.youtube.com/embed/x1iTw_qvHB0?autoplay=1&mute=1&rel=0&playsinline=1"
+            src={`${VIDEO_EMBED}?autoplay=1&mute=1&rel=0&playsinline=1`}
             title="NANoDB 소개 영상"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
           />
-        </div>
-        <h2 id="video-title" className="visually-hidden">NANoDB 소개 영상</h2>
-      </section>
+        ) : (
+          <button type="button" className="video-play" data-testid="video-play" onClick={() => setStarted(true)}>
+            ▶ NANoDB 소개 영상 재생
+          </button>
+        )}
+      </div>
+      <p className="video-caption" data-testid="video-caption">
+        NANoDB 소개 영상입니다. 외부 동영상 서비스에서 불러오므로 네트워크가 차단된 환경에서는
+        이 자리가 비어 있을 수 있습니다. 영상 없이도 아래 내용만으로 NANoDB를 확인할 수 있습니다.
+      </p>
+    </section>
+  );
+}
+
+export function HomePage() {
+  useDocumentTitle("홈");
+  // One fetch shared by the KPI tiles, the composition bars and the recent
+  // grid, so a retry re-arms all three at once.
+  const imageList = useImages();
+  return (
+    <main>
+      <IntroVideo />
 
       <section className="hero-card" aria-labelledby="home-title">
         <div className="hero-grid">
@@ -426,9 +496,9 @@ export function HomePage() {
         </div>
       </section>
 
-      <KpiSection />
+      <KpiSection images={imageList.images} reloadImages={imageList.reload} />
 
-      <RecentImages />
+      <RecentImages {...imageList} />
 
       <section aria-labelledby="why-title">
         <h2 id="why-title">왜 지금인가</h2>
@@ -498,6 +568,16 @@ export function HomePage() {
             </li>
           ))}
         </ol>
+        {/* The only in-body links on the home page (HOM-005, HOM-034a): a
+            reader who just went through the four steps can start here. */}
+        <div className="flow-cta">
+          <Link className="button primary" to="/images/new" data-testid="home-register-image">
+            이미지 등록
+          </Link>
+          <Link className="button" to="/images" data-testid="home-browse-images">
+            이미지 둘러보기
+          </Link>
+        </div>
       </section>
 
       <p className="policy">

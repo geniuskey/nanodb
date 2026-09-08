@@ -110,6 +110,16 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(value),
     }),
+  updateMeasurementNote: (
+    imageId: number,
+    measurementId: number,
+    note: string | null,
+  ) =>
+    request<MeasurementView>(`/api/images/${imageId}/measurements/${measurementId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note }),
+    }),
   deleteMeasurement: (imageId: number, measurementId: number) =>
     requestVoid(`/api/images/${imageId}/measurements/${measurementId}`, {
       method: "DELETE",
@@ -135,6 +145,10 @@ export const api = {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(value),
+    }),
+  deleteAnnotation: (imageId: number, annotationId: number) =>
+    requestVoid(`/api/images/${imageId}/annotations/${annotationId}`, {
+      method: "DELETE",
     }),
   downloadContext: contextDownload,
 };

@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 
 import { ApiError, api } from "../api/client";
 import type { ImageListView, ImageType } from "../api/types";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { useDocumentTitle } from "../ui/useDocumentTitle";
+import { StatusBanner } from "../ui/StatusBanner";
 
 type State = "loading" | "success" | "failure";
 type TypeFilter = "ALL" | ImageType;
@@ -14,13 +17,18 @@ const TYPE_FILTERS: { value: TypeFilter; label: string }[] = [
 ];
 
 export function ImageListPage() {
+  useDocumentTitle("이미지 목록");
   const [images, setImages] = useState<ImageListView[]>([]);
   const [state, setState] = useState<State>("loading");
   const [queryInput, setQueryInput] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [pending, setPending] = useState<ImageListView | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   // Debounce the free-text box so typing does not fire a request per keystroke.
   useEffect(() => {
@@ -30,7 +38,11 @@ export function ImageListPage() {
 
   useEffect(() => {
     let active = true;
-    setState("loading");
+    // Only the first load blanks the page. A filter refetch keeps the previous
+    // results on screen and just marks them as refreshing (CAT-008), so the
+    // catalog does not flash empty on every keystroke.
+    setState((current) => (current === "success" ? current : "loading"));
+    setRefreshing(true);
     api
       .listImages({
         q: activeQuery || undefined,
@@ -42,25 +54,26 @@ export function ImageListPage() {
           setState("success");
         }
       })
-      .catch(() => active && setState("failure"));
+      .catch(() => active && setState("failure"))
+      .finally(() => {
+        if (active) setRefreshing(false);
+      });
     return () => {
       active = false;
     };
-  }, [activeQuery, typeFilter]);
+  }, [activeQuery, typeFilter, attempt]);
 
-  async function removeImage(image: ImageListView) {
-    if (deletingId !== null) return;
-    const warning = image.measurement_count > 0
-      ? `이미지 '${image.original_filename}'와 저장된 측정 ${image.measurement_count}개를 함께 삭제합니다. 되돌릴 수 없습니다.`
-      : `이미지 '${image.original_filename}'를 삭제합니다. 되돌릴 수 없습니다.`;
-    if (!window.confirm(warning)) return;
-    setDeletingId(image.id); setActionError(null);
+  async function removeImage() {
+    const image = pending;
+    if (!image || deleting) return;
+    setDeleting(true); setActionError(null); setStatus(null);
     try {
       await api.deleteImage(image.id);
       setImages((current) => current.filter((item) => item.id !== image.id));
+      setStatus(`이미지 '${image.original_filename}'를 삭제했습니다.`);
     } catch (caught) {
       setActionError(caught instanceof ApiError ? caught.message : "이미지를 삭제하지 못했습니다.");
-    } finally { setDeletingId(null); }
+    } finally { setDeleting(false); setPending(null); }
   }
 
   const isFiltered = activeQuery.trim() !== "" || typeFilter !== "ALL";
@@ -103,9 +116,46 @@ export function ImageListPage() {
         </div>
       </div>
 
+      <StatusBanner message={status} />
       {actionError && <p role="alert">{actionError}</p>}
-      {state === "loading" && <p role="status">이미지를 불러오는 중입니다.</p>}
-      {state === "failure" && <p role="alert">이미지 목록을 불러오지 못했습니다.</p>}
+      {state === "loading" && (
+        <>
+          <p role="status">이미지를 불러오는 중입니다.</p>
+          {/* Hold the grid's shape so the page does not jump when cards
+              arrive (UIX-009). */}
+          <div className="image-grid" aria-hidden="true" data-testid="catalog-skeleton">
+            {[0, 1, 2, 3].map((slot) => (
+              <div className="image-card skeleton-card" key={slot}>
+                <span className="skeleton skeleton-thumb" />
+                <div className="skeleton-lines">
+                  <span className="skeleton skeleton-line" />
+                  <span className="skeleton skeleton-line short" />
+                  <span className="skeleton skeleton-line" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {state === "success" && (
+        <p className="result-count" role="status" data-testid="catalog-count">
+          {isFiltered ? "조건에 맞는 이미지" : "등록된 이미지"} {images.length}건
+          {refreshing ? " · 갱신 중" : ""}
+        </p>
+      )}
+      {state === "failure" && (
+        <p role="alert">
+          이미지 목록을 불러오지 못했습니다.{" "}
+          <button
+            type="button"
+            className="retry"
+            data-testid="retry-catalog"
+            onClick={() => setAttempt((current) => current + 1)}
+          >
+            다시 시도
+          </button>
+        </p>
+      )}
       {state === "success" && images.length === 0 && (
         <section className="empty-state">
           {isFiltered ? (
@@ -122,7 +172,7 @@ export function ImageListPage() {
         </section>
       )}
       {state === "success" && images.length > 0 && (
-        <div className="image-grid" data-testid="image-catalog">
+        <div className={refreshing ? "image-grid refreshing" : "image-grid"} data-testid="image-catalog">
           {images.map((image) => (
             <article className="image-card-wrap" key={image.id}>
               <Link className="image-card" to={`/images/${image.id}`} data-testid="catalog-image-card">
@@ -143,14 +193,25 @@ export function ImageListPage() {
                 className="delete-image"
                 data-testid="catalog-image-delete"
                 aria-label={`${image.original_filename} 삭제`}
-                disabled={deletingId === image.id}
-                onClick={() => removeImage(image)}
+                onClick={() => setPending(image)}
               >
-                {deletingId === image.id ? "삭제 중…" : "삭제"}
+                삭제
               </button>
             </article>
           ))}
         </div>
+      )}
+      {pending && (
+        <ConfirmDialog
+          title={`'${pending.original_filename}'를 삭제할까요?`}
+          body={pending.measurement_count > 0
+            ? `저장된 측정 ${pending.measurement_count}개가 함께 삭제됩니다. 되돌릴 수 없습니다.`
+            : "되돌릴 수 없습니다."}
+          confirmLabel="이미지 삭제"
+          busy={deleting}
+          onConfirm={removeImage}
+          onCancel={() => setPending(null)}
+        />
       )}
     </main>
   );

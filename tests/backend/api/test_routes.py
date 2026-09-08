@@ -77,6 +77,7 @@ class FakeImageService:
 class FakeMeasurementService:
     def __init__(self) -> None:
         self.delete_calls: list[tuple[int, int]] = []
+        self.note_calls: list[tuple[int, int, str | None]] = []
 
     def create(self, image_id: int, value: object) -> Measurement:
         start = value.start
@@ -106,6 +107,28 @@ class FakeMeasurementService:
             raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
         return ()
 
+    def update_note(
+        self,
+        image_id: int,
+        measurement_id: int,
+        note: str | None,
+    ) -> Measurement:
+        self.note_calls.append((image_id, measurement_id, note))
+        if measurement_id != 1:
+            raise DomainError("MEASUREMENT_NOT_FOUND", "Measurement was not found.")
+        return Measurement(
+            id=measurement_id,
+            image_id=image_id,
+            parameter_type=ParameterType.CD,
+            start=Point(100, 100),
+            end=Point(400, 500),
+            distance_px=500,
+            calibration_nm_per_pixel=0.2,
+            value_nm=100,
+            note=note,
+            created_at=NOW,
+        )
+
     def delete(self, image_id: int, measurement_id: int) -> None:
         self.delete_calls.append((image_id, measurement_id))
         if image_id != 1:
@@ -118,6 +141,7 @@ class FakeAnnotationService:
     def __init__(self) -> None:
         self.created: list[object] = []
         self.updates: list[tuple[int, int, object]] = []
+        self.deleted: list[tuple[int, int]] = []
 
     def create(self, image_id: int, value: object) -> Annotation:
         self.created.append(value)
@@ -132,6 +156,11 @@ class FakeAnnotationService:
             measurement_name=value.measurement_name,
             created_at=NOW,
         )
+
+    def delete(self, image_id: int, annotation_id: int) -> None:
+        if annotation_id != 7:
+            raise DomainError("ANNOTATION_NOT_FOUND", "Annotation was not found.")
+        self.deleted.append((image_id, annotation_id))
 
     def list_for_image(self, image_id: int) -> tuple[Annotation, ...]:
         if image_id != 1:
@@ -363,6 +392,54 @@ def test_update_annotation_forwards_label_fields() -> None:
     assert annotation_id == 7
     assert value.product is ProductType.DRAM
     assert value.step == "Litho"
+
+
+def test_update_measurement_note_trims_and_returns_the_stored_measurement() -> None:
+    client = build_client()
+
+    response = client.patch(
+        "/api/images/1/measurements/1",
+        json={"note": "  경계 재확인  "},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["note"] == "경계 재확인"
+    assert client.app.state.measurement_service.note_calls == [(1, 1, "경계 재확인")]
+
+
+def test_blank_measurement_note_is_stored_as_null() -> None:
+    client = build_client()
+
+    client.patch("/api/images/1/measurements/1", json={"note": "   "})
+
+    assert client.app.state.measurement_service.note_calls == [(1, 1, None)]
+
+
+def test_update_note_on_missing_measurement_uses_not_found_envelope() -> None:
+    response = build_client().patch(
+        "/api/images/1/measurements/999",
+        json={"note": "x"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "MEASUREMENT_NOT_FOUND"
+
+
+def test_delete_annotation_returns_no_content_and_forwards_ids() -> None:
+    client = build_client()
+
+    response = client.delete("/api/images/1/annotations/7")
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert client.app.state.annotation_service.deleted == [(1, 7)]
+
+
+def test_delete_missing_annotation_uses_not_found_envelope() -> None:
+    response = build_client().delete("/api/images/1/annotations/999")
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "ANNOTATION_NOT_FOUND"
 
 
 def test_update_missing_annotation_uses_not_found_envelope() -> None:

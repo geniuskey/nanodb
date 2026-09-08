@@ -4,7 +4,7 @@
 
 - **Project Type**: Greenfield
 - **Start Date**: 2026-09-07T11:50:01Z
-- **Current Stage**: CONSTRUCTION complete for the 2026-09-08 UI/UX amendment. Every requirement in it (P0 reconciliation, P1 and P2) is implemented, and every runnable path — make demo, quality gates, browser e2e, evidence site build and preview — has been executed end to end. Only the container stack and the actual Pages deploy remain unverified, both blocked by this environment rather than by the project. The 2026-09-08 UI/UX requirements amendment was approved on the same day. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
+- **Current Stage**: CONSTRUCTION complete for the 2026-09-08 UI/UX amendment. Every requirement in it (P0 reconciliation, P1 and P2) is implemented, and every runnable path — make demo, quality gates, browser e2e, evidence site build and preview — has been executed end to end. Only the container stack remains unverified, blocked by this environment rather than by the project. The Pages deploy is verified: the workflow's build and deploy jobs both succeeded on the main merge commit. The 2026-09-08 UI/UX requirements amendment was approved on the same day. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: the container stack in a Docker environment. Operations phase is a placeholder.
 
 ## Workspace State
 
@@ -49,7 +49,7 @@
 - [x] Infrastructure Design (NANoDB Core approved 2026-09-08)
 - [x] Code Generation (NANoDB Core approved 2026-09-08; Part 2 Steps 1-26/26 complete)
 - [x] Build and Test (approved 2026-09-08; runnable gates green; integration/e2e/container deferred to a Docker/PostgreSQL environment)
-- [x] Evidence Site (US-08) Code Generation (approved 2026-09-08; Part 2 Steps 1-10/10 complete, US-08 [x]). Functional/NFR/Infra Design skipped (logged). VitePress site builds locally (dead-link check on), preview serves both pages + screenshots, no localhost links/secrets; GitHub Pages deploy actual run deferred to admin Pages setup + main push.
+- [x] Evidence Site (US-08) Code Generation (approved 2026-09-08; Part 2 Steps 1-10/10 complete, US-08 [x]). Functional/NFR/Infra Design skipped (logged). VitePress site builds locally (dead-link check on), preview serves both pages + screenshots, no localhost links/secrets; the GitHub Pages deploy has since run and succeeded on main ([run](https://github.com/geniuskey/nanodb_mvp/actions/runs/34225740216)).
 
 ## Current Request Assessment
 
@@ -84,7 +84,7 @@
 - [x] UIX-003 (numeric coordinate entry) and UIX-009 (loading placeholders) — the P2 group is now closed
 - [x] Verify the demo path, container definitions and publishing path — see [demo-and-deploy-verification-plan.md](construction/plans/demo-and-deploy-verification-plan.md)
 - [ ] Run `make up` once where Docker image layers are reachable
-- [ ] Set the repository's Pages Source to GitHub Actions and push to main (DOC-012)
+- [x] GitHub Pages deploy — already configured with the Actions source; build and deploy both succeeded on the main merge ([run](https://github.com/geniuskey/nanodb_mvp/actions/runs/34225740216)). DOC-012's admin step was already done.
 
 ### Applied requirement changes (2026-09-08)
 
@@ -209,13 +209,14 @@ See [contest-alignment-plan.md](inception/requirements/contest-alignment-plan.md
 - Seven defects removed. The serious one: `.python-version` pinned 3.12.12, which uv cannot install on Linux (its newest build is 3.12.11), so `uv sync --frozen` failed on any machine without that exact system interpreter — `make install` was the first thing a new contributor would hit. `pyproject.toml` already allows any 3.12, so the pin is now `3.12`.
 - The second notable one: HOM-034a, written into the requirements during this same amendment, had never been implemented. Regenerating the screenshots is what exposed it.
 - The evidence screenshots were four commits stale, and the site's own copies could drift from the repository's; the capture script now writes both.
-- Blocked by the environment and reported rather than worked around: the container stack (Docker Hub's layer host is denied by egress policy — compose config and all four image tags were validated instead) and the actual Pages deploy (needs the repository Pages Source set to GitHub Actions plus a push to main).
+- Blocked by the environment and reported rather than worked around: the container stack (Docker Hub's layer host is denied by egress policy — compose config and all four image tags were validated instead).
+- Correction, made after the merge: the Pages deploy was reported as unverified and needing an admin step. Checking the workflow history showed it was already configured and had succeeded on earlier main pushes, and it succeeded again on this merge ([run](https://github.com/geniuskey/nanodb_mvp/actions/runs/34225740216)). That claim was carried over from an older state note instead of being checked against the run history — the same drift this whole amendment was about. The published URL itself could not be fetched here because `geniuskey.github.io` is denied by egress policy.
 
 ## Next Stage Assessment
 
 The UI/UX amendment is finished apart from UIX-003 (numeric coordinate entry, the remaining accessibility gap) and UIX-009 (loading placeholders). Both are recorded as unimplemented in the requirements and in the README's known limitations, and neither is a demo gate.
 
-No code work remains in this amendment. Two things remain, and neither can be closed from here. Someone with Docker image access should run `make up` once to prove the container stack; an administrator must set the repository's Pages Source to GitHub Actions and push to main for DOC-012. Both are recorded as `미검증` in the requirements and on the evidence site.
+No code work remains in this amendment. One thing remains and cannot be closed from here: someone with Docker image access should run `make up` once to prove the container stack. It is recorded as `미검증` in the requirements and on the evidence site.
 
 Separately, and by design, the external AI development demo (US-07, EVL-006~008) stays independent of app completeness: the prompts, generated code, run commands and pass/fail results still have to be produced and recorded by hand.
 

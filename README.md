@@ -252,6 +252,10 @@ Node 버전은 루트 `.nvmrc`(22.17.1)로 로컬·CI를 일치시킵니다.
 3. 배포는 최소 권한(`contents: read`, `pages: write`, `id-token: write`)과 단일 배포
    concurrency(진행 중 배포 미취소)로 제한됩니다.
 
+> 1번 관리자 설정은 이미 완료돼 있습니다. `main` push마다 build·deploy job이 실행되어
+> 성공하고 있으므로 추가 설정 없이 게시됩니다. 실행 이력은 저장소 Actions 탭의
+> `Deploy evidence site`에서 확인할 수 있습니다.
+
 ### 게시 안전 원칙
 
 - 공개 사이트는 localhost 앱으로 연결하지 않습니다.

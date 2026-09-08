@@ -102,7 +102,7 @@ AI-DLC v1.0.1 워크플로우로 INCEPTION → CONSTRUCTION을 단계별로 수�
   e2e(`npm run test:e2e`, Chromium)를 실제로 실행해 통과를 확인했습니다.
 - **미검증(unverified) — 별도 환경 필요**:
   - 통합 테스트·브라우저 e2e의 CI 자동 실행(로컬 실행은 통과).
-  - 컨테이너 이미지 build와 Compose 스택(`make up`/`make demo`) 기동.
+  - 컨테이너 이미지 build와 Compose 스택(`make up`/`make demo`) 기동. (Pages 배포는 검증 완료)
   - 재현 절차는 `aidlc-docs/construction/build-and-test/`에 기록. 상태는 정직하게 `미검증`.
 - **상태**: 동작·빌드·정적 게이트·스크린샷·통합 테스트·브라우저 e2e는 `pass`, 컨테이너 스택 기동과 CI 자동 실행은 `unverified`.
 
@@ -183,7 +183,7 @@ make test            # backend(pytest) + frontend(vitest)
 | --- | --- | --- |
 | 구현 완료 | 코드가 저장소에 존재하고 정적/단위 게이트 통과 | US-01~US-07 완료 |
 | 외부 AI 데모 실행 | `validation/external-ai/`의 실제 비교 실행·기록 | 자산 준비, 실행 기록은 후속 |
-| 게시 상태 | 이 Evidence Site의 GitHub Pages 실제 배포 | workflow 준비, 배포는 관리자 설정·main push 후 |
+| 게시 상태 | 이 Evidence Site의 GitHub Pages 실제 배포 | `pass` — `main` 머지에서 build·deploy job 모두 성공([run](https://github.com/geniuskey/nanodb_mvp/actions/runs/34225740216)) |
 
 ## 게시 안전 원칙
 

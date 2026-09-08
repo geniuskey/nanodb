@@ -1758,3 +1758,21 @@ UIX-009: 목록과 홈 KPI의 첫 조회에 결과와 같은 모양의 자리 �
 **Context**: CONSTRUCTION - P2 group closed; amendment code work complete
 
 ---
+
+## Correction — GitHub Pages Deploy Was Not Unverified
+**Timestamp**: 2026-09-08T15:55:00Z
+**User Input**: (PR #4 머지 알림 수신 후 자체 확인)
+**AI Response**: "PR #4 머지 알림을 받고 docs/** 변경이 포함됐으므로 Pages workflow 결과를 확인했다. 그 과정에서 내가 남긴 서술이 사실과 다름을 발견해 정정한다.
+
+발견: 머지 커밋 5e8ea44에서 Deploy evidence site workflow의 build와 deploy job이 모두 성공했다(run 34225740216). 이전 두 번의 main push(a05aa05, ea99d02)에서도 성공했다. 즉 저장소 Settings의 Pages Source는 이미 GitHub Actions로 설정돼 있었고, DOC-012의 관리자 설정은 처음부터 완료된 상태였다.
+
+내 잘못: 나는 이 항목을 '미검증, 관리자 설정 필요'로 요구사항·평가 사이트·상태 파일·검증 계획서에 반복해 적었다. 근거는 aidlc-state.md의 오래된 서술이었고, workflow 실행 이력을 한 번도 확인하지 않았다. 이번 개정 전체의 전제가 '문서가 실행 결과와 어긋나 있다'였는데 나 자신이 같은 방식으로 낡은 서술을 옮겨 적었다. 상태를 옮길 때는 원본 문서가 아니라 실행 기록을 근거로 삼아야 한다는 교훈을 검증 계획서에 남겼다.
+
+정정 범위: docs/index.md(한계 절), docs/evidence.md(게시 상태 행을 pass로, 미검증 목록에서 제외), aidlc-docs/aidlc-state.md(Current Stage, Evidence Site 진행, 체크박스, 검증 절, Next Stage), demo-and-deploy-verification-plan.md(환경 제약 절과 교훈 추가), README.md(관리자 설정 절차는 DOC-012 문서화 요구라 유지하되 이미 완료·동작 중임을 명시).
+
+정확히 말하면: Pages 배포는 실행되어 성공했다. 게시된 URL 자체는 geniuskey.github.io가 이 실행 환경의 egress 정책에서 403이라 열어 확인하지 못했다. 남은 미검증은 컨테이너 스택 하나뿐이다.
+
+검증: docs:build 통과, vitest 66 passed, ruff 통과, pytest 81 passed/23 skipped(PostgreSQL 미기동 상태의 정상값)."
+**Context**: CONSTRUCTION - post-merge correction of a claim I carried over without checking
+
+---

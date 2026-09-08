@@ -64,6 +64,12 @@ export function MeasurementPage() {
   const [rendered, setRendered] = useState<Size>({ width: 0, height: 0 });
   const [viewport, setViewport] = useState<Size>({ width: 0, height: 0 });
   const [zoom, setZoom] = useState(1);
+  // How much of the overlay to draw. Auto feature extraction puts up to six
+  // shapes on one structure, so being able to strip the image back to the one
+  // measurement under discussion is part of reading the result at all.
+  const [showShapes, setShowShapes] = useState(true);
+  const [showLabels, setShowLabels] = useState(true);
+  const [onlySelected, setOnlySelected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -455,13 +461,22 @@ export function MeasurementPage() {
               <span className="zoom-value" data-testid="zoom-level">{Math.round(zoom * 100)}%</span>
               <button type="button" className="tool-button" aria-label="확대" data-testid="zoom-in" disabled={zoomIndex >= ZOOM_STEPS.length - 1} onClick={() => changeZoom(1)}>+</button>
               <button type="button" className="tool-button" data-testid="zoom-fit" disabled={zoom === 1} onClick={() => setZoom(1)}>맞춤</button>
+              <span className="toolbar-gap" />
+              <label className="overlay-toggle"><input type="checkbox" checked={showShapes} onChange={(event) => setShowShapes(event.target.checked)} data-testid="toggle-shapes" />측정 표시</label>
+              <label className="overlay-toggle"><input type="checkbox" checked={showLabels} disabled={!showShapes} onChange={(event) => setShowLabels(event.target.checked)} data-testid="toggle-labels" />값 라벨</label>
+              <label className="overlay-toggle"><input type="checkbox" checked={onlySelected} disabled={!showShapes || selectedId === null} onChange={(event) => setOnlySelected(event.target.checked)} data-testid="toggle-only-selected" />선택만</label>
             </div>
             <div className="image-viewport" ref={viewportRef} tabIndex={0} aria-label="이미지 뷰어. 확대한 뒤에는 스크롤이나 방향키로 이동합니다.">
               <div className="image-stage" style={displayWidth > 0 ? { width: displayWidth } : undefined}>
                 <img ref={imageRef} src={detail.file_url} alt={detail.original_filename} onClick={placePoint} style={displayWidth > 0 ? { width: displayWidth } : undefined} onLoad={() => { const rect = imageRef.current?.getBoundingClientRect(); if (rect) setRendered({ width: rect.width, height: rect.height }); }} data-testid="measurement-image" />
-                {rendered.width > 0 && <MeasurementOverlay width={rendered.width} height={rendered.height} original={{ width: detail.pixel_width, height: detail.pixel_height }} measurements={detail.measurements} selectedId={selectedId} draft={draft} draftType={measurementType} />}
+                {rendered.width > 0 && <MeasurementOverlay width={rendered.width} height={rendered.height} original={{ width: detail.pixel_width, height: detail.pixel_height }} measurements={showShapes ? detail.measurements : []} selectedId={selectedId} draft={draft} draftType={measurementType} showLabels={showLabels} onlySelected={onlySelected} />}
               </div>
             </div>
+            {detail.measurements.some((item) => item.source === "auto") && (
+              <p className="viewer-legend" data-testid="viewer-legend">
+                실선 = 수동 측정 · 점선 = 자동 추출(미검증) · 속이 빈 점 = 계산에 쓰인 기준점
+              </p>
+            )}
             <p className="viewer-scale" data-testid="viewer-scale">
               배율 {Math.round(zoom * 100)}%
               {originalPerScreenPx !== null && (

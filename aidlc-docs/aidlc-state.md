@@ -4,7 +4,7 @@
 
 - **Project Type**: Greenfield
 - **Start Date**: 2026-09-07T11:50:01Z
-- **Current Stage**: CONSTRUCTION - Measurement UX unit complete (MEA-012/013/014, UIX-001/002, ANN-005/006) with every gate green including browser e2e. The 2026-09-08 UI/UX requirements amendment was approved on the same day. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
+- **Current Stage**: CONSTRUCTION - the 2026-09-08 P1 group is complete except HOM-040 (MEA-012/013/014, UIX-001/002/008, ANN-005/006/008, RES-007, CAT-008/009), with every gate green including browser e2e. The 2026-09-08 UI/UX requirements amendment was approved on the same day. Prior state: CONSTRUCTION complete for both units (NANoDB Core US-01~US-07 + Evidence Site US-08); Evidence Site Code Generation approved 2026-09-08. Remaining deferred: Core PostgreSQL integration test, browser e2e, and container stack in a Docker/PostgreSQL environment; actual GitHub Pages deploy after admin Pages setup + main push. Operations phase is a placeholder.
 
 ## Workspace State
 
@@ -77,8 +77,9 @@
 - [x] Update README known limitations and demo flow
 - [x] Requirements amendment approved 2026-09-08 ("4까지 진행. 승인")
 - [x] Implement priority 1-4: MEA-012/013/014, UIX-001/002, ANN-005/006 — see [measurement-ux-code-generation-plan.md](construction/plans/measurement-ux-code-generation-plan.md)
-- [ ] Refresh stale Construction artifacts (`frontend-components.md`, `frontend-components-summary.md`)
-- [ ] Remaining P1: ANN-008 (annotations in the context ZIP), RES-007 (note editing), CAT-008~009, UIX-008
+- [x] Refresh stale Construction artifacts (`frontend-components.md`, `frontend-components-summary.md`)
+- [x] ANN-008 (annotations in the context ZIP, contract version 1.1), RES-007 (note editing), CAT-008~009, UIX-008 — see [context-and-p1-completion-plan.md](construction/plans/context-and-p1-completion-plan.md)
+- [ ] Remaining P1: HOM-040 (intro video fallback, reduced-motion, offline path)
 - [ ] P2 group (optional; not a demo gate)
 
 ### Applied requirement changes (2026-09-08)
@@ -179,9 +180,19 @@ See [contest-alignment-plan.md](inception/requirements/contest-alignment-plan.md
 - Verified: ruff clean, mypy clean (27 files), pytest 97 passed against a local PostgreSQL 16 with no skips, vitest 47 passed, vite build succeeded, Playwright e2e 6 passed against the running app in Chromium.
 - Browser e2e ran for the first time in this session. It surfaced one stale assertion left from the earlier TIFF work (`PNG 또는 JPEG`), now corrected, and two layout defects found by screenshot (the zoomed viewer overflowing its grid column, and the annotation table's delete button wrapping) that were fixed before commit.
 
+## Context Export + P1 Completion Unit (2026-09-08)
+
+- Plan: [context-and-p1-completion-plan.md](construction/plans/context-and-p1-completion-plan.md) — 23/23 steps complete.
+- The export contract changed: `data.json` now carries `annotations[]` and `schema_version` moved from 1.0 to 1.1. `context.md` explains the arrow and circle coordinate meanings and states that shapes carry no calculated value; `task.md` tells the generated code to ignore them; `checks.json` deliberately excludes them so a label is never counted as a measurement.
+- A saved measurement's note is editable through `PATCH /api/images/{id}/measurements/{id}`. Coordinates, parameter, distance, value and calibration have no write path at all, so the evidence stays immutable by construction rather than by convention.
+- The catalog keeps its results on screen through a filter refetch and reports the result count; the home empty state is Korean with a next action.
+- Verified: ruff clean, mypy clean (27 files), pytest 104 passed against a local PostgreSQL 16, vitest 50 passed, vite build succeeded, Playwright e2e 7 passed. The new browser test unzips the downloaded archive and asserts on the real `data.json`, since this change altered an interface with an external consumer.
+
 ## Next Stage Assessment
 
-Priorities 1-4 are delivered and verified. The next candidates, in the order proposed at the review, are ANN-008 (annotations in the context ZIP, which changes the CTX contract and its reproducibility test), then RES-007 (note editing), CAT-008~009 (keep results during a filter refetch, show the result count) and UIX-008 (consistent Korean copy). The stale Construction artifacts should be refreshed alongside whichever unit comes next. The P2 group stays optional and is not a demo gate.
+The whole 2026-09-08 P1 group is delivered except HOM-040, which needs a decision-free but design-touching change to the home intro video (a poster and text fallback when the embed cannot load, no autoplay under `prefers-reduced-motion`, and an offline path recorded in the README). After that only the P2 group remains: IMG-009~010 (inline form errors), UIX-003 (numeric coordinate entry, the one accessibility gap that also helps precision), UIX-004~007 and UIX-009. None of those is a demo gate.
+
+Still outstanding from the original review and unchanged by this work: browser e2e and the container stack are now proven to run here, but the repository's own `make demo` path and the GitHub Pages deploy remain unverified in a fresh environment.
 
 ## Execution Plan Summary
 

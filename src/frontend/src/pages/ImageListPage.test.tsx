@@ -138,6 +138,30 @@ describe("ImageListPage", () => {
     expect(fetchMock.mock.calls.some((call) => call[1]?.method === "DELETE")).toBe(false);
   });
 
+  it("reports the result count and keeps results visible while refetching", async () => {
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(jsonResponse([sampleImage])),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithRouter(<ImageListPage />);
+    expect(await screen.findByTestId("catalog-count")).toHaveTextContent(
+      "등록된 이미지 1건",
+    );
+
+    fireEvent.click(screen.getByTestId("filter-sem"));
+
+    // The previous card stays on screen through the refetch instead of the
+    // page blanking back to its loading state.
+    expect(screen.getByTestId("catalog-image-card")).toBeInTheDocument();
+    expect(screen.queryByText("이미지를 불러오는 중입니다.")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("catalog-count")).toHaveTextContent(
+        "조건에 맞는 이미지 1건",
+      ),
+    );
+  });
+
   it("distinguishes a filtered empty result from an empty catalog", async () => {
     vi.stubGlobal("fetch", vi.fn().mockImplementation(() => Promise.resolve(jsonResponse([]))));
 

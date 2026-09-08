@@ -54,6 +54,28 @@ class MeasurementService:
                 raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
             return MeasurementRepository(session).list_by_image(image_id)
 
+    def update_note(
+        self,
+        image_id: int,
+        measurement_id: int,
+        note: str | None,
+    ) -> Measurement:
+        """Edit a saved measurement's note, leaving its evidence untouched."""
+        with self._session_factory() as session:
+            if ImageRepository(session).find(image_id) is None:
+                raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
+            measurement = MeasurementRepository(session).update_note(
+                image_id,
+                measurement_id,
+                note,
+            )
+            if measurement is None:
+                raise DomainError(
+                    "MEASUREMENT_NOT_FOUND", "Measurement was not found."
+                )
+            session.commit()
+            return measurement
+
     def delete(self, image_id: int, measurement_id: int) -> None:
         """Remove one derived measurement; the original image is untouched."""
         with self._session_factory() as session:

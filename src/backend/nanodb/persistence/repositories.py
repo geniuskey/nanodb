@@ -253,6 +253,28 @@ class MeasurementRepository:
             _to_measurement(model) for model in self._session.scalars(statement)
         )
 
+    def update_note(
+        self,
+        image_id: int,
+        measurement_id: int,
+        note: str | None,
+    ) -> Measurement | None:
+        """Update only a measurement's note.
+
+        The evidence a measurement rests on -- its coordinates, parameter,
+        distance, calibration and value -- is immutable, so only the note is
+        writable. Returns ``None`` when the measurement is missing or belongs
+        to a different image, so callers cannot edit across images by guessing
+        ids.
+        """
+        model = self._session.get(MeasurementModel, measurement_id)
+        if model is None or model.image_id != image_id:
+            return None
+        model.note = note
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_measurement(model)
+
     def delete(self, image_id: int, measurement_id: int) -> bool:
         """Delete a single measurement scoped to its image.
 

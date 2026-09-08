@@ -1,16 +1,19 @@
 # NANoDB Core Frontend Components
 
+> 2026-09-08 갱신: 홈 v2(CTA 규칙), 검색·필터, 삭제, 도형 라벨링, 확대·이동, 앱 내 확인 대화상자와 성공 알림을 반영해 현재 구현 기준으로 다시 썼다. 근거는 [ui-ux-review-2026-09-08.md](../../../inception/requirements/ui-ux-review-2026-09-08.md)다.
+
 ## 화면 구조
 
 | 화면 | 하위 컴포넌트 | 책임 | API 연결 |
 | --- | --- | --- | --- |
 | App Shell | Header, Navigation, Feedback Region | 브랜드, 현재 위치, 공통 이동과 텍스트 상태 | 필요 시 summary |
-| Home Page | Hero, Value Cards, MVP Scope, Summary Cards, Flow, Policy Line | 제품 목적, 실제 KPI, 활성 CTA와 로드맵 구분 | summary 조회 |
-| Image List Page | List Header, Empty State, Image Cards | 최신순 이미지와 측정 건수, 상세 이동 | image 목록 조회 |
+| Home Page | Intro Video, Hero, Value Cards, KPI + Composition, Recent Images, Public Stats, Phases, AI-DLC, Flow + CTA, Policy Line | 제품 목적, 실측 KPI, 로드맵 구분 | summary·image 목록 조회 |
+| Image List Page | List Header, Toolbar (검색·종류 필터), Result Count, Empty State, Image Cards, Delete | 최신순 이미지와 측정 건수, 검색·필터, 상세 이동, 삭제 | image 목록 조회, image 삭제 |
 | Image Register Page | Image Preview, Metadata Form, Submit State | 파일·metadata 입력, 선행 검증과 등록 | image 등록 |
-| Measurement Page | Image Viewer, Measurement Controls, Measurement List, Export Panel | 두 점 선택·표시·저장·복원과 ZIP 다운로드 | image 상세, measurement 생성, export |
+| Measurement Page | Image Viewer(+Zoom), Annotation Toolbar, Image Facts, Annotation Table, Measurement Controls, Measurement List(+Note Editor), Export Panel | 두 점 선택·표시·저장·복원, 도형 라벨링, 메모 수정, 삭제와 ZIP 다운로드 | image 상세, measurement 생성·메모 수정·삭제, annotation CRUD, image 삭제, export |
+| 공용 | ConfirmDialog, StatusBanner | 되돌릴 수 없는 동작의 확인, 쓰기 성공 알림 | 없음 |
 
-검색, Measurement 삭제와 항목별 평균 UI는 P1이므로 P0 컴포넌트에 포함하지 않는다.
+P0 게이트는 변하지 않았다. 위 표의 검색·필터, 삭제, 도형 라벨링, 확대·이동, 메모 수정은 P1으로 구현을 마친 항목이다.
 
 ## 공통 상태
 
@@ -29,18 +32,18 @@
 
 ### 입력 상태
 
-- 실제 전체 Image 수
-- 실제 전체 Measurement 수
+- 실제 전체 Image 수와 Measurement 수
+- 파라미터별 건수·평균·최소·최대
 - 집계 기준 시각
-- summary loading/failure 상태
+- Image 목록(SEM/TEM 구성, 등록 추이, 최근 6건)
+- summary·목록 각각의 loading/failure 상태
 
 ### 상호작용
 
-- `이미지 둘러보기`는 Image List로 이동한다.
-- `이미지 등록`은 Image Register로 이동한다.
-- 측정 시작은 Image 선택이 필요함을 표시하고 Image List로 이동한다.
-- 개발 컨텍스트 진입은 Image 선택과 저장 Measurement가 필요함을 설명한다.
+- 홈 본문은 읽는 문서로 두고 화면 이동은 상단 navigation이 담당한다(HOM-005).
+- 예외는 `이렇게 쓰세요` 사용 흐름 섹션 끝의 CTA 두 개(`이미지 등록`, `이미지 둘러보기`)뿐이다(HOM-034a).
 - 미구현 로드맵 항목은 버튼이나 활성 navigation으로 표현하지 않는다.
+- KPI나 최근 이미지 조회가 실패해도 정적 섹션은 계속 렌더링한다.
 
 ## Image List Page
 
@@ -51,8 +54,11 @@
 ### 상호작용
 
 - 카드 선택 시 해당 Measurement Page로 이동한다.
-- 결과가 0건이면 등록 CTA와 빈 상태 문구를 표시한다.
+- 검색어와 SEM/TEM 필터를 제공하고 현재 조건의 결과 건수를 표시한다.
+- 필터를 다시 조회하는 동안에는 이전 결과를 유지하고 갱신 중임을 표시한다. 매 입력마다 목록이 사라지지 않는다.
+- 검색·필터로 0건인 경우와 등록 자체가 0건인 경우를 다른 문구로 구분한다.
 - 목록 조회 실패를 빈 상태로 위장하지 않는다.
+- 카드마다 삭제를 제공하며, 확인 대화상자에 함께 사라지는 측정 건수를 표시한다.
 
 ## Image Register Page
 
@@ -85,12 +91,38 @@
 
 ### local state
 
-- 실제 rendering image rectangle
+- 실제 rendering image rectangle과 scroll viewport 크기
+- 현재 배율(고정 단계 1, 1.5, 2, 3, 4, 6, 8)
 - 선택한 `parameter_type`
 - draft 원본 좌표 최대 두 점
 - draft `distance_px`와 예상 `value_nm`
-- 선택 메모
-- 저장·export 진행 상태와 오류
+- 선택 메모와 메모 수정 draft
+- 선택한 도형 도구와 draft 도형
+- 확인 대기 중인 삭제 대상
+- 저장·삭제·export 진행 상태, 오류와 성공 메시지
+
+### 배율과 정확도
+
+1. 배율 1은 이미지 전체가 viewport에 들어가는 크기이며 원본보다 확대하지 않는다.
+2. 표시 폭은 `원본 너비 × fit scale × 배율`로 계산하고, viewport가 스크롤을 담당한다.
+3. 좌표 변환은 배율과 무관하게 실제 rendering rectangle을 거치므로 저장 좌표는 항상 원본 기준이다.
+4. 현재 배율에서 화면 1px이 원본 몇 px에 해당하는지 표시한다. 원본보다 축소된 상태에서는 원본 1px 단위로 지정할 수 없다는 사실을 감추지 않는다.
+
+### 이미지 정보
+
+`nm/pixel` 보정값, 원본 픽셀 크기와 등록 시각을 측정 중에 상시 표시한다. 측정값의 신뢰 근거가 export에만 있고 화면에 없으면 안 되기 때문이다.
+
+### 도형 라벨링
+
+- 화살표와 원 두 도구를 제공하고, 도구가 선택된 동안에만 overlay가 포인터 입력을 받는다.
+- 도형은 그린 순서대로 번호가 붙고 표에 한 행씩 나타난다. 행에서 제품·Step·측정 항목 명을 입력한다.
+- 도형과 표 행은 양방향으로 같은 강조 상태를 가진다. 도형의 hit 영역은 획으로 제한해 측정 클릭을 뺏지 않는다.
+- 도형은 삭제할 수 있고, 이동·크기 조절은 제공하지 않는다.
+- 도형은 계산값을 만들지 않는 참고 라벨이며 측정값과 시각적으로 구분한다.
+
+### 저장 측정의 메모 수정
+
+행별 `메모` 버튼으로 메모만 수정한다. 좌표·항목·픽셀 거리·값·보정값은 저장 후 불변이며, 편집 영역에 그 사실을 문구로 표시한다.
 
 ### 좌표 상호작용
 
@@ -108,7 +140,7 @@
 ### Export Panel
 
 - 저장 Measurement가 없으면 버튼을 비활성화하고 이유를 표시한다.
-- 제조 식별정보, 원본 파일명과 메모가 포함되고 이미지 binary는 제외됨을 다운로드 전에 보여준다.
+- 제조 식별정보, 원본 파일명, 메모와 저장 도형·도형 라벨이 포함되고 이미지 binary는 제외됨을 다운로드 전에 보여준다.
 - 앱이 외부 AI로 자동 전송하지 않음을 명시한다.
 - export 중 중복 요청을 막는다.
 - 성공 응답만 ZIP 다운로드로 처리하고 오류 응답을 파일로 저장하지 않는다.
@@ -120,6 +152,20 @@
 - 사용자에게 표시하는 nm 값은 둘째 자리까지 반올림하되 원본 숫자 상태는 유지한다.
 - 존재하지 않는 Image는 일반 빈 화면이 아니라 대상 없음 상태로 표시하고 목록 이동 행동을 제공한다.
 - 알 수 없는 서버 오류의 stack, SQL과 내부 파일 경로를 화면에 표시하지 않는다.
+
+## 공용 컴포넌트
+
+### ConfirmDialog
+
+되돌릴 수 없는 동작(이미지·측정·도형 삭제)의 확인을 담당한다. `window.confirm`을 쓰지 않는 이유는 문구·삭제될 파생 데이터 건수·포커스 이동을 앱이 통제해야 하기 때문이다.
+
+- 열릴 때 확인 버튼으로 포커스를 옮기고, 닫힐 때 호출한 요소로 돌려준다.
+- Escape로 취소하고 Tab은 대화상자 안에서 순환한다.
+- 본문에 함께 사라지는 측정·도형 건수를 명시한다.
+
+### StatusBanner
+
+쓰기 성공을 `role="status"` 텍스트로 알린다. 실패는 기존대로 `role="alert"`를 쓴다. 성공과 실패를 모두 텍스트로 표시하라는 화면 공통 규칙을 만족시키기 위한 것이며, 색상만으로 상태를 전달하지 않는다.
 
 ## 자동화 친화적 경계
 

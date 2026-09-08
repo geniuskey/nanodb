@@ -52,6 +52,22 @@ def _data_json(snapshot: ExportSnapshot) -> str:
             }
             for item in snapshot.measurements
         ],
+        "annotations": [
+            {
+                "id": shape.id,
+                "image_id": shape.image_id,
+                "kind": shape.kind.value,
+                "start_x": shape.start.x,
+                "start_y": shape.start.y,
+                "end_x": shape.end.x,
+                "end_y": shape.end.y,
+                "product": shape.product.value if shape.product else None,
+                "step": shape.step,
+                "measurement_name": shape.measurement_name,
+                "created_at": _iso(shape.created_at),
+            }
+            for shape in snapshot.annotations
+        ],
     }
     return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
 
@@ -69,6 +85,15 @@ Display values use decimal half-up to 2 places.
 parameter_type is a user choice among CD, Depth and Thickness.
 measurement_method is manual_two_point and reference_status is unreviewed.
 Measurements are references, not certified ground truth or automatic boundary detection.
+
+annotations are shapes a user drew to mark where they looked, in the same original
+pixel coordinates. kind is arrow or circle. For an arrow, start is the tail and end
+is the head. For a circle, start is the centre and end is a point on the circumference,
+so the radius is the distance between them. product, step and measurement_name are
+free user labels and may be empty.
+annotations carry no calculated value: they are not measurements, they have no nm
+value, and they must not be counted in any measurement summary.
+
 The image binary is not included; inspect it in NANoDB when visual context is required.
 """
 
@@ -77,6 +102,7 @@ def _task_markdown() -> str:
     return """# Development Task
 
 Read data.json and write a CSV with columns parameter_type,count,mean_nm.
+Use the measurements array only; ignore annotations, which are labels without values.
 Output only parameter types with measurements, ordered CD, Depth, Thickness.
 Calculate means with stored precision and display mean_nm to two decimal places.
 Do not call external services and do not infer image boundaries.

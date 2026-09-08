@@ -368,6 +368,17 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .measurement-row > button { margin-bottom: 0; }
 .delete-measurement { width: auto; display: inline-flex; align-items: center; padding: 0 14px; color: var(--danger); border-color: var(--danger); }
 .delete-measurement:disabled { opacity: .5; cursor: wait; }
+.measurement-row-actions { display: flex; flex-direction: column; gap: 6px; }
+.measurement-row-actions button { margin: 0; padding: 6px 12px; font-size: 0.8rem; white-space: nowrap; }
+.edit-note { width: auto; }
+.note-editor { grid-column: 1 / -1; margin: 0 0 12px; padding: 14px; border: 1px solid var(--accent); border-radius: 10px; background: var(--accent-tint); }
+.note-editor label { display: grid; gap: 6px; margin: 0 0 8px; font-weight: 700; font-size: 0.85rem; }
+.note-editor textarea { min-height: 64px; padding: 8px; border: 1px solid #b7bdc8; border-radius: 8px; font: inherit; }
+.note-hint { margin: 0 0 12px; color: var(--ink-muted); font-size: 0.78rem; }
+.note-editor .actions { display: flex; gap: 8px; }
+.result-count { margin: -8px 0 20px; color: var(--ink-muted); font-size: 0.85rem; }
+/* A filter refetch dims the previous results instead of removing them. */
+.image-grid.refreshing { opacity: .55; transition: opacity 120ms ease-out; }
 .export-panel { margin: 28px 0 0; padding-top: 24px; border-top: 1px solid var(--line); }
 .export-panel p { color: var(--ink-muted); line-height: 1.5; }
 .export-panel [role="alert"] { color: var(--danger); }

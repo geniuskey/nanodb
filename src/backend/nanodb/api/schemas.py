@@ -37,6 +37,12 @@ class MeasurementInputSchema(BaseModel):
     note: str | None = Field(default=None, max_length=4000)
 
 
+class MeasurementNoteSchema(BaseModel):
+    """Only the note is editable; the measurement's evidence is immutable."""
+
+    note: str | None = Field(default=None, max_length=4000)
+
+
 class MeasurementView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

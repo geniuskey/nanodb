@@ -125,3 +125,6 @@ class ExportSnapshot:
     image: Image
     measurements: tuple[Measurement, ...]
     expected_summary: tuple[ExpectedSummaryEntry, ...]
+    # Reference labels drawn on the image. Optional: an image can be exported
+    # with measurements and no shapes, but never the other way round.
+    annotations: tuple[Annotation, ...] = ()

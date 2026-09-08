@@ -367,7 +367,7 @@ function RecentImages() {
       <h2 id="recent-title">최근 등록된 이미지</h2>
       {state === "failure" && <p role="alert">이미지 목록을 불러오지 못했습니다.</p>}
       {state !== "failure" && recent.length === 0 ? (
-        <p className="empty-state">No images yet.</p>
+        <p className="empty-state">아직 등록된 이미지가 없습니다. `이미지 등록` 탭에서 첫 SEM/TEM 이미지를 올려 보세요.</p>
       ) : (
         <div className="recent-grid">
           {recent.map((image) => (

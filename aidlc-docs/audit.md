@@ -1673,3 +1673,23 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 **Context**: CONSTRUCTION - Measurement UX unit complete; all gates green including browser e2e
 
 ---
+
+## Context Export + Remaining P1 (ANN-008, RES-007, CAT-008~009, UIX-008)
+**Timestamp**: 2026-09-08T12:05:00Z
+**User Input**: "응"
+**AI Response**: "⑤ ANN-008부터 이어 P1 잔여분을 완결했다. 계획: construction/plans/context-and-p1-completion-plan.md (23단계 전부 완료).
+
+ANN-008 + CTX 계약 개정: ExportSnapshot에 기본값 ()인 후행 필드 annotations를 추가해 기존 생성 호출을 깨지 않고, validate_export_snapshot에 도형 ID 순서·이미지 소속 검증을 넣었다. data.json에 annotations[](id, image_id, kind, 두 점 좌표, product, step, measurement_name, created_at)를 추가하고 ContextExportService가 도형을 ID 순으로 로드하며 schema_version을 1.0 → 1.1로 올렸다. context.md에 화살표(꼬리→머리)·원(중심과 원주 위 한 점, 반지름은 두 점 거리)의 좌표 의미와 '도형은 계산값이 없고 어떤 측정 요약에도 포함하지 않는다'를 명시했고, task.md에 'measurements만 쓰고 annotations는 무시하라'를 추가했다. 도형은 checks.json의 기대 요약에 넣지 않는다 — 생성 코드가 라벨을 측정값으로 세면 안 되기 때문이다. 측정 화면 Export 안내 문구에도 도형·도형 라벨 포함을 반영했다.
+
+RES-007: MeasurementRepository.update_note(이미지 스코프, 메모만 갱신)와 MeasurementService.update_note(이미지·측정 not found 구분), MeasurementNoteSchema와 PATCH /api/images/{image_id}/measurements/{measurement_id}(공백만 있는 메모는 null로 저장). 프런트는 저장 측정 행별 '메모' 버튼으로 인라인 편집하며 '좌표·항목·값·보정값은 측정한 그대로 유지됩니다'를 편집 영역에 표시한다. 좌표·항목·거리·값·보정값·생성 시각은 서버에서 수정 경로 자체가 없다.
+
+CAT-008: 최초 로딩만 화면을 비우고 필터 재조회는 refreshing 상태로 이전 결과를 유지 — 타이핑마다 목록이 사라지던 문제를 없앴다. CAT-009: 현재 조건의 결과 건수 표시. UIX-008: 홈 빈 상태의 'No images yet.'을 한국어와 다음 행동 안내로 교체.
+
+낡은 Construction 산출물 갱신(검토 B-2에서 지적한 항목): frontend-components.md를 홈 v2 CTA 규칙·검색/필터/삭제·도형 라벨링·배율과 정확도·메모 수정·공용 컴포넌트로 다시 썼고, frontend-components-summary.md의 data-testid 계약 표를 실제 DOM과 일치시켰다(존재하지 않던 home-browse-images/home-register-image 제거, 신규 선택자 반영). 테스트 매핑도 실제 개수(50건)와 e2e 7건으로 갱신했다.
+
+검증(전부 실제 실행): ruff 통과, mypy 27파일 이상 없음, pytest 104 passed(로컬 PostgreSQL 16), vitest 50 passed, build 성공, Playwright e2e 7 passed. 신규 e2e는 브라우저가 내려받은 ZIP을 unzip으로 실제로 풀어 data.json의 schema_version 1.1·도형 라벨·수정된 메모를 확인한다 — 계약을 바꾼 변경이라 직렬화 결과를 실제 산출물로 검증했다.
+
+남은 범위: P1 HOM-040(홈 영상 실패 대체·reduced-motion·오프라인 경로), P2 전체(IMG-009~010, UIX-003~007, UIX-009). P2 미구현은 데모 실패 조건이 아님을 요구사항에 명시해 두었다."
+**Context**: CONSTRUCTION - P1 group complete except HOM-040; stale Construction artifacts refreshed
+
+---

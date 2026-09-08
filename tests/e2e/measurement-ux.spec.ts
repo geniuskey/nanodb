@@ -65,3 +65,65 @@ test("a drawn shape can be cancelled out of, then deleted", async ({ page }) => 
   await expect(page.getByTestId("annotation-empty")).toBeVisible();
   await expect(page.getByTestId("status-banner")).toContainText("도형을 삭제했습니다");
 });
+
+// A saved measurement's note is editable while the value it rests on is not,
+// and a drawn shape reaches the exported context. Requirements: RES-007, ANN-008.
+test("edits a note and exports a bundle that carries the shape", async ({
+  page,
+}) => {
+  await registerSampleImage(page);
+  await drawTwoPoints(page);
+  await page.getByTestId("measurement-save").click();
+  const saved = page.getByTestId("saved-measurement-item");
+  await expect(saved).toHaveCount(1);
+  const valueBefore = await saved.locator("strong").textContent();
+
+  await page.getByTestId("edit-note").click();
+  await page.getByTestId("note-input").fill("경계 재확인");
+  await page.getByTestId("note-save").click();
+
+  await expect(page.getByTestId("status-banner")).toContainText("메모를 수정했습니다");
+  await expect(saved).toContainText("경계 재확인");
+  // Editing the note does not touch the measured value.
+  await expect(saved.locator("strong")).toHaveText(valueBefore!);
+
+  // Draw a labelled shape, then export.
+  await page.getByTestId("tool-circle").click();
+  const box = (await page.getByTestId("annotation-overlay").boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.65, box.y + box.height * 0.5);
+  await page.mouse.up();
+  await expect(page.getByTestId("annotation-row")).toHaveCount(1);
+  await page.getByTestId("annotation-name").fill("홀 경계");
+  await page.getByTestId("annotation-step").click();
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByTestId("context-export-button").click(),
+  ]);
+  const stream = await download.createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(chunk as Buffer);
+  const archive = Buffer.concat(chunks);
+
+  // The ZIP is a real archive whose data.json carries the labelled shape.
+  const text = archive.toString("latin1");
+  expect(text.slice(0, 2)).toBe("PK");
+  const { execFileSync } = await import("node:child_process");
+  const { mkdtempSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "nanodb-e2e-"));
+  const zipPath = join(dir, "bundle.zip");
+  writeFileSync(zipPath, archive);
+  const data = JSON.parse(
+    execFileSync("unzip", ["-p", zipPath, "data.json"], { encoding: "utf-8" }),
+  );
+
+  expect(data.schema_version).toBe("1.1");
+  expect(data.annotations).toHaveLength(1);
+  expect(data.annotations[0].kind).toBe("circle");
+  expect(data.annotations[0].measurement_name).toBe("홀 경계");
+  expect(data.measurements[0].note).toBe("경계 재확인");
+});

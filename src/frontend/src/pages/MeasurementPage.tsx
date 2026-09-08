@@ -64,6 +64,9 @@ export function MeasurementPage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [noteEditId, setNoteEditId] = useState<number | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
   const [pending, setPending] = useState<PendingDelete | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -248,6 +251,28 @@ export function MeasurementPage() {
     } finally { setSaving(false); }
   }
 
+  async function saveNote(measurementId: number) {
+    if (savingNote) return;
+    setSavingNote(true); setError(null); setStatus(null);
+    try {
+      const updated = await api.updateMeasurementNote(
+        imageId,
+        measurementId,
+        noteDraft.trim() || null,
+      );
+      setDetail((current) => current && ({
+        ...current,
+        measurements: current.measurements.map((item) =>
+          item.id === updated.id ? updated : item,
+        ),
+      }));
+      setNoteEditId(null);
+      setStatus("메모를 수정했습니다.");
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : "메모를 수정하지 못했습니다.");
+    } finally { setSavingNote(false); }
+  }
+
   function confirmCopy(target: PendingDelete): { title: string; body: string; label: string } {
     if (target.kind === "measurement") {
       return {
@@ -404,10 +429,33 @@ export function MeasurementPage() {
           {error && <p role="alert">{error}</p>}
           <div className="actions"><button type="button" onClick={() => setDraft([])} data-testid="measurement-reset">초기화</button><button type="button" onClick={save} disabled={draft.length !== 2 || saving} data-testid="measurement-save">{saving ? "저장 중…" : "측정 저장"}</button></div>
           <h2>저장된 측정</h2>
-          {detail.measurements.length === 0 ? <p>저장된 측정이 없습니다.</p> : <ul className="measurement-list">{detail.measurements.map((item: MeasurementView) => <li key={item.id} className="measurement-row"><button type="button" className={selectedId === item.id ? "selected" : ""} onClick={() => setSelectedId(item.id)} data-testid="saved-measurement-item"><strong>{item.parameter_type} · {item.value_nm.toFixed(2)}nm</strong><span>{item.distance_px.toFixed(2)}px · {new Date(item.created_at).toLocaleString()}</span>{item.note && <span>{item.note}</span>}</button><button type="button" className="delete-measurement" onClick={() => setPending({ kind: "measurement", id: item.id })} data-testid="delete-measurement" aria-label={`${item.parameter_type} 측정 삭제`}>삭제</button></li>)}</ul>}
+          {detail.measurements.length === 0 ? <p>저장된 측정이 없습니다. 이미지 위에서 두 점을 선택해 첫 측정을 저장하세요.</p> : <ul className="measurement-list">{detail.measurements.map((item: MeasurementView) => (
+            <li key={item.id} className="measurement-row">
+              <button type="button" className={selectedId === item.id ? "selected" : ""} onClick={() => setSelectedId(item.id)} data-testid="saved-measurement-item"><strong>{item.parameter_type} · {item.value_nm.toFixed(2)}nm</strong><span>{item.distance_px.toFixed(2)}px · {new Date(item.created_at).toLocaleString()}</span>{item.note && <span>{item.note}</span>}</button>
+              <div className="measurement-row-actions">
+                <button type="button" className="edit-note" onClick={() => { setNoteEditId(item.id); setNoteDraft(item.note ?? ""); }} data-testid="edit-note" aria-label={`${item.parameter_type} 측정 메모 수정`}>메모</button>
+                <button type="button" className="delete-measurement" onClick={() => setPending({ kind: "measurement", id: item.id })} data-testid="delete-measurement" aria-label={`${item.parameter_type} 측정 삭제`}>삭제</button>
+              </div>
+              {noteEditId === item.id && (
+                <div className="note-editor">
+                  {/* Only the note is editable: coordinates, parameter, value and
+                      calibration stay as measured (RES-007). */}
+                  <label>
+                    메모 수정
+                    <textarea value={noteDraft} autoFocus onChange={(event) => setNoteDraft(event.target.value)} data-testid="note-input" />
+                  </label>
+                  <p className="note-hint">좌표·항목·값·보정값은 측정한 그대로 유지됩니다.</p>
+                  <div className="actions">
+                    <button type="button" onClick={() => setNoteEditId(null)} data-testid="note-cancel">취소</button>
+                    <button type="button" onClick={() => saveNote(item.id)} disabled={savingNote} data-testid="note-save">{savingNote ? "저장 중…" : "메모 저장"}</button>
+                  </div>
+                </div>
+              )}
+            </li>
+          ))}</ul>}
           <section className="export-panel" aria-labelledby="context-export-heading">
             <h2 id="context-export-heading">Context Export</h2>
-            <p>포함: Product ID, Lot ID, Wafer ID, 원본 파일명, 저장된 측정과 메모</p>
+            <p>포함: Product ID, Lot ID, Wafer ID, 원본 파일명, 저장된 측정과 메모, 저장된 도형과 도형 라벨</p>
             <p>제외: 이미지 바이너리</p>
             <p>다운로드한 ZIP은 사용자가 외부 AI 도구에 수동으로 전달합니다. NANoDB가 자동으로 외부에 전송하지 않습니다.</p>
             {detail.measurements.length === 0 && <p data-testid="context-export-disabled-reason">저장된 측정이 하나 이상 있어야 내보낼 수 있습니다.</p>}

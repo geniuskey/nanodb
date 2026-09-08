@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from io import BytesIO
 from pathlib import Path
+from zipfile import ZipFile
 
 import pytest
 from nanodb.adapters.file_store import FileStore
@@ -354,6 +356,113 @@ def test_annotation_service_persists_and_guards_inputs(
             AnnotationUpdate(product=None, step="", measurement_name=""),
         )
     assert missing_annotation.value.code == "ANNOTATION_NOT_FOUND"
+
+
+def test_measurement_note_is_editable_while_its_evidence_is_not(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+) -> None:
+    image = ImageRepository(db_session).create(
+        original_filename="sample.png",
+        stored_filename="sample.png",
+        image_type=ImageType.TEM,
+        product_id="P",
+        lot_id="L",
+        wafer_id="W",
+        calibration_nm_per_pixel=0.2,
+        pixel_width=1000,
+        pixel_height=800,
+    )
+    db_session.commit()
+    _, factory = database_engine
+    service = MeasurementService(factory)
+    created = service.create(
+        image.id,
+        MeasurementInput(
+            parameter_type=ParameterType.CD,
+            start=Point(100, 100),
+            end=Point(400, 500),
+            note="처음 메모",
+        ),
+    )
+
+    updated = service.update_note(image.id, created.id, "다시 확인함")
+
+    assert updated.note == "다시 확인함"
+    # The evidence the value rests on is untouched.
+    assert (updated.start, updated.end) == (created.start, created.end)
+    assert updated.parameter_type is created.parameter_type
+    assert updated.distance_px == created.distance_px
+    assert updated.value_nm == created.value_nm
+    assert updated.calibration_nm_per_pixel == created.calibration_nm_per_pixel
+    assert updated.created_at == created.created_at
+
+    # Clearing the note is allowed.
+    assert service.update_note(image.id, created.id, None).note is None
+
+    with pytest.raises(DomainError) as missing:
+        service.update_note(image.id, 999, "x")
+    assert missing.value.code == "MEASUREMENT_NOT_FOUND"
+
+
+def test_context_export_carries_annotations_in_id_order(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+) -> None:
+    image = ImageRepository(db_session).create(
+        original_filename="sample.png",
+        stored_filename="sample.png",
+        image_type=ImageType.TEM,
+        product_id="P",
+        lot_id="L",
+        wafer_id="W",
+        calibration_nm_per_pixel=0.2,
+        pixel_width=1000,
+        pixel_height=800,
+    )
+    db_session.commit()
+    _, factory = database_engine
+    MeasurementService(factory).create(
+        image.id,
+        MeasurementInput(
+            parameter_type=ParameterType.CD,
+            start=Point(100, 100),
+            end=Point(400, 500),
+            note=None,
+        ),
+    )
+    annotations = AnnotationService(factory)
+    first = annotations.create(
+        image.id,
+        AnnotationInput(
+            kind=ShapeKind.ARROW,
+            start=Point(10, 10),
+            end=Point(40, 40),
+            product=ProductType.DRAM,
+            step="증착",
+            measurement_name="게이트 상단",
+        ),
+    )
+    second = annotations.create(
+        image.id,
+        AnnotationInput(kind=ShapeKind.CIRCLE, start=Point(80, 80), end=Point(90, 80)),
+    )
+
+    archive = ContextExportService(factory).build(image.id)
+    with ZipFile(BytesIO(archive)) as bundle:
+        data = json.loads(bundle.read("data.json").decode("utf-8"))
+
+    assert data["schema_version"] == "1.1"
+    assert [shape["id"] for shape in data["annotations"]] == [first.id, second.id]
+    assert data["annotations"][0]["measurement_name"] == "게이트 상단"
+    assert data["annotations"][0]["product"] == "DRAM"
+    assert data["annotations"][1]["product"] is None
+    # The same snapshot exports identically apart from exported_at (CTX-012).
+    again = ContextExportService(factory).build(image.id)
+    with ZipFile(BytesIO(again)) as bundle:
+        repeated = json.loads(bundle.read("data.json").decode("utf-8"))
+    repeated["exported_at"] = data["exported_at"]
+    assert repeated == data
 
 
 def test_annotation_delete_is_scoped_to_its_image(

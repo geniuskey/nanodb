@@ -25,6 +25,7 @@ export function ImageListPage() {
   const [deleting, setDeleting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Debounce the free-text box so typing does not fire a request per keystroke.
   useEffect(() => {
@@ -34,7 +35,11 @@ export function ImageListPage() {
 
   useEffect(() => {
     let active = true;
-    setState("loading");
+    // Only the first load blanks the page. A filter refetch keeps the previous
+    // results on screen and just marks them as refreshing (CAT-008), so the
+    // catalog does not flash empty on every keystroke.
+    setState((current) => (current === "success" ? current : "loading"));
+    setRefreshing(true);
     api
       .listImages({
         q: activeQuery || undefined,
@@ -46,7 +51,10 @@ export function ImageListPage() {
           setState("success");
         }
       })
-      .catch(() => active && setState("failure"));
+      .catch(() => active && setState("failure"))
+      .finally(() => {
+        if (active) setRefreshing(false);
+      });
     return () => {
       active = false;
     };
@@ -108,6 +116,12 @@ export function ImageListPage() {
       <StatusBanner message={status} />
       {actionError && <p role="alert">{actionError}</p>}
       {state === "loading" && <p role="status">이미지를 불러오는 중입니다.</p>}
+      {state === "success" && (
+        <p className="result-count" role="status" data-testid="catalog-count">
+          {isFiltered ? "조건에 맞는 이미지" : "등록된 이미지"} {images.length}건
+          {refreshing ? " · 갱신 중" : ""}
+        </p>
+      )}
       {state === "failure" && <p role="alert">이미지 목록을 불러오지 못했습니다.</p>}
       {state === "success" && images.length === 0 && (
         <section className="empty-state">
@@ -125,7 +139,7 @@ export function ImageListPage() {
         </section>
       )}
       {state === "success" && images.length > 0 && (
-        <div className="image-grid" data-testid="image-catalog">
+        <div className={refreshing ? "image-grid refreshing" : "image-grid"} data-testid="image-catalog">
           {images.map((image) => (
             <article className="image-card-wrap" key={image.id}>
               <Link className="image-card" to={`/images/${image.id}`} data-testid="catalog-image-card">

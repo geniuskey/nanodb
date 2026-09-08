@@ -269,7 +269,7 @@ describe("MeasurementPage", () => {
     renderPage();
     await screen.findByTestId("measurement-image");
 
-    expect(screen.getByText(/Product ID, Lot ID, Wafer ID, 원본 파일명, 저장된 측정과 메모/)).toBeInTheDocument();
+    expect(screen.getByText(/저장된 측정과 메모, 저장된 도형과 도형 라벨/)).toBeInTheDocument();
     expect(screen.getByText(/제외: 이미지 바이너리/)).toBeInTheDocument();
     expect(screen.getByText(/자동으로 외부에 전송하지 않습니다/)).toBeInTheDocument();
     expect(screen.getByTestId("context-export-button")).toBeEnabled();
@@ -499,6 +499,52 @@ describe("MeasurementPage", () => {
 
     expect(screen.getAllByTestId("annotation-row")[1]).toHaveClass("active");
     expect(document.querySelector('g[data-annotation-id="8"] circle')).toHaveClass("selected");
+  });
+
+  it("edits a saved measurement's note and leaves its evidence alone", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(detail))
+      .mockResolvedValueOnce(jsonResponse({ ...detail.measurements[0], note: "경계 재확인" }));
+    renderPage(fetchMock);
+    await preparedImage();
+
+    await userEvent.click(screen.getByTestId("edit-note"));
+    const input = screen.getByTestId("note-input");
+    await userEvent.clear(input);
+    await userEvent.type(input, "경계 재확인");
+    await userEvent.click(screen.getByTestId("note-save"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("status-banner")).toHaveTextContent("메모를 수정했습니다"),
+    );
+    const [path, init] = fetchMock.mock.calls[1];
+    expect(String(path)).toBe("/api/images/1/measurements/1");
+    expect(init).toMatchObject({ method: "PATCH" });
+    expect(JSON.parse(init.body)).toEqual({ note: "경계 재확인" });
+    // The measured value is unchanged; only the note text moved.
+    expect(screen.getByTestId("saved-measurement-item")).toHaveTextContent("100.00nm");
+    expect(screen.getByTestId("saved-measurement-item")).toHaveTextContent("경계 재확인");
+    expect(screen.queryByTestId("note-input")).not.toBeInTheDocument();
+  });
+
+  it("sends a cleared note as null and can be cancelled", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(detail))
+      .mockResolvedValueOnce(jsonResponse({ ...detail.measurements[0], note: null }));
+    renderPage(fetchMock);
+    await preparedImage();
+
+    await userEvent.click(screen.getByTestId("edit-note"));
+    await userEvent.click(screen.getByTestId("note-cancel"));
+    expect(screen.queryByTestId("note-input")).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(screen.getByTestId("edit-note"));
+    await userEvent.clear(screen.getByTestId("note-input"));
+    await userEvent.click(screen.getByTestId("note-save"));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ note: null });
   });
 
   it("rejects a successful response that is not a ZIP", async () => {

@@ -38,6 +38,7 @@ class FakeImageService:
     def __init__(self) -> None:
         self.registration = None
         self.list_calls: list[tuple[str | None, ImageType | None]] = []
+        self.delete_calls: list[int] = []
 
     def register(self, stream: BytesIO, registration: object) -> Image:
         assert stream.read(1) == b"x"
@@ -57,6 +58,11 @@ class FakeImageService:
         if image_id != 1:
             raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
         return sample_image()
+
+    def delete(self, image_id: int) -> None:
+        self.delete_calls.append(image_id)
+        if image_id != 1:
+            raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
 
 
 class FakeMeasurementService:
@@ -195,6 +201,23 @@ def test_measurement_request_maps_original_points_and_server_result() -> None:
     assert response.status_code == 201
     assert response.json()["distance_px"] == 500
     assert response.json()["value_nm"] == 100
+
+
+def test_delete_image_returns_no_content_and_forwards_id() -> None:
+    client = build_client()
+
+    response = client.delete("/api/images/1")
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert client.app.state.image_service.delete_calls == [1]
+
+
+def test_delete_missing_image_uses_not_found_envelope() -> None:
+    response = build_client().delete("/api/images/999")
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "IMAGE_NOT_FOUND"
 
 
 def test_delete_measurement_returns_no_content_and_forwards_ids() -> None:

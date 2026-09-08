@@ -1,5 +1,5 @@
 import { MouseEvent, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { ApiError, api } from "../api/client";
 import type {
@@ -12,6 +12,7 @@ import { MeasurementOverlay } from "../measurement/MeasurementOverlay";
 
 export function MeasurementPage() {
   const imageId = Number(useParams().imageId);
+  const navigate = useNavigate();
   const imageRef = useRef<HTMLImageElement>(null);
   const [detail, setDetail] = useState<ImageDetailView | null>(null);
   const [draft, setDraft] = useState<Point[]>([]);
@@ -22,6 +23,7 @@ export function MeasurementPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingImage, setDeletingImage] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
@@ -95,6 +97,23 @@ export function MeasurementPage() {
     } finally { setDeletingId(null); }
   }
 
+  async function removeImage() {
+    if (!detail || deletingImage) return;
+    const count = detail.measurements.length;
+    const warning = count > 0
+      ? `이 이미지와 저장된 측정 ${count}개를 함께 삭제합니다. 되돌릴 수 없습니다.`
+      : "이 이미지를 삭제합니다. 되돌릴 수 없습니다.";
+    if (!window.confirm(warning)) return;
+    setDeletingImage(true); setError(null);
+    try {
+      await api.deleteImage(imageId);
+      navigate("/images");
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : "이미지를 삭제하지 못했습니다.");
+      setDeletingImage(false);
+    }
+  }
+
   async function exportContext() {
     if (!detail || detail.measurements.length === 0 || exporting) return;
     setExporting(true); setExportError(null);
@@ -114,7 +133,7 @@ export function MeasurementPage() {
   return (
     <main>
       <Link to="/images">← 목록으로</Link>
-      <div className="page-heading"><div><p className="eyebrow">{detail.image_type} measurement</p><h1>{detail.original_filename}</h1></div><p>{detail.product_id} · {detail.lot_id} · {detail.wafer_id}</p></div>
+      <div className="page-heading"><div><p className="eyebrow">{detail.image_type} measurement</p><h1>{detail.original_filename}</h1></div><div className="heading-actions"><p>{detail.product_id} · {detail.lot_id} · {detail.wafer_id}</p><button type="button" className="heading-delete" data-testid="detail-image-delete" disabled={deletingImage} onClick={removeImage}>{deletingImage ? "삭제 중…" : "이미지 삭제"}</button></div></div>
       <div className="measurement-layout">
         <section className="viewer-panel" aria-label="두 점 측정 이미지">
           <div className="image-stage">

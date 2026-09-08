@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { api } from "../api/client";
+import { ApiError, api } from "../api/client";
 import type { ImageListView, ImageType } from "../api/types";
 
 type State = "loading" | "success" | "failure";
@@ -19,6 +19,8 @@ export function ImageListPage() {
   const [queryInput, setQueryInput] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Debounce the free-text box so typing does not fire a request per keystroke.
   useEffect(() => {
@@ -45,6 +47,21 @@ export function ImageListPage() {
       active = false;
     };
   }, [activeQuery, typeFilter]);
+
+  async function removeImage(image: ImageListView) {
+    if (deletingId !== null) return;
+    const warning = image.measurement_count > 0
+      ? `이미지 '${image.original_filename}'와 저장된 측정 ${image.measurement_count}개를 함께 삭제합니다. 되돌릴 수 없습니다.`
+      : `이미지 '${image.original_filename}'를 삭제합니다. 되돌릴 수 없습니다.`;
+    if (!window.confirm(warning)) return;
+    setDeletingId(image.id); setActionError(null);
+    try {
+      await api.deleteImage(image.id);
+      setImages((current) => current.filter((item) => item.id !== image.id));
+    } catch (caught) {
+      setActionError(caught instanceof ApiError ? caught.message : "이미지를 삭제하지 못했습니다.");
+    } finally { setDeletingId(null); }
+  }
 
   const isFiltered = activeQuery.trim() !== "" || typeFilter !== "ALL";
 
@@ -86,6 +103,7 @@ export function ImageListPage() {
         </div>
       </div>
 
+      {actionError && <p role="alert">{actionError}</p>}
       {state === "loading" && <p role="status">이미지를 불러오는 중입니다.</p>}
       {state === "failure" && <p role="alert">이미지 목록을 불러오지 못했습니다.</p>}
       {state === "success" && images.length === 0 && (
@@ -106,19 +124,31 @@ export function ImageListPage() {
       {state === "success" && images.length > 0 && (
         <div className="image-grid" data-testid="image-catalog">
           {images.map((image) => (
-            <Link className="image-card" to={`/images/${image.id}`} key={image.id} data-testid="catalog-image-card">
-              <img src={image.file_url} alt={`${image.original_filename} 미리보기`} />
-              <div>
-                <span className="badge">{image.image_type}</span>
-                <h2>{image.original_filename}</h2>
-                <dl>
-                  <div><dt>Product</dt><dd>{image.product_id}</dd></div>
-                  <div><dt>Lot</dt><dd>{image.lot_id}</dd></div>
-                  <div><dt>Wafer</dt><dd>{image.wafer_id}</dd></div>
-                </dl>
-                <p>{image.measurement_count}개 측정</p>
-              </div>
-            </Link>
+            <article className="image-card-wrap" key={image.id}>
+              <Link className="image-card" to={`/images/${image.id}`} data-testid="catalog-image-card">
+                <img src={image.file_url} alt={`${image.original_filename} 미리보기`} />
+                <div>
+                  <span className="badge">{image.image_type}</span>
+                  <h2>{image.original_filename}</h2>
+                  <dl>
+                    <div><dt>Product</dt><dd>{image.product_id}</dd></div>
+                    <div><dt>Lot</dt><dd>{image.lot_id}</dd></div>
+                    <div><dt>Wafer</dt><dd>{image.wafer_id}</dd></div>
+                  </dl>
+                  <p>{image.measurement_count}개 측정</p>
+                </div>
+              </Link>
+              <button
+                type="button"
+                className="delete-image"
+                data-testid="catalog-image-delete"
+                aria-label={`${image.original_filename} 삭제`}
+                disabled={deletingId === image.id}
+                onClick={() => removeImage(image)}
+              >
+                {deletingId === image.id ? "삭제 중…" : "삭제"}
+              </button>
+            </article>
           ))}
         </div>
       )}

@@ -97,6 +97,15 @@ class ImageRepository:
     def count(self) -> int:
         return self._session.scalar(select(func.count(ImageModel.id))) or 0
 
+    def delete(self, image_id: int) -> bool:
+        """Delete an image row. Callers must remove its measurements first
+        because the foreign key uses RESTRICT."""
+        model = self._session.get(ImageModel, image_id)
+        if model is None:
+            return False
+        self._session.delete(model)
+        return True
+
     def list_with_measurement_count(
         self,
         *,
@@ -232,6 +241,17 @@ class MeasurementRepository:
             return False
         self._session.delete(model)
         return True
+
+    def delete_by_image(self, image_id: int) -> int:
+        """Delete every measurement for an image; returns how many were removed."""
+        count = 0
+        statement = select(MeasurementModel).where(
+            MeasurementModel.image_id == image_id
+        )
+        for model in self._session.scalars(statement):
+            self._session.delete(model)
+            count += 1
+        return count
 
     def delete_all(self) -> None:
         for model in self._session.scalars(select(MeasurementModel)):

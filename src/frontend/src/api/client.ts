@@ -111,6 +111,8 @@ export const api = {
     requestVoid(`/api/images/${imageId}/measurements/${measurementId}`, {
       method: "DELETE",
     }),
+  deleteImage: (imageId: number) =>
+    requestVoid(`/api/images/${imageId}`, { method: "DELETE" }),
   registerImage: (form: FormData) =>
     request<ImageView>("/api/images", { method: "POST", body: form }),
   downloadContext: contextDownload,

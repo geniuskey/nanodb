@@ -1,12 +1,19 @@
 from __future__ import annotations
 
+from io import BytesIO
+from pathlib import Path
+
 import pytest
+from nanodb.adapters.file_store import FileStore
+from nanodb.adapters.image_decoder import ImageDecoder
 from nanodb.domain.entities import ImageType, ParameterType, Point
 from nanodb.domain.errors import DomainError
-from nanodb.persistence.repositories import ImageRepository
+from nanodb.persistence.repositories import ImageRepository, MeasurementRepository
 from nanodb.services.context_export_service import ContextExportService
+from nanodb.services.image_service import ImageRegistration, ImageService
 from nanodb.services.measurement_service import MeasurementInput, MeasurementService
 from nanodb.services.summary_service import SummaryService
+from PIL import Image as PillowImage
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -146,6 +153,58 @@ def test_measurement_delete_rejects_missing_image(
 
     with pytest.raises(DomainError) as caught:
         MeasurementService(factory).delete(999, 1)
+
+    assert caught.value.code == "IMAGE_NOT_FOUND"
+
+
+def test_image_delete_cascades_measurements_and_removes_stored_file(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+    tmp_path: Path,
+) -> None:
+    _, factory = database_engine
+    store = FileStore(tmp_path)
+    image_service = ImageService(factory, store, ImageDecoder())
+
+    content = BytesIO()
+    PillowImage.new("L", (20, 20)).save(content, format="PNG")
+    content.seek(0)
+    image = image_service.register(
+        content,
+        ImageRegistration(
+            original_filename="doomed.png",
+            image_type=ImageType.SEM,
+            product_id="P",
+            lot_id="L",
+            wafer_id="W",
+            calibration_nm_per_pixel=0.2,
+        ),
+    )
+    stored_path = tmp_path / image.stored_filename
+    assert stored_path.is_file()
+    MeasurementService(factory).create(
+        image.id, MeasurementInput(ParameterType.CD, Point(0, 0), Point(10, 0))
+    )
+
+    image_service.delete(image.id)
+
+    # Row, cascaded measurement and the stored file are all gone.
+    assert not stored_path.exists()
+    assert MeasurementRepository(db_session).count() == 0
+    with pytest.raises(DomainError) as caught:
+        image_service.get_image(image.id)
+    assert caught.value.code == "IMAGE_NOT_FOUND"
+
+
+def test_image_delete_rejects_missing_image(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    tmp_path: Path,
+) -> None:
+    _, factory = database_engine
+    service = ImageService(factory, FileStore(tmp_path), ImageDecoder())
+
+    with pytest.raises(DomainError) as caught:
+        service.delete(999)
 
     assert caught.value.code == "IMAGE_NOT_FOUND"
 

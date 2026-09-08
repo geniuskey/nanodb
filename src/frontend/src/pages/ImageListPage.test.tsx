@@ -10,6 +10,21 @@ function urlsOf(fetchMock: ReturnType<typeof vi.fn>): string[] {
   return fetchMock.mock.calls.map((call) => String(call[0]));
 }
 
+const sampleImage = {
+  id: 9,
+  original_filename: "tem-09.png",
+  image_type: "TEM",
+  product_id: "P9",
+  lot_id: "L9",
+  wafer_id: "W9",
+  calibration_nm_per_pixel: 0.2,
+  pixel_width: 1000,
+  pixel_height: 800,
+  created_at: "2026-09-08T04:00:00Z",
+  file_url: "/api/images/9/file",
+  measurement_count: 2,
+};
+
 describe("ImageListPage", () => {
   it("shows an explicit empty state and registration action", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([])));
@@ -80,6 +95,41 @@ describe("ImageListPage", () => {
     await waitFor(() =>
       expect(urlsOf(fetchMock).some((url) => url.includes("image_type=SEM"))).toBe(true),
     );
+  });
+
+  it("deletes an image after confirmation and drops it from the catalog", async () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+    const fetchMock = vi.fn().mockImplementation((_input, init?: RequestInit) => {
+      if (init?.method === "DELETE") {
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      return Promise.resolve(jsonResponse([sampleImage]));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithRouter(<ImageListPage />);
+    fireEvent.click(await screen.findByTestId("catalog-image-delete"));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("catalog-image-card")).not.toBeInTheDocument(),
+    );
+    const deleteCall = fetchMock.mock.calls.find((call) => call[1]?.method === "DELETE");
+    expect(String(deleteCall?.[0])).toBe("/api/images/9");
+    expect(screen.getByText("등록된 이미지가 없습니다")).toBeInTheDocument();
+  });
+
+  it("keeps the image when the delete is not confirmed", async () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(jsonResponse([sampleImage])),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithRouter(<ImageListPage />);
+    fireEvent.click(await screen.findByTestId("catalog-image-delete"));
+
+    expect(screen.getByTestId("catalog-image-card")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some((call) => call[1]?.method === "DELETE")).toBe(false);
   });
 
   it("distinguishes a filtered empty result from an empty catalog", async () => {

@@ -141,6 +141,30 @@ describe("MeasurementPage", () => {
     expect(screen.getByTestId("saved-measurement-item")).toBeInTheDocument();
   });
 
+  it("deletes the image and returns to the catalog", async () => {
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(detail))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(
+      <MemoryRouter initialEntries={["/images/1"]}>
+        <Routes>
+          <Route path="/images/:imageId" element={<MeasurementPage />} />
+          <Route path="/images" element={<p>catalog</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByTestId("measurement-image");
+
+    await userEvent.click(screen.getByTestId("detail-image-delete"));
+
+    expect(await screen.findByText("catalog")).toBeInTheDocument();
+    const [path, init] = fetchMock.mock.calls[1];
+    expect(String(path)).toBe("/api/images/1");
+    expect(init).toMatchObject({ method: "DELETE" });
+  });
+
   it("uses the server result after saving and clears the draft", async () => {
     const created = { ...detail.measurements[0], id: 2, value_nm: 101 };
     const fetchMock = vi.fn()

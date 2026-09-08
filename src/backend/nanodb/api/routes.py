@@ -109,6 +109,12 @@ def image_file(image_id: int, request: Request) -> FileResponse:
     return FileResponse(request.app.state.image_service.image_path(image_id))
 
 
+@router.delete("/images/{image_id}", status_code=204)
+def delete_image(image_id: int, request: Request) -> Response:
+    request.app.state.image_service.delete(image_id)
+    return Response(status_code=204)
+
+
 @router.post(
     "/images/{image_id}/measurements",
     response_model=MeasurementView,

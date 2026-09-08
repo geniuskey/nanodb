@@ -1,0 +1,1 @@
+"""Serialized contract tests."""

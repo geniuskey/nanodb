@@ -1121,6 +1121,15 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 
 ---
 
+## NANoDB Core Code Generation Step 11 Complete
+
+**Timestamp**: 2026-09-08T04:05:03Z
+**User Input**: "step 마다 git push 하고 다음 작업 시작"
+**AI Response**: "Completed API, service and ZIP contract test generation for registration, safe catalog/summary, original-point measurement mapping, non-finite validation, not-found, measurement-free export rejection, bounded upload, invalid image cleanup, database commit compensation, fixed ZIP entries, UTF-8, allowlist and deterministic bytes. 32 tests passed; 6 actual-PostgreSQL tests were explicitly skipped because TEST_DATABASE_URL is unavailable."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 11/26 complete; per-step Git checkpoint required
+
+---
+
 ## Per-Step Git Checkpoint Policy Requested
 
 **Timestamp**: 2026-09-08T04:02:41Z

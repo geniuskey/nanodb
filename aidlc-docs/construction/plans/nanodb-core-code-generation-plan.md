@@ -124,7 +124,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 11. API, service와 ZIP contract test 생성 — US-02~US-06
 
-- [ ] `tests/backend/api/`와 `tests/backend/contract/`에 등록 정상·실패, file/DB 부분 실패, 목록·상세·summary, server measurement 재계산, not-found, 측정 없는 export 거부, ZIP filename·field allowlist·JSON parse·UTF-8·ordering·expected value·결정성을 검증하는 test를 생성한다.
+- [x] `tests/backend/api/`와 `tests/backend/contract/`에 등록 정상·실패, file/DB 부분 실패, 목록·상세·summary, server measurement 재계산, not-found, 측정 없는 export 거부, ZIP filename·field allowlist·JSON parse·UTF-8·ordering·expected value·결정성을 검증하는 test를 생성한다.
 
 ### Step 12. API layer summary 생성 — US-02~US-06
 

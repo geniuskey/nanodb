@@ -224,6 +224,39 @@ class FeatureExtractionResultView(BaseModel):
     skipped: list[SkippedFeatureViewSchema]
 
 
+class SegmentationBatchRequestSchema(BaseModel):
+    """Run segmentation (and optionally feature extraction) over many images.
+
+    Segmentation parameters mirror :class:`SegmentationRequestSchema`. When
+    ``extract_features`` is set, feature extraction runs on each image after its
+    segmentation, using ``target_class``.
+    """
+
+    image_ids: list[int] = Field(min_length=1, max_length=200)
+    classes: int = Field(default=4, ge=2, le=6)
+    denoise_weight: float = Field(default=0.08, gt=0)
+    min_size: int = Field(default=400, ge=0)
+    extract_features: bool = False
+    target_class: int = Field(default=0, ge=0, le=5)
+
+
+class BatchItemResultView(BaseModel):
+    image_id: int
+    status: str
+    replaced: bool
+    feature_count: int | None
+    skipped_count: int | None
+    code: str | None
+    message: str | None
+
+
+class SegmentationBatchResultView(BaseModel):
+    requested: int
+    succeeded: int
+    failed: int
+    items: list[BatchItemResultView]
+
+
 class CatalogOptionView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -62,7 +62,30 @@ measurements, and batch processing). Split into three units:
   `npm run typecheck` clean, `npm run test:frontend` 75 passed. Fixed a latent
   Unit A break: six `ImageService(...)` calls in the integration suite still used
   the pre-DerivedStore 3-arg constructor.
-- **Unit C — UI & Batch**: not started.
+- **Unit C — UI & Batch**: DONE and verified 2026-09-09. Backend:
+  `SegmentationBatchService` runs each image independently (dedup preserving
+  order; one image's failure never aborts the rest; a feature-extraction failure
+  leaves the image reported `ok` with its segmentation standing and the failure
+  noted), `POST /api/segmentation/batch` route + request/response schemas +
+  mapper, wired in `app.py` sharing the single `feature_service` into the batch
+  service. Frontend: `MeasurementPage` gained a segmentation panel (run/re-run
+  segmentation, class map + boundary PNG overlays, per-class stats table, tagged
+  TIFF download, run auto feature extraction) and a source badge that keeps AUTO
+  (with confidence %) visibly distinct from MANUAL in the saved list; auto values
+  are never presented as human-verified. `ImageListPage` gained per-card
+  selection + a batch bar ("자동 특징도 추출" toggle, run button, per-image error
+  list). New `api` methods `getSegmentation`/`runSegmentation`/`extractFeatures`/
+  `runSegmentationBatch` and the segmentation/feature/batch view types.
+  All gates green (verified with a throwaway PostgreSQL and the full container
+  stack): `uv run pytest` 180 passed + 32 integration passed with DB, `uv run
+  mypy` (strict) clean, `uv run ruff check .` clean, `npm run typecheck` clean,
+  `npm run test:frontend` 82 passed, `npx playwright test` 9 passed (added
+  `auto-analysis.spec.ts`). Fixed two more latent pre-Unit-C breaks surfaced by
+  running the real stack: `scripts/prepare_demo_samples.py` used the pre-
+  DerivedStore 3-arg `ImageService`, and two e2e assertions in
+  `measurement-ux.spec.ts` were stale since 2e0d122 (overlay caption now carries
+  the value; export `schema_version` is `3.0`). `git push` intentionally not
+  performed.
 
 **Infrastructure Design skipped** (all units): no new infrastructure. The feature
 reuses the existing FastAPI + PostgreSQL + local file store; derived artifacts

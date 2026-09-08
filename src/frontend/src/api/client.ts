@@ -13,6 +13,12 @@ import type {
   MeasurementItemUpdateInput,
   MeasurementItemView,
   MeasurementView,
+  FeatureExtractionInput,
+  FeatureExtractionResultView,
+  SegmentationBatchInput,
+  SegmentationBatchResultView,
+  SegmentationResultView,
+  SegmentationRunInput,
   SummaryView,
 } from "./types";
 
@@ -165,5 +171,25 @@ export const api = {
     }),
   deleteMeasurementItem: (itemId: number) =>
     requestVoid(`/api/measurement-items/${itemId}`, { method: "DELETE" }),
+  getSegmentation: (imageId: number) =>
+    request<SegmentationResultView>(`/api/images/${imageId}/segmentation`),
+  runSegmentation: (imageId: number, value?: SegmentationRunInput) =>
+    request<SegmentationResultView>(`/api/images/${imageId}/segmentation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value ?? {}),
+    }),
+  extractFeatures: (imageId: number, value?: FeatureExtractionInput) =>
+    request<FeatureExtractionResultView>(`/api/images/${imageId}/features`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value ?? {}),
+    }),
+  runSegmentationBatch: (value: SegmentationBatchInput) =>
+    request<SegmentationBatchResultView>("/api/segmentation/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    }),
   downloadContext: contextDownload,
 };

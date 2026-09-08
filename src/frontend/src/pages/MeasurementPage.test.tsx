@@ -31,10 +31,14 @@ const detail = {
     label: "Gate CD",
     note: "saved",
     measurement_method: "manual",
+    source: "manual",
+    confidence: null,
     reference_status: "unreviewed",
     created_at: "2026-09-08T04:00:00Z",
   }],
 };
+
+const NO_SEGMENTATION = { code: "SEGMENTATION_NOT_FOUND", message: "세그멘테이션이 없습니다." };
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -57,6 +61,11 @@ function renderPage(
     const method = init?.method ?? "GET";
     if (url.includes("/api/measurement-items") && method === "GET") {
       return Promise.resolve(jsonResponse(items));
+    }
+    // The segmentation load on mount is "not found" by default so tests keep
+    // their queue for the calls they actually assert on.
+    if (url.includes("/segmentation") && method === "GET") {
+      return Promise.resolve(jsonResponse(NO_SEGMENTATION, 404));
     }
     return Promise.resolve(queue.shift() ?? jsonResponse(detail));
   });
@@ -210,8 +219,12 @@ describe("MeasurementPage", () => {
     const queue: Array<Response> = [jsonResponse(detail), new Response(null, { status: 204 })];
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url.includes("/api/measurement-items") && (init?.method ?? "GET") === "GET") {
+      const method = init?.method ?? "GET";
+      if (url.includes("/api/measurement-items") && method === "GET") {
         return Promise.resolve(jsonResponse([]));
+      }
+      if (url.includes("/segmentation") && method === "GET") {
+        return Promise.resolve(jsonResponse(NO_SEGMENTATION, 404));
       }
       return Promise.resolve(queue.shift() ?? jsonResponse(detail));
     });
@@ -553,6 +566,105 @@ describe("MeasurementPage", () => {
     await preparedImage();
 
     expect(document.title).toBe("sample.png · NANoDB");
+  });
+
+  const segResult = {
+    image_id: 1,
+    method: "chan-vese",
+    classes: 3,
+    denoise_weight: 0.1,
+    min_size: 64,
+    thresholds: [80, 160],
+    class_stats: [
+      { class_index: 0, intensity_range: [0, 80], pixels: 1000, area_fraction: 0.5, mean_intensity: 40, area_nm2: 12.3 },
+      { class_index: 1, intensity_range: [80, 160], pixels: 600, area_fraction: 0.3, mean_intensity: 120, area_nm2: null },
+    ],
+    duration_ms: 42,
+    downscaled: false,
+    has_tagged_tiff: true,
+    map_url: "/api/images/1/segmentation/map",
+    boundary_url: "/api/images/1/segmentation/boundary",
+    created_at: "2026-09-08T04:00:00Z",
+    replaced: false,
+  };
+  const autoMeasurement = {
+    ...detail.measurements[0],
+    id: 9,
+    label: "auto: 폭(CD)",
+    source: "auto",
+    measurement_method: "auto",
+    confidence: 0.82,
+  };
+  const featResult = {
+    image_id: 1,
+    target_class: 0,
+    region_area_px: 5000,
+    region_clipped: false,
+    measurements: [autoMeasurement],
+    skipped: [{ key: "spacing", reason: "단일 영역" }],
+  };
+
+  it("shows the empty state and disables feature extraction before segmentation", async () => {
+    renderPage();
+    await preparedImage();
+
+    expect(await screen.findByTestId("segmentation-empty")).toBeInTheDocument();
+    expect(screen.getByTestId("run-segmentation")).toHaveTextContent("세그멘테이션 실행");
+    expect(screen.getByTestId("run-features")).toBeDisabled();
+    expect(screen.getByTestId("measurement-source")).toHaveTextContent("수동");
+  });
+
+  it("runs segmentation and shows the class map, stats and tagged download", async () => {
+    renderPage([jsonResponse(detail), jsonResponse(segResult)]);
+    await preparedImage();
+
+    await userEvent.click(screen.getByTestId("run-segmentation"));
+
+    await waitFor(() => expect(screen.getByTestId("segmentation-result")).toBeInTheDocument());
+    expect(screen.getByTestId("segmentation-map")).toHaveAttribute("src", "/api/images/1/segmentation/map");
+    expect(screen.getByTestId("segmentation-boundary")).toHaveAttribute("src", "/api/images/1/segmentation/boundary");
+    expect(screen.getAllByTestId("segmentation-class-row")).toHaveLength(2);
+    expect(screen.getByTestId("tagged-download")).toHaveAttribute("href", "/api/images/1/tagged");
+    expect(screen.getByTestId("run-features")).toBeEnabled();
+  });
+
+  it("extracts auto features and keeps them distinct from manual in the saved list", async () => {
+    const refreshed = { ...detail, measurements: [detail.measurements[0], autoMeasurement] };
+    const fetchMock = renderPage([
+      jsonResponse(detail),
+      jsonResponse(segResult),
+      jsonResponse(featResult),
+      jsonResponse(refreshed),
+    ]);
+    await preparedImage();
+
+    await userEvent.click(screen.getByTestId("run-segmentation"));
+    await waitFor(() => expect(screen.getByTestId("run-features")).toBeEnabled());
+    await userEvent.click(screen.getByTestId("run-features"));
+
+    await waitFor(() => expect(screen.getAllByTestId("saved-measurement-item")).toHaveLength(2));
+    const sources = screen.getAllByTestId("measurement-source").map((el) => el.textContent);
+    expect(sources).toContain("수동");
+    expect(sources.some((text) => text?.includes("자동 82%"))).toBe(true);
+    expect(screen.getByTestId("feature-skipped")).toHaveTextContent("spacing");
+    const featCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/features"));
+    expect(featCall).toBeTruthy();
+    expect(featCall![1]?.method).toBe("POST");
+  });
+
+  it("surfaces a segmentation failure without leaving a result", async () => {
+    renderPage([
+      jsonResponse(detail),
+      jsonResponse({ code: "SEGMENTATION_FAILED", message: "세그멘테이션을 실행하지 못했습니다." }, 500),
+    ]);
+    await preparedImage();
+
+    await userEvent.click(screen.getByTestId("run-segmentation"));
+
+    expect(await screen.findByTestId("segmentation-error")).toHaveTextContent(
+      "세그멘테이션을 실행하지 못했습니다",
+    );
+    expect(screen.queryByTestId("segmentation-result")).not.toBeInTheDocument();
   });
 
   it("rejects a successful response that is not a ZIP", async () => {

@@ -217,7 +217,7 @@ def _write_manifest(rows: list[dict[str, str]]) -> None:
 def load_into_demo(rows: list[dict[str, str]]) -> int:
     """Seed prepared derivatives into the demo database and upload root."""
     # Imported lazily so the offline prepare path needs no backend dependency.
-    from nanodb.adapters import FileStore, ImageDecoder
+    from nanodb.adapters import DerivedStore, FileStore, ImageDecoder
     from nanodb.persistence.database import create_session_factory
     from nanodb.services.image_service import ImageRegistration, ImageService
     from nanodb.settings import Settings
@@ -236,7 +236,10 @@ def load_into_demo(rows: list[dict[str, str]]) -> int:
         pool_timeout=settings.database_pool_timeout,
     )
     service = ImageService(
-        session_factory, FileStore(settings.upload_root), ImageDecoder()
+        session_factory,
+        FileStore(settings.upload_root),
+        ImageDecoder(),
+        DerivedStore(settings.upload_root),
     )
 
     loaded = 0

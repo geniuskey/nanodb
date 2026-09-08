@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { ApiError, api } from "../api/client";
-import type { ImageListView, ImageType } from "../api/types";
+import type {
+  ImageListView,
+  ImageType,
+  SegmentationBatchResultView,
+} from "../api/types";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { useDocumentTitle } from "../ui/useDocumentTitle";
 import { StatusBanner } from "../ui/StatusBanner";
@@ -29,6 +33,12 @@ export function ImageListPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // Batch auto-analysis: pick images, then run segmentation (and optionally
+  // feature extraction) across all of them. Original files are never touched.
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [batchFeatures, setBatchFeatures] = useState(false);
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchResult, setBatchResult] = useState<SegmentationBatchResultView | null>(null);
 
   // Debounce the free-text box so typing does not fire a request per keystroke.
   useEffect(() => {
@@ -76,6 +86,37 @@ export function ImageListPage() {
     } finally { setDeleting(false); setPending(null); }
   }
 
+  function toggleSelect(id: number) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function runBatch() {
+    if (selected.size === 0 || batchRunning) return;
+    setBatchRunning(true); setActionError(null); setStatus(null); setBatchResult(null);
+    try {
+      const result = await api.runSegmentationBatch({
+        image_ids: [...selected],
+        extract_features: batchFeatures,
+      });
+      setBatchResult(result);
+      setStatus(
+        `일괄 자동 분석 완료: 성공 ${result.succeeded}건 · 실패 ${result.failed}건`,
+      );
+      setSelected(new Set());
+      // Measurement counts may have changed when features were extracted.
+      setAttempt((current) => current + 1);
+    } catch (caught) {
+      setActionError(
+        caught instanceof ApiError ? caught.message : "일괄 자동 분석을 실행하지 못했습니다.",
+      );
+    } finally { setBatchRunning(false); }
+  }
+
   const isFiltered = activeQuery.trim() !== "" || typeFilter !== "ALL";
 
   return (
@@ -115,6 +156,44 @@ export function ImageListPage() {
           ))}
         </div>
       </div>
+
+      {state === "success" && images.length > 0 && (
+        <div className="batch-bar" data-testid="batch-bar">
+          <span data-testid="batch-selected-count">{selected.size}개 선택됨</span>
+          <label className="batch-feature-toggle">
+            <input
+              type="checkbox"
+              data-testid="batch-extract-features"
+              checked={batchFeatures}
+              onChange={(event) => setBatchFeatures(event.target.checked)}
+            />
+            자동 특징도 추출
+          </label>
+          <button
+            type="button"
+            className="button primary"
+            data-testid="run-batch"
+            disabled={selected.size === 0 || batchRunning}
+            onClick={runBatch}
+          >
+            {batchRunning ? "처리 중…" : "선택 이미지 일괄 자동 분석"}
+          </button>
+        </div>
+      )}
+      {batchResult && (
+        <div className="batch-result" data-testid="batch-result">
+          <p>요청 {batchResult.requested}건 · 성공 {batchResult.succeeded}건 · 실패 {batchResult.failed}건</p>
+          {batchResult.items.some((item) => item.status === "error") && (
+            <ul data-testid="batch-errors">
+              {batchResult.items
+                .filter((item) => item.status === "error")
+                .map((item) => (
+                  <li key={item.image_id}>이미지 {item.image_id}: {item.message ?? item.code}</li>
+                ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <StatusBanner message={status} />
       {actionError && <p role="alert">{actionError}</p>}
@@ -175,6 +254,15 @@ export function ImageListPage() {
         <div className={refreshing ? "image-grid refreshing" : "image-grid"} data-testid="image-catalog">
           {images.map((image) => (
             <article className="image-card-wrap" key={image.id}>
+              <label className="card-select">
+                <input
+                  type="checkbox"
+                  data-testid="batch-select"
+                  checked={selected.has(image.id)}
+                  onChange={() => toggleSelect(image.id)}
+                  aria-label={`${image.original_filename} 일괄 분석 선택`}
+                />
+              </label>
               <Link className="image-card" to={`/images/${image.id}`} data-testid="catalog-image-card">
                 <img src={image.file_url} alt={`${image.original_filename} 미리보기`} width={180} height={150} loading="lazy" />
                 <div>

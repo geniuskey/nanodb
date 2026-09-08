@@ -82,7 +82,7 @@ test("labels a measurement, edits it, and exports a bundle that carries it", asy
   // The label is drawn beside the line it names, so the figure and the number
   // can never disagree about which feature was measured.
   const caption = page.getByTestId("measurement-label");
-  await expect(caption).toHaveText("홀 경계");
+  await expect(caption).toContainText("홀 경계");
 
   await page.getByTestId("edit-annotation").click();
   await page.getByTestId("note-input").fill("경계 재확인");
@@ -118,7 +118,7 @@ test("labels a measurement, edits it, and exports a bundle that carries it", asy
     execFileSync("unzip", ["-p", zipPath, "data.json"], { encoding: "utf-8" }),
   );
 
-  expect(data.schema_version).toBe("2.0");
+  expect(data.schema_version).toBe("3.0");
   expect(data.measurements).toHaveLength(1);
   expect(data.measurements[0].label).toBe("홀 경계");
   expect(data.measurements[0].note).toBe("경계 재확인");

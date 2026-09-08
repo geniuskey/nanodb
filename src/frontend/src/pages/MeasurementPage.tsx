@@ -3,10 +3,12 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { ApiError, api } from "../api/client";
 import type {
+  FeatureExtractionResultView,
   ImageDetailView,
   MeasurementItemView,
   MeasurementType,
   MeasurementView,
+  SegmentationResultView,
 } from "../api/types";
 import { toOriginalPoint, type Point } from "../measurement/coordinates";
 import {
@@ -85,6 +87,14 @@ export function MeasurementPage() {
     name: "",
     type: "length",
   });
+  // Segmentation + auto feature extraction (Unit C). Auto measurements are
+  // stored and shown as distinct from manual ones and are never presented as
+  // human-verified.
+  const [segmentation, setSegmentation] = useState<SegmentationResultView | null>(null);
+  const [segRunning, setSegRunning] = useState(false);
+  const [segError, setSegError] = useState<string | null>(null);
+  const [featRunning, setFeatRunning] = useState(false);
+  const [featSummary, setFeatSummary] = useState<FeatureExtractionResultView | null>(null);
 
   useDocumentTitle(detail?.original_filename ?? "측정");
 
@@ -111,6 +121,31 @@ export function MeasurementPage() {
       active = false;
     };
   }, [detail?.product_id]);
+
+  // Load any existing segmentation for this image. "Not found" is the normal
+  // "not yet run" state, not an error.
+  useEffect(() => {
+    let active = true;
+    setSegError(null);
+    api
+      .getSegmentation(imageId)
+      .then((value) => active && setSegmentation(value))
+      .catch((caught) => {
+        if (!active) return;
+        if (caught instanceof ApiError && caught.code === "SEGMENTATION_NOT_FOUND") {
+          setSegmentation(null);
+        } else {
+          setSegError(
+            caught instanceof ApiError
+              ? caught.message
+              : "세그멘테이션 정보를 불러오지 못했습니다.",
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [imageId, attempt]);
 
   // Re-measure the image and its scroll viewport whenever either can have
   // changed. Both updates bail out when the size is unchanged, so having
@@ -365,6 +400,46 @@ export function MeasurementPage() {
     } finally { setExporting(false); }
   }
 
+  async function runSegmentation() {
+    if (segRunning) return;
+    setSegRunning(true); setSegError(null); setStatus(null);
+    try {
+      const result = await api.runSegmentation(imageId);
+      setSegmentation(result);
+      setStatus(
+        result.replaced
+          ? "세그멘테이션을 다시 실행했습니다."
+          : "세그멘테이션을 실행했습니다.",
+      );
+    } catch (caught) {
+      setSegError(
+        caught instanceof ApiError ? caught.message : "세그멘테이션을 실행하지 못했습니다.",
+      );
+    } finally { setSegRunning(false); }
+  }
+
+  async function runFeatureExtraction() {
+    if (!segmentation || featRunning) return;
+    setFeatRunning(true); setSegError(null); setStatus(null); setFeatSummary(null);
+    try {
+      const result = await api.extractFeatures(imageId);
+      setFeatSummary(result);
+      // Auto measurements replace prior auto ones and keep manual ones; reload
+      // the detail so the saved list reflects exactly what the server stored.
+      const refreshed = await api.getImage(imageId);
+      setDetail(refreshed);
+      const kept = result.measurements.length;
+      const skipped = result.skipped.length;
+      setStatus(
+        `자동 특징 ${kept}개를 추출했습니다${skipped > 0 ? ` (건너뜀 ${skipped}개)` : ""}.`,
+      );
+    } catch (caught) {
+      setSegError(
+        caught instanceof ApiError ? caught.message : "자동 특징을 추출하지 못했습니다.",
+      );
+    } finally { setFeatRunning(false); }
+  }
+
   const copy = pending ? confirmCopy(pending) : null;
 
   return (
@@ -506,7 +581,16 @@ export function MeasurementPage() {
                     <tr key={item.id} className={selected ? "saved-row selected" : "saved-row"} aria-selected={selected} tabIndex={0} onClick={() => setSelectedId(item.id)} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setSelectedId(item.id); } }} data-testid="saved-measurement-item">
                       <td className="swatch-col"><span className="measurement-swatch" style={{ background: measurementColor(item.id) }} aria-hidden="true" /></td>
                       <td>
-                        <strong>{item.label ? `${item.label} · ` : ""}{TYPE_LABEL[item.measurement_type]} · {formatValue(item.value, item.unit)}</strong>
+                        <strong>
+                          {item.label ? `${item.label} · ` : ""}{TYPE_LABEL[item.measurement_type]} · {formatValue(item.value, item.unit)}
+                          {item.source === "auto" ? (
+                            <span className="source-badge auto" data-testid="measurement-source" title="자동 추출값 (사람이 검증하지 않음)">
+                              자동{item.confidence !== null ? ` ${Math.round(item.confidence * 100)}%` : ""}
+                            </span>
+                          ) : (
+                            <span className="source-badge manual" data-testid="measurement-source">수동</span>
+                          )}
+                        </strong>
                         {item.note && <span className="saved-note">{item.note}</span>}
                         {editId === item.id && (
                           <div className="note-editor" onClick={(event) => event.stopPropagation()}>
@@ -541,6 +625,61 @@ export function MeasurementPage() {
           )}
         </section>
       </div>
+      <section className="segmentation-panel table-panel" aria-labelledby="segmentation-heading" data-testid="segmentation-panel">
+        <h2 id="segmentation-heading">자동 분석 (세그멘테이션 · 특징)</h2>
+        <p className="note-hint">원본 이미지는 절대 수정하지 않습니다. 결과는 모두 파생 파일로만 저장됩니다. 자동 측정값은 사람이 검증한 값이 아니며, 저장된 측정 목록에서 '자동'으로 구분됩니다.</p>
+        {segError && <p role="alert" data-testid="segmentation-error">{segError}</p>}
+        <div className="actions">
+          <button type="button" className="button primary" onClick={runSegmentation} disabled={segRunning} data-testid="run-segmentation">
+            {segRunning ? "실행 중…" : segmentation ? "세그멘테이션 다시 실행" : "세그멘테이션 실행"}
+          </button>
+          <button type="button" className="button" onClick={runFeatureExtraction} disabled={!segmentation || featRunning} data-testid="run-features">
+            {featRunning ? "추출 중…" : "자동 특징 추출"}
+          </button>
+        </div>
+        {!segmentation ? (
+          <p data-testid="segmentation-empty">아직 세그멘테이션을 실행하지 않았습니다.</p>
+        ) : (
+          <div className="segmentation-result" data-testid="segmentation-result">
+            <dl data-testid="segmentation-facts">
+              <div><dt>방법</dt><dd>{segmentation.method}</dd></div>
+              <div><dt>클래스 수</dt><dd>{segmentation.classes}</dd></div>
+              <div><dt>소요</dt><dd>{segmentation.duration_ms} ms{segmentation.downscaled ? " (다운스케일)" : ""}</dd></div>
+            </dl>
+            <div className="segmentation-views">
+              <figure><img src={segmentation.map_url} alt="클래스 맵" data-testid="segmentation-map" /><figcaption>클래스 맵</figcaption></figure>
+              <figure><img src={segmentation.boundary_url} alt="경계 오버레이" data-testid="segmentation-boundary" /><figcaption>경계 오버레이</figcaption></figure>
+            </div>
+            <table className="data-table">
+              <thead><tr><th scope="col">클래스</th><th scope="col">픽셀</th><th scope="col">면적 비율</th><th scope="col">평균 강도</th><th scope="col">면적(nm²)</th></tr></thead>
+              <tbody>
+                {segmentation.class_stats.map((stat) => (
+                  <tr key={stat.class_index} data-testid="segmentation-class-row">
+                    <td>{stat.class_index}</td>
+                    <td>{stat.pixels.toLocaleString()}</td>
+                    <td>{(stat.area_fraction * 100).toFixed(1)}%</td>
+                    <td>{stat.mean_intensity !== null ? stat.mean_intensity.toFixed(1) : "-"}</td>
+                    <td>{stat.area_nm2 !== null ? stat.area_nm2.toFixed(1) : "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {segmentation.has_tagged_tiff && (
+              <p><a className="button" href={`/api/images/${imageId}/tagged`} download data-testid="tagged-download">태그된 TIFF 다운로드</a></p>
+            )}
+            {featSummary && (
+              <div data-testid="feature-summary">
+                <p>대상 클래스 {featSummary.target_class} · 자동 측정 {featSummary.measurements.length}개{featSummary.region_clipped ? " · 영역이 이미지 경계에 닿음" : ""}</p>
+                {featSummary.skipped.length > 0 && (
+                  <ul className="note-hint" data-testid="feature-skipped">
+                    {featSummary.skipped.map((s) => <li key={s.key}>{s.key}: {s.reason}</li>)}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
       <section className="export-panel table-panel" aria-labelledby="context-export-heading">
         <h2 id="context-export-heading">Context Export</h2>
         <p>포함: Product ID, Lot ID, Wafer ID, 공정 Step, 원본 파일명, 저장된 측정과 측정별 라벨·메모</p>

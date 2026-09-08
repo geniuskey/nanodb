@@ -14,6 +14,7 @@ from nanodb.api.errors import install_error_handlers
 from nanodb.api.middleware import install_request_middleware
 from nanodb.api.routes import router
 from nanodb.persistence.database import create_session_factory
+from nanodb.services.batch_service import SegmentationBatchService
 from nanodb.services.catalog_service import CatalogService
 from nanodb.services.context_export_service import ContextExportService
 from nanodb.services.feature_service import FeatureExtractionService
@@ -55,10 +56,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         derived_store,
     )
     app.state.segmentation_service = segmentation_service
-    app.state.feature_service = FeatureExtractionService(
+    feature_service = FeatureExtractionService(
         session_factory,
         derived_store,
         segmentation_service,
+    )
+    app.state.feature_service = feature_service
+    app.state.batch_service = SegmentationBatchService(
+        segmentation_service,
+        feature_service,
     )
     app.state.measurement_item_service = MeasurementItemService(session_factory)
     app.state.catalog_service = CatalogService(session_factory)

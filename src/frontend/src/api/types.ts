@@ -87,10 +87,17 @@ export interface MeasurementView {
   label: string | null;
   /** Free observation memo about the same measurement. */
   note: string | null;
-  measurement_method: "manual";
+  measurement_method: MeasurementSource;
+  /** Who produced it: a human ("manual") or the feature extractor ("auto"). */
+  source: MeasurementSource;
+  /** 0..1 self-estimate for auto measurements; null for manual. */
+  confidence: number | null;
   reference_status: "unreviewed";
   created_at: string;
 }
+
+/** Auto values are never presented as verified: the two are kept distinct. */
+export type MeasurementSource = "manual" | "auto";
 
 export interface ImageDetailView extends ImageView {
   measurements: MeasurementView[];
@@ -127,6 +134,82 @@ export interface MeasurementItemUpdateInput {
 export interface MeasurementAnnotationInput {
   label: string | null;
   note: string | null;
+}
+
+export interface SegmentationClassStat {
+  class_index: number;
+  intensity_range: number[];
+  pixels: number;
+  area_fraction: number;
+  mean_intensity: number | null;
+  area_nm2: number | null;
+}
+
+export interface SegmentationResultView {
+  image_id: number;
+  method: string;
+  classes: number;
+  denoise_weight: number;
+  min_size: number;
+  thresholds: number[];
+  class_stats: SegmentationClassStat[];
+  duration_ms: number;
+  downscaled: boolean;
+  has_tagged_tiff: boolean;
+  map_url: string;
+  boundary_url: string;
+  created_at: string;
+  replaced: boolean;
+}
+
+export interface SegmentationRunInput {
+  classes?: number;
+  denoise_weight?: number;
+  min_size?: number;
+}
+
+export interface SkippedFeature {
+  key: string;
+  reason: string;
+}
+
+export interface FeatureExtractionResultView {
+  image_id: number;
+  target_class: number;
+  region_area_px: number;
+  region_clipped: boolean;
+  measurements: MeasurementView[];
+  skipped: SkippedFeature[];
+}
+
+export interface FeatureExtractionInput {
+  target_class?: number;
+}
+
+export interface SegmentationBatchInput {
+  image_ids: number[];
+  classes?: number;
+  denoise_weight?: number;
+  min_size?: number;
+  extract_features?: boolean;
+  target_class?: number;
+}
+
+export interface BatchItemResult {
+  image_id: number;
+  status: "ok" | "error";
+  replaced: boolean;
+  feature_count: number | null;
+  skipped_count: number | null;
+  code: string | null;
+  message: string | null;
+}
+
+export interface SegmentationBatchResultView {
+  requested: number;
+  succeeded: number;
+  failed: number;
+  items: BatchItemResult[];
 }
 
 export interface ApiErrorEnvelope {

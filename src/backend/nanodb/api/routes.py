@@ -14,6 +14,7 @@ from nanodb.api.mappers import (
     image_view,
     measurement_item_view,
     measurement_view,
+    segmentation_batch_view,
     segmentation_result_view,
 )
 from nanodb.api.schemas import (
@@ -33,6 +34,8 @@ from nanodb.api.schemas import (
     MeasurementTypeSummaryView,
     MeasurementView,
     ReadinessView,
+    SegmentationBatchRequestSchema,
+    SegmentationBatchResultView,
     SegmentationRequestSchema,
     SegmentationResultView,
     SummaryView,
@@ -327,6 +330,27 @@ def segmentation_variant(
     return FileResponse(
         request.app.state.segmentation_service.variant_path(image_id, variant)
     )
+
+
+@router.post(
+    "/segmentation/batch",
+    response_model=SegmentationBatchResultView,
+)
+def run_segmentation_batch(
+    payload: SegmentationBatchRequestSchema,
+    request: Request,
+) -> SegmentationBatchResultView:
+    outcome = request.app.state.batch_service.run(
+        payload.image_ids,
+        SegmentationParams(
+            classes=payload.classes,
+            denoise_weight=payload.denoise_weight,
+            min_size=payload.min_size,
+        ),
+        extract_features=payload.extract_features,
+        feature_params=FeatureParams(target_class=payload.target_class),
+    )
+    return segmentation_batch_view(outcome)
 
 
 @router.post(

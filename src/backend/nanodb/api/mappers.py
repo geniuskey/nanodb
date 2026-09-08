@@ -1,12 +1,14 @@
 """Domain-to-transport mapping without persistence details."""
 
 from nanodb.api.schemas import (
+    BatchItemResultView,
     CatalogOptionView,
     FeatureExtractionResultView,
     ImageView,
     MeasurementItemView,
     MeasurementView,
     PointView,
+    SegmentationBatchResultView,
     SegmentationClassStatView,
     SegmentationResultView,
     SkippedFeatureViewSchema,
@@ -18,6 +20,7 @@ from nanodb.domain.entities import (
     MeasurementItem,
     SegmentationResult,
 )
+from nanodb.services.batch_service import BatchOutcome
 from nanodb.services.feature_service import FeatureExtractionRun
 
 
@@ -76,6 +79,26 @@ def feature_extraction_view(run: FeatureExtractionRun) -> FeatureExtractionResul
         measurements=[measurement_view(m) for m in run.measurements],
         skipped=[
             SkippedFeatureViewSchema(key=s.key, reason=s.reason) for s in run.skipped
+        ],
+    )
+
+
+def segmentation_batch_view(outcome: BatchOutcome) -> SegmentationBatchResultView:
+    return SegmentationBatchResultView(
+        requested=outcome.requested,
+        succeeded=outcome.succeeded,
+        failed=outcome.failed,
+        items=[
+            BatchItemResultView(
+                image_id=item.image_id,
+                status=item.status,
+                replaced=item.replaced,
+                feature_count=item.feature_count,
+                skipped_count=item.skipped_count,
+                code=item.code,
+                message=item.message,
+            )
+            for item in outcome.items
         ],
     )
 

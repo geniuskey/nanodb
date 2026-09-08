@@ -1934,3 +1934,11 @@ UIX-009: 목록과 홈 KPI의 첫 조회에 결과와 같은 모양의 자리 �
 **Context**: CONSTRUCTION - Unit B Code Generation complete; presenting 2-option completion gate
 
 ---
+
+## CONSTRUCTION - Unit C (UI & Batch) Code Generation
+**Timestamp**: 2026-09-09T00:00:00Z
+**User Input**: "묻지말고 계속 다음 단계 진행"
+**AI Response**: "Implemented Unit C end-to-end without stopping at gates, per instruction. Backend: services/batch_service.py (SegmentationBatchService) runs each image independently — dedup preserving order, one failure never aborts the rest, a feature-extraction failure leaves the image ok with its segmentation standing and the failure noted; POST /api/segmentation/batch route + SegmentationBatchRequest/Result schemas + mapper; app.py wired to share one feature_service into the batch service. Frontend: MeasurementPage segmentation panel (run/re-run segmentation, class-map + boundary PNG overlays, per-class stats, tagged TIFF download, run auto feature extraction) and a source badge keeping AUTO (with confidence %) distinct from MANUAL in the saved list — auto never shown as human-verified; ImageListPage per-card selection + batch bar with '자동 특징도 추출' toggle and per-image error list; new api methods getSegmentation/runSegmentation/extractFeatures/runSegmentationBatch and the view types. Tests added: unit/test_batch_service.py (5), api/test_batch_routes.py (4), frontend MeasurementPage/ImageListPage segmentation+batch specs, and e2e auto-analysis.spec.ts (2). Fixed two latent pre-Unit-C breaks surfaced by running the real stack: scripts/prepare_demo_samples.py used the pre-DerivedStore 3-arg ImageService, and two measurement-ux.spec.ts assertions were stale since 2e0d122 (overlay caption carries the value; export schema_version is 3.0). Gates all green: pytest 180 + 32 integration with DB, mypy strict clean, ruff clean, npm typecheck clean, vitest 82 passed, playwright 9 passed. Original files never modified; no git push."
+**Context**: CONSTRUCTION - Unit C Code Generation complete; all Build-and-Test gates green (completion condition #12)
+
+---

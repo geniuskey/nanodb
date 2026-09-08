@@ -1193,6 +1193,24 @@ SEM/TEM/Layout 이미지를 등록하고 구조를 식별하며, 이미지 위�
 
 ---
 
+## NANoDB Core Code Generation Step 17 Started
+
+**Timestamp**: 2026-09-08T04:24:48Z
+**User Input**: "계속해줘"
+**AI Response**: "After pushing Step 16, started Step 17 coordinate and Measurement viewer component test generation."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 17 in progress
+
+---
+
+## NANoDB Core Code Generation Step 17 Complete
+
+**Timestamp**: 2026-09-08T04:26:29Z
+**User Input**: "계속해줘"
+**AI Response**: "Generated coordinate and Measurement viewer tests covering exact 100% restoration, <=1px 50% restoration, outside-image rejection, third-click protection, save enablement, draft-only reset, saved list-overlay selection, server result replacement and retained draft on save failure. All 18 frontend tests, TypeScript and production build passed."
+**Context**: CONSTRUCTION - Code Generation Part 2 Step 17/26 complete; per-step Git checkpoint required
+
+---
+
 ## Per-Step Git Checkpoint Policy Requested
 
 **Timestamp**: 2026-09-08T04:02:41Z

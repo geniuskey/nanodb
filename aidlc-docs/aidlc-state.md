@@ -4,7 +4,7 @@
 
 - **Project Type**: Greenfield
 - **Start Date**: 2026-09-07T11:50:01Z
-- **Current Stage**: CONSTRUCTION - NANoDB Core Code Generation Part 2 (Steps 1-16 complete; Step 17 pending)
+- **Current Stage**: CONSTRUCTION - NANoDB Core Code Generation Part 2 (Steps 1-17 complete; Step 18 pending)
 
 ## Workspace State
 
@@ -47,7 +47,7 @@
 - [x] NFR Requirements (NANoDB Core approved 2026-09-08)
 - [x] NFR Design (NANoDB Core approved 2026-09-08)
 - [x] Infrastructure Design (NANoDB Core approved 2026-09-08)
-- [ ] Code Generation (NANoDB Core Part 1 approved; Part 2 Steps 1-16/26 complete)
+- [ ] Code Generation (NANoDB Core Part 1 approved; Part 2 Steps 1-17/26 complete)
 - [ ] Build and Test (always)
 
 ## Current Request Assessment

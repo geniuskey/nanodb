@@ -148,7 +148,7 @@ NANoDB Core는 React frontend와 FastAPI backend를 하나의 배포 경계로 �
 
 ### Step 17. Measurement와 coordinate frontend unit test 생성 — US-04, US-05
 
-- [ ] 100%와 50% rendering에서 1px 이내 복원, 세 번째 click 보호, 저장 enablement, draft reset과 saved data 불변, 선택 list-overlay 동기화, validation/failure 상태를 Vitest/Testing Library test로 생성한다.
+- [x] 100%와 50% rendering에서 1px 이내 복원, 세 번째 click 보호, 저장 enablement, draft reset과 saved data 불변, 선택 list-overlay 동기화, validation/failure 상태를 Vitest/Testing Library test로 생성한다.
 
 ### Step 18. Context Export frontend와 download test 생성 — US-06
 

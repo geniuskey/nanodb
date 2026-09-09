@@ -11,13 +11,13 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import { ErrorBoundary } from "./ui/ErrorBoundary";
 
 const REAL_TABS = [
-  { to: "/", label: "홈", hint: "대의", end: true },
+  { to: "/", label: "홈", end: true },
   // `/images` stays non-exact so an image detail keeps the catalog tab lit,
   // but `/images/new` is its own tab: without this both would read as the
   // current location at once.
-  { to: "/images", label: "이미지DB", hint: "찾기", end: false, notOn: "/images/new" },
-  { to: "/images/new", label: "이미지 등록", hint: "작업", end: false },
-  { to: "/catalog", label: "목록 관리", hint: "설정", end: false },
+  { to: "/images", label: "이미지DB", end: false, notOn: "/images/new" },
+  { to: "/images/new", label: "이미지 등록", end: false },
+  { to: "/catalog", label: "목록 관리", end: false },
 ];
 
 function StatusPill() {
@@ -43,34 +43,29 @@ function Shell() {
   return (
     <SummaryContext.Provider value={summary}>
     <div className="app-shell">
-      {/* The header and tab strip sit before the body; give keyboard
-          users one hop past them (UIX-005). */}
+      {/* The header sits before the body; give keyboard users one hop past
+          it (UIX-005). */}
       <a className="skip-link" href="#main-content">본문으로 건너뛰기</a>
       <header className="app-header">
         <NavLink className="brand" to="/" aria-label="NANoDB 홈">
           <img src={logo} alt="NANoDB" />
-          <span className="brand-text">
-            <span className="brand-ext">Nano Assets, Never orphaned Database</span>
-            <span className="brand-sub">데이터는 쌓이고, 툴은 이어진다.</span>
-          </span>
         </NavLink>
+        <nav className="tabbar" aria-label="주요 메뉴">
+          {REAL_TABS.map((tab) => (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              end={tab.end}
+              className={({ isActive }) =>
+                isActive && pathname !== tab.notOn ? "tab active" : "tab"
+              }
+            >
+              <span className="tab-label">{tab.label}</span>
+            </NavLink>
+          ))}
+        </nav>
         <StatusPill />
       </header>
-      <nav className="tabbar" aria-label="주요 메뉴">
-        {REAL_TABS.map((tab) => (
-          <NavLink
-            key={tab.to}
-            to={tab.to}
-            end={tab.end}
-            className={({ isActive }) =>
-              isActive && pathname !== tab.notOn ? "tab active" : "tab"
-            }
-          >
-            <span className="tab-label">{tab.label}</span>
-            <span className="tab-hint">{tab.hint}</span>
-          </NavLink>
-        ))}
-      </nav>
       <div id="main-content" tabIndex={-1}>
         <ErrorBoundary>
           <Outlet />

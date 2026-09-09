@@ -91,6 +91,44 @@ const ADVANCE_TO_MEASURE_MS = 3600;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Pinned picks are remembered across visits in localStorage (demo-only, no
+// backend), so a presenter's go-to images stay at the top of the grid.
+const PINNED_STORAGE_KEY = "nanodb.demo.pinnedImages";
+
+function loadPinnedIds(): Set<number> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(PINNED_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? new Set(parsed.filter((v): v is number => typeof v === "number"))
+      : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function savePinnedIds(ids: Set<number>): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(PINNED_STORAGE_KEY, JSON.stringify([...ids]));
+  } catch {
+    // A full or unavailable store is non-fatal; pins just won't persist.
+  }
+}
+
+// Pinned images first (keeping the server order within each group), so a stable
+// sort surfaces them at the top of the grid without reshuffling the rest.
+function orderByPinned(
+  images: ImageListView[],
+  pinnedIds: Set<number>,
+): ImageListView[] {
+  return [...images].sort(
+    (a, b) => Number(pinnedIds.has(b.id)) - Number(pinnedIds.has(a.id)),
+  );
+}
+
 interface Size {
   width: number;
   height: number;
@@ -261,6 +299,7 @@ export function DemoRegisterPage() {
 
   const [images, setImages] = useState<ImageListView[] | null>(null);
   const [imagesError, setImagesError] = useState<string | null>(null);
+  const [pinnedIds, setPinnedIds] = useState<Set<number>>(loadPinnedIds);
 
   const [activeTab, setActiveTab] = useState<TabKey>("pick");
 
@@ -395,6 +434,16 @@ export function DemoRegisterPage() {
     }
   }
 
+  function togglePin(id: number) {
+    setPinnedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      savePinnedIds(next);
+      return next;
+    });
+  }
+
   function reset() {
     if (running) return;
     setSelectedId(null);
@@ -527,31 +576,55 @@ export function DemoRegisterPage() {
         )}
         {images && images.length > 0 && (
           <div className="recent-grid" data-testid="demo-picker">
-            {images.map((image) => (
-              <button
-                type="button"
-                key={image.id}
-                className="demo-pick"
-                aria-pressed={selectedId === image.id}
-                onClick={() => analyze(image)}
-                disabled={running}
-                data-testid="demo-image-option"
-              >
-                <img
-                  src={image.file_url}
-                  alt={image.original_filename}
-                  width={240}
-                  height={180}
-                  loading="lazy"
-                />
-                <span className="recent-caption">
-                  <span className="recent-name">{image.original_filename}</span>
-                  <span className="recent-meta">
-                    {image.image_type} {image.lot_id} {image.wafer_id}
-                  </span>
-                </span>
-              </button>
-            ))}
+            {orderByPinned(images, pinnedIds).map((image) => {
+              const pinned = pinnedIds.has(image.id);
+              return (
+                <div
+                  key={image.id}
+                  className="demo-pick-card"
+                  data-pinned={pinned || undefined}
+                  data-testid="demo-image-card"
+                >
+                  <button
+                    type="button"
+                    className="demo-pick"
+                    aria-pressed={selectedId === image.id}
+                    onClick={() => analyze(image)}
+                    disabled={running}
+                    data-testid="demo-image-option"
+                  >
+                    <img
+                      src={image.file_url}
+                      alt={image.original_filename}
+                      width={240}
+                      height={180}
+                      loading="lazy"
+                    />
+                    <span className="recent-caption">
+                      <span className="recent-name">{image.original_filename}</span>
+                      <span className="recent-meta">
+                        {image.image_type} {image.lot_id} {image.wafer_id}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="demo-pin"
+                    aria-pressed={pinned}
+                    aria-label={
+                      pinned
+                        ? `${image.original_filename} 고정 해제`
+                        : `${image.original_filename} 상단에 고정`
+                    }
+                    title={pinned ? "고정 해제" : "상단에 고정"}
+                    onClick={() => togglePin(image.id)}
+                    data-testid="demo-image-pin"
+                  >
+                    <span aria-hidden="true">{pinned ? "📌" : "📍"}</span>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
@@ -652,6 +725,17 @@ export function DemoRegisterPage() {
               <h2>세그멘테이션</h2>
               {segmentation ? (
                 <>
+                  <p className="cinema-summary">
+                    픽셀 밝기를 multi-Otsu 임계값으로 나눠 {segmentation.classes}개 클래스로 분류합니다.
+                  </p>
+                  {/* Histograms first so the criterion is readable without
+                      scrolling the rail; the class map (redundant with the
+                      boundary overlay in the stage) follows below. */}
+                  <IntensityThresholdChart
+                    stats={segmentation.class_stats}
+                    thresholds={segmentation.thresholds}
+                  />
+                  <SegmentationHistogram stats={segmentation.class_stats} />
                   <figure>
                     <img src={segmentation.map_url} alt="클래스 맵" data-testid="demo-segmentation-map" />
                     <figcaption>
@@ -659,14 +743,6 @@ export function DemoRegisterPage() {
                       {segmentation.downscaled ? " (다운스케일)" : ""}
                     </figcaption>
                   </figure>
-                  <p className="cinema-summary">
-                    픽셀 밝기를 multi-Otsu 임계값으로 나눠 {segmentation.classes}개 클래스로 분류합니다.
-                  </p>
-                  <IntensityThresholdChart
-                    stats={segmentation.class_stats}
-                    thresholds={segmentation.thresholds}
-                  />
-                  <SegmentationHistogram stats={segmentation.class_stats} />
                 </>
               ) : (
                 <p role="status">세그멘테이션을 실행하는 중입니다…</p>

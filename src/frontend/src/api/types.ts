@@ -218,32 +218,6 @@ export interface FeatureExtractionInput {
   target_class?: number;
 }
 
-export interface SegmentationBatchInput {
-  image_ids: number[];
-  classes?: number;
-  denoise_weight?: number;
-  min_size?: number;
-  extract_features?: boolean;
-  target_class?: number;
-}
-
-export interface BatchItemResult {
-  image_id: number;
-  status: "ok" | "error";
-  replaced: boolean;
-  feature_count: number | null;
-  skipped_count: number | null;
-  code: string | null;
-  message: string | null;
-}
-
-export interface SegmentationBatchResultView {
-  requested: number;
-  succeeded: number;
-  failed: number;
-  items: BatchItemResult[];
-}
-
 export interface ApiErrorEnvelope {
   code: string;
   message: string;

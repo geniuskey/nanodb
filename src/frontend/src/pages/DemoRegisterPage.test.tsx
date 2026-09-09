@@ -5,7 +5,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithRouter } from "../test/helpers";
 import { DemoRegisterPage } from "./DemoRegisterPage";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  window.localStorage.clear();
+});
 
 const listItem = {
   id: 7,
@@ -139,6 +142,39 @@ describe("DemoRegisterPage", () => {
       () => expect(screen.getByTestId("demo-open-image")).toHaveAttribute("href", "/images/7"),
       { timeout: 6000 },
     );
+  });
+
+  it("pins an image to the top of the grid and remembers it", async () => {
+    const second = { ...listItem, id: 8, original_filename: "wafer-08.png" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith("/api/images")) {
+          return Promise.resolve(jsonResponse([listItem, second]));
+        }
+        return Promise.resolve(jsonResponse({}));
+      }),
+    );
+    renderWithRouter(<DemoRegisterPage />);
+
+    // Server order: wafer-07 first, wafer-08 second.
+    let options = await screen.findAllByTestId("demo-image-option");
+    expect(options[0]).toHaveTextContent("wafer-07.png");
+    expect(options[1]).toHaveTextContent("wafer-08.png");
+
+    // Pin the second card; it jumps to the front of the grid.
+    const cards = screen.getAllByTestId("demo-image-card");
+    await userEvent.click(within(cards[1]).getByTestId("demo-image-pin"));
+
+    options = screen.getAllByTestId("demo-image-option");
+    expect(options[0]).toHaveTextContent("wafer-08.png");
+    expect(options[1]).toHaveTextContent("wafer-07.png");
+
+    // The pin is persisted for the next visit.
+    expect(
+      JSON.parse(window.localStorage.getItem("nanodb.demo.pinnedImages") ?? "[]"),
+    ).toContain(8);
   });
 
   it("names the screen in the document title", async () => {

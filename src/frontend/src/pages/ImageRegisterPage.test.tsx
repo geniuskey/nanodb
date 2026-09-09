@@ -143,6 +143,56 @@ describe("ImageRegisterPage", () => {
     expect(body.get("process_step")).toBe("");
   });
 
+  /** Fill every required field except the file, so a drop/paste supplies it. */
+  async function fillExceptFile(calibration = "0.2") {
+    const user = userEvent.setup();
+    await user.type(screen.getByTestId("registration-product"), "P1");
+    await user.type(field("lot_id"), "L1");
+    await user.type(field("wafer_id"), "W1");
+    await user.type(field("calibration_nm_per_pixel"), calibration);
+    return user;
+  }
+
+  it("registers an image dropped onto the preview zone", async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse({ id: 5 }, 201)));
+    renderWithRouter(<ImageRegisterPage />);
+    const user = await fillExceptFile();
+    const dropped = new File(["png"], "dropped.png", { type: "image/png" });
+
+    fireEvent.drop(screen.getByTestId("image-drop-zone"), { dataTransfer: { files: [dropped] } });
+    await user.click(screen.getByTestId("registration-submit"));
+
+    await waitFor(() => expect(registerCalls(fetchMock)).toHaveLength(1));
+    const body = registerCalls(fetchMock)[0][1]!.body as FormData;
+    expect((body.get("file") as File).name).toBe("dropped.png");
+  });
+
+  it("registers an image pasted from the clipboard", async () => {
+    const fetchMock = stubFetch(() => Promise.resolve(jsonResponse({ id: 5 }, 201)));
+    renderWithRouter(<ImageRegisterPage />);
+    const user = await fillExceptFile();
+    const pasted = new File(["png"], "pasted.png", { type: "image/png" });
+
+    fireEvent.paste(document, {
+      clipboardData: { items: [{ type: "image/png", getAsFile: () => pasted }] },
+    });
+    await user.click(screen.getByTestId("registration-submit"));
+
+    await waitFor(() => expect(registerCalls(fetchMock)).toHaveLength(1));
+    const body = registerCalls(fetchMock)[0][1]!.body as FormData;
+    expect((body.get("file") as File).name).toBe("pasted.png");
+  });
+
+  it("rejects a dropped non-image beside the file field", async () => {
+    stubFetch(() => Promise.resolve(jsonResponse({})));
+    renderWithRouter(<ImageRegisterPage />);
+    const notImage = new File(["nope"], "notes.txt", { type: "text/plain" });
+
+    fireEvent.drop(screen.getByTestId("image-drop-zone"), { dataTransfer: { files: [notImage] } });
+
+    expect(await screen.findByTestId("error-file")).toHaveTextContent("PNG, JPEG 또는 TIFF");
+  });
+
   it("keeps entered values when the server rejects registration", async () => {
     stubFetch(() =>
       Promise.resolve(jsonResponse({ code: "INVALID_IMAGE_FILE", message: "실제 PNG/JPEG가 아닙니다." }, 422)),

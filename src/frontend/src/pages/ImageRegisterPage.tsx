@@ -8,6 +8,17 @@ import { useDocumentTitle } from "../ui/useDocumentTitle";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
+/** Formats the browser accepts as a registration image. */
+const ACCEPTED_TYPES = new Set(["image/png", "image/jpeg", "image/tiff"]);
+
+/** True for a File that looks like one of the accepted image formats. A pasted
+ *  or dropped file may arrive with an empty type, so we also accept a matching
+ *  extension. */
+function isAcceptedImage(candidate: File): boolean {
+  if (candidate.type && ACCEPTED_TYPES.has(candidate.type)) return true;
+  return /\.(png|jpe?g|tiff?)$/i.test(candidate.name);
+}
+
 /** Field names that can carry their own error message. */
 type FieldName =
   | "file"
@@ -66,6 +77,27 @@ export function ImageRegisterPage() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [dragging, setDragging] = useState(false);
+
+  /** Accept an image that arrived by picker, paste or drop through one path so
+   *  the preview, validation and submit all see the same File. Clears any stale
+   *  file error and rejects a non-image outright. */
+  function acceptFile(candidate: File | null | undefined) {
+    if (!candidate) return;
+    if (!isAcceptedImage(candidate)) {
+      setFieldErrors((current) => ({
+        ...current,
+        file: "PNG, JPEG 또는 TIFF 이미지만 넣을 수 있습니다.",
+      }));
+      return;
+    }
+    setFile(candidate);
+    setFieldErrors((current) => {
+      if (!current.file) return current;
+      const { file: _dropped, ...rest } = current;
+      return rest;
+    });
+  }
 
   useEffect(() => {
     let active = true;
@@ -82,6 +114,27 @@ export function ImageRegisterPage() {
     setPreview(value);
     return () => URL.revokeObjectURL(value);
   }, [file]);
+
+  // Paste an image straight from the clipboard (e.g. a crop copied from a
+  // viewer). We ignore pastes into the note/text fields so typing is untouched.
+  useEffect(() => {
+    function onPaste(event: ClipboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "TEXTAREA" || target.tagName === "INPUT")) {
+        if ((target as HTMLInputElement).type !== "file") return;
+      }
+      const item = Array.from(event.clipboardData?.items ?? []).find((entry) =>
+        entry.type.startsWith("image/"),
+      );
+      const pasted = item?.getAsFile();
+      if (pasted) {
+        event.preventDefault();
+        acceptFile(pasted);
+      }
+    }
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, []);
 
   const catalogByField = useMemo(
     () => ({
@@ -192,13 +245,35 @@ export function ImageRegisterPage() {
         <Link to="/catalog">목록 관리</Link>
       </p>
       <div className="registration-layout">
-        <section className="preview-panel" aria-label="이미지 미리보기">
-          {preview ? <img src={preview} alt="선택한 이미지 미리보기" /> : <p>PNG/JPEG/TIFF · 최대 20MB</p>}
+        <section
+          className={dragging ? "preview-panel is-dragging" : "preview-panel"}
+          aria-label="이미지 미리보기"
+          data-testid="image-drop-zone"
+          onDragOver={(event) => {
+            event.preventDefault();
+            if (!dragging) setDragging(true);
+          }}
+          onDragLeave={(event) => {
+            // Ignore bubbling from children; only clear when leaving the panel.
+            if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+            setDragging(false);
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragging(false);
+            acceptFile(event.dataTransfer.files?.[0]);
+          }}
+        >
+          {preview ? (
+            <img src={preview} alt="선택한 이미지 미리보기" />
+          ) : (
+            <p>이미지를 끌어다 놓거나 붙여넣기(Ctrl/⌘+V) · PNG/JPEG/TIFF · 최대 20MB</p>
+          )}
         </section>
         <form className="registration-form" ref={formRef} onSubmit={submit} data-testid="image-registration-form" noValidate>
           <label>
             <span>이미지 파일 <span className="required-mark">*</span></span>
-            <input data-testid="registration-file" name="file-input" type="file" accept="image/png,image/jpeg,image/tiff,.tif,.tiff" onChange={(event) => setFile(event.target.files?.[0] ?? null)} aria-required aria-invalid={fieldErrors.file ? true : undefined} aria-describedby={fieldErrors.file ? "file-error" : undefined} />
+            <input data-testid="registration-file" name="file-input" type="file" accept="image/png,image/jpeg,image/tiff,.tif,.tiff" onChange={(event) => acceptFile(event.target.files?.[0])} aria-required aria-invalid={fieldErrors.file ? true : undefined} aria-describedby={fieldErrors.file ? "file-error" : undefined} />
             <FieldError name="file" />
           </label>
           {CATALOG_FIELDS.map(({ name, category, label, testId }) => (

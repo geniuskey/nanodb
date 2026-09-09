@@ -52,6 +52,7 @@ class ImageModel(Base):
     lot_id: Mapped[str] = mapped_column(String(255), nullable=False)
     wafer_id: Mapped[str] = mapped_column(String(255), nullable=False)
     process_step: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
     calibration_nm_per_pixel: Mapped[float] = mapped_column(Float, nullable=False)
     pixel_width: Mapped[int] = mapped_column(Integer, nullable=False)
     pixel_height: Mapped[int] = mapped_column(Integer, nullable=False)

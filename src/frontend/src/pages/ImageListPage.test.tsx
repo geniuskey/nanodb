@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { jsonResponse, renderWithRouter } from "../test/helpers";
@@ -43,6 +43,7 @@ describe("ImageListPage", () => {
       product_id: "P9",
       lot_id: "L9",
       wafer_id: "W9",
+      note: "재촬영 필요",
       calibration_nm_per_pixel: 0.2,
       pixel_width: 1000,
       pixel_height: 800,
@@ -55,9 +56,22 @@ describe("ImageListPage", () => {
 
     const card = await screen.findByTestId("catalog-image-card");
     expect(card).toHaveAttribute("href", "/images/9");
-    expect(card).toHaveTextContent("tem-09.png");
     expect(card).toHaveTextContent("2개 측정");
+    // The filename is no longer shown as a card title; it survives only as the
+    // thumbnail's alt text.
+    expect(screen.queryByRole("heading", { name: "tem-09.png" })).not.toBeInTheDocument();
+    // A note (비고) shows under the Wafer row when present.
+    expect(screen.getByTestId("catalog-image-note")).toHaveTextContent("재촬영 필요");
     expect(screen.getByRole("img")).toHaveAttribute("src", "/api/images/9/file");
+  });
+
+  it("omits the 비고 row when an image has no note", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([sampleImage])));
+
+    renderWithRouter(<ImageListPage />);
+
+    await screen.findByTestId("catalog-image-card");
+    expect(screen.queryByTestId("catalog-image-note")).not.toBeInTheDocument();
   });
 
   it("does not disguise a request failure as empty", async () => {
@@ -97,45 +111,24 @@ describe("ImageListPage", () => {
     );
   });
 
-  it("deletes an image after confirmation and drops it from the catalog", async () => {
-    const fetchMock = vi.fn().mockImplementation((_input, init?: RequestInit) => {
-      if (init?.method === "DELETE") {
-        return Promise.resolve(new Response(null, { status: 204 }));
-      }
-      return Promise.resolve(jsonResponse([sampleImage]));
-    });
-    vi.stubGlobal("fetch", fetchMock);
+  it("offers no delete control on a card; deletion lives on the image page", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([sampleImage])));
 
     renderWithRouter(<ImageListPage />);
-    fireEvent.click(await screen.findByTestId("catalog-image-delete"));
-    // The dialog names the derived data that disappears with the image.
-    expect(screen.getByTestId("confirm-dialog")).toHaveTextContent(
-      "저장된 측정 2개가 함께 삭제됩니다",
-    );
-    fireEvent.click(screen.getByTestId("confirm-accept"));
 
-    await waitFor(() =>
-      expect(screen.queryByTestId("catalog-image-card")).not.toBeInTheDocument(),
-    );
-    const deleteCall = fetchMock.mock.calls.find((call) => call[1]?.method === "DELETE");
-    expect(String(deleteCall?.[0])).toBe("/api/images/9");
-    expect(screen.getByText("등록된 이미지가 없습니다")).toBeInTheDocument();
-    expect(screen.getByTestId("status-banner")).toHaveTextContent("삭제했습니다");
+    const card = await screen.findByTestId("catalog-image-card");
+    // The card is a single link to the image page -- no per-card delete button.
+    expect(card).toHaveAttribute("href", "/images/9");
+    expect(screen.queryByTestId("catalog-image-delete")).not.toBeInTheDocument();
   });
 
-  it("keeps the image when the delete is not confirmed", async () => {
-    const fetchMock = vi.fn().mockImplementation(() =>
-      Promise.resolve(jsonResponse([sampleImage])),
-    );
-    vi.stubGlobal("fetch", fetchMock);
+  it("shows the image type as a badge", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([sampleImage])));
 
     renderWithRouter(<ImageListPage />);
-    fireEvent.click(await screen.findByTestId("catalog-image-delete"));
-    fireEvent.click(screen.getByTestId("confirm-cancel"));
 
-    expect(screen.queryByTestId("confirm-dialog")).not.toBeInTheDocument();
-    expect(screen.getByTestId("catalog-image-card")).toBeInTheDocument();
-    expect(fetchMock.mock.calls.some((call) => call[1]?.method === "DELETE")).toBe(false);
+    const card = await screen.findByTestId("catalog-image-card");
+    expect(within(card).getByText("TEM")).toHaveClass("badge");
   });
 
   it("reports the result count and keeps results visible while refetching", async () => {

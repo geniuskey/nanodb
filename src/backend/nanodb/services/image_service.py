@@ -33,6 +33,7 @@ class ImageRegistration:
     wafer_id: str
     calibration_nm_per_pixel: float
     process_step: str | None = None
+    note: str | None = None
 
 
 class ImageService:
@@ -96,6 +97,7 @@ class ImageService:
             lot_id = registration.lot_id.strip()
             wafer_id = registration.wafer_id.strip()
             process_step = (registration.process_step or "").strip() or None
+            note = (registration.note or "").strip() or None
             image = ImageRepository(session).create(
                 original_filename=registration.original_filename,
                 stored_filename=final_key,
@@ -105,6 +107,7 @@ class ImageService:
                 lot_id=lot_id,
                 wafer_id=wafer_id,
                 process_step=process_step,
+                note=note,
                 calibration_nm_per_pixel=registration.calibration_nm_per_pixel,
                 pixel_width=decoded.pixel_width,
                 pixel_height=decoded.pixel_height,

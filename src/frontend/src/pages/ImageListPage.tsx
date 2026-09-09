@@ -7,7 +7,6 @@ import type {
   ImageType,
   SegmentationBatchResultView,
 } from "../api/types";
-import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { useDocumentTitle } from "../ui/useDocumentTitle";
 import { StatusBanner } from "../ui/StatusBanner";
 
@@ -27,8 +26,6 @@ export function ImageListPage() {
   const [queryInput, setQueryInput] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
-  const [pending, setPending] = useState<ImageListView | null>(null);
-  const [deleting, setDeleting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -72,19 +69,6 @@ export function ImageListPage() {
       active = false;
     };
   }, [activeQuery, typeFilter, attempt]);
-
-  async function removeImage() {
-    const image = pending;
-    if (!image || deleting) return;
-    setDeleting(true); setActionError(null); setStatus(null);
-    try {
-      await api.deleteImage(image.id);
-      setImages((current) => current.filter((item) => item.id !== image.id));
-      setStatus(`이미지 '${image.original_filename}'를 삭제했습니다.`);
-    } catch (caught) {
-      setActionError(caught instanceof ApiError ? caught.message : "이미지를 삭제하지 못했습니다.");
-    } finally { setDeleting(false); setPending(null); }
-  }
 
   function toggleSelect(id: number) {
     setSelected((current) => {
@@ -267,39 +251,20 @@ export function ImageListPage() {
                 <img src={image.file_url} alt={`${image.original_filename} 미리보기`} width={180} height={150} loading="lazy" />
                 <div>
                   <span className="badge">{image.image_type}</span>
-                  <h2>{image.original_filename}</h2>
                   <dl>
                     <div><dt>Product</dt><dd>{image.product_id}</dd></div>
                     <div><dt>Lot</dt><dd>{image.lot_id}</dd></div>
                     <div><dt>Wafer</dt><dd>{image.wafer_id}</dd></div>
+                    {image.note && (
+                      <div><dt>비고</dt><dd data-testid="catalog-image-note">{image.note}</dd></div>
+                    )}
                   </dl>
                   <p>{image.measurement_count}개 측정</p>
                 </div>
               </Link>
-              <button
-                type="button"
-                className="delete-image"
-                data-testid="catalog-image-delete"
-                aria-label={`${image.original_filename} 삭제`}
-                onClick={() => setPending(image)}
-              >
-                삭제
-              </button>
             </article>
           ))}
         </div>
-      )}
-      {pending && (
-        <ConfirmDialog
-          title={`'${pending.original_filename}'를 삭제할까요?`}
-          body={pending.measurement_count > 0
-            ? `저장된 측정 ${pending.measurement_count}개가 함께 삭제됩니다. 되돌릴 수 없습니다.`
-            : "되돌릴 수 없습니다."}
-          confirmLabel="이미지 삭제"
-          busy={deleting}
-          onConfirm={removeImage}
-          onCancel={() => setPending(null)}
-        />
       )}
     </main>
   );

@@ -93,6 +93,9 @@ class Image:
     # Process step the image was taken at (e.g. "Gate Etch"). Optional free
     # text: it describes the whole image, never an individual measurement.
     process_step: str | None = None
+    # Free-text remark (비고) about the whole image. Optional, per-image, and
+    # never part of the catalog.
+    note: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

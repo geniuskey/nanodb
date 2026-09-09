@@ -60,6 +60,7 @@ export function ImageRegisterPage() {
     lot_id: "",
     wafer_id: "",
     process_step: "",
+    note: "",
     calibration_nm_per_pixel: "",
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -144,6 +145,7 @@ export function ImageRegisterPage() {
     form.set("lot_id", values.lot_id.trim());
     form.set("wafer_id", values.wafer_id.trim());
     form.set("process_step", values.process_step.trim());
+    form.set("note", values.note.trim());
     form.set("calibration_nm_per_pixel", values.calibration_nm_per_pixel.trim());
     setSubmitting(true);
     try {
@@ -232,6 +234,20 @@ export function ImageRegisterPage() {
             <span>nm/pixel <span className="required-mark">*</span></span>
             <input name="calibration_nm_per_pixel" inputMode="decimal" value={values.calibration_nm_per_pixel} onChange={(event) => setValue("calibration_nm_per_pixel", event.target.value)} aria-required aria-invalid={fieldErrors.calibration_nm_per_pixel ? true : undefined} aria-describedby={fieldErrors.calibration_nm_per_pixel ? "calibration_nm_per_pixel-error" : undefined} />
             <FieldError name="calibration_nm_per_pixel" />
+          </label>
+          {/* A remark about the whole image (a sample caveat, a ticket
+              reference). Optional free text, never tied to a measurement. */}
+          <label>
+            <span>비고</span>
+            <textarea
+              name="note"
+              data-testid="registration-note"
+              rows={3}
+              value={values.note}
+              onChange={(event) => setValue("note", event.target.value)}
+              placeholder="이미지에 대한 메모 (선택 입력)"
+            />
+            <span className="field-hint">선택 입력. 이 이미지에 대한 자유 메모입니다.</span>
           </label>
           {formError && <p role="alert">{formError}</p>}
           <button className="button primary" type="submit" disabled={submitting} data-testid="registration-submit">{submitting ? "등록 중…" : "이미지 등록"}</button>

@@ -51,6 +51,7 @@ def _to_image(model: ImageModel) -> Image:
         lot_id=model.lot_id,
         wafer_id=model.wafer_id,
         process_step=model.process_step,
+        note=model.note,
         calibration_nm_per_pixel=model.calibration_nm_per_pixel,
         pixel_width=model.pixel_width,
         pixel_height=model.pixel_height,
@@ -270,6 +271,7 @@ class ImageRepository:
         pixel_height: int,
         display_filename: str | None = None,
         process_step: str | None = None,
+        note: str | None = None,
     ) -> Image:
         model = ImageModel(
             original_filename=original_filename,
@@ -280,6 +282,7 @@ class ImageRepository:
             lot_id=lot_id,
             wafer_id=wafer_id,
             process_step=process_step,
+            note=note,
             calibration_nm_per_pixel=calibration_nm_per_pixel,
             pixel_width=pixel_width,
             pixel_height=pixel_height,

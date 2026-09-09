@@ -130,6 +130,7 @@ class ImageView(BaseModel):
     lot_id: str
     wafer_id: str
     process_step: str | None
+    note: str | None
     calibration_nm_per_pixel: float
     pixel_width: int
     pixel_height: int

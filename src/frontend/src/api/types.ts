@@ -48,6 +48,7 @@ export interface ImageListView {
   lot_id: string;
   wafer_id: string;
   process_step: string | null;
+  note: string | null;
   calibration_nm_per_pixel: number;
   pixel_width: number;
   pixel_height: number;

@@ -86,6 +86,7 @@ def register_image(
     wafer_id: Annotated[str, Form()],
     calibration_nm_per_pixel: Annotated[float, Form()],
     process_step: Annotated[str | None, Form()] = None,
+    note: Annotated[str | None, Form()] = None,
 ) -> ImageView:
     image = request.app.state.image_service.register(
         file.file,
@@ -97,6 +98,7 @@ def register_image(
             wafer_id=wafer_id,
             calibration_nm_per_pixel=calibration_nm_per_pixel,
             process_step=process_step,
+            note=note,
         ),
     )
     return image_view(image)

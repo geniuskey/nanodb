@@ -19,6 +19,7 @@ import numpy as np
 from numpy.typing import NDArray
 from PIL import Image as PillowImage
 from skimage.color import rgb2gray
+from skimage.exposure import histogram as grey_histogram
 from skimage.filters import threshold_multiotsu
 from skimage.morphology import remove_small_holes, remove_small_objects
 from skimage.restoration import denoise_tv_chambolle
@@ -26,10 +27,14 @@ from skimage.segmentation import find_boundaries
 from skimage.transform import resize
 from skimage.util import img_as_float
 
-from nanodb.domain.entities import SegmentationClassStat
+from nanodb.domain.entities import SegmentationClassStat, SegmentationHistogram
 from nanodb.domain.errors import DomainError
 
 METHOD = "multi-otsu"
+
+# Bin count for the reported grey-level histogram. Matches skimage's default
+# and the resolution multi-Otsu itself uses, so thresholds line up with valleys.
+_HISTOGRAM_BINS = 256
 
 # Above this pixel count the image is segmented at reduced resolution to stay
 # within the time budget, then the label map is scaled back to full size. A
@@ -58,6 +63,7 @@ class SegmentationOutput:
     labels: NDArray[np.uint8]
     thresholds: tuple[float, ...]
     class_stats: tuple[SegmentationClassStat, ...]
+    histogram: SegmentationHistogram
     downscaled: bool
 
 
@@ -80,21 +86,39 @@ def _validate_classes(classes: int) -> None:
         )
 
 
+def _grey_level_histogram(smooth: NDArray[np.float64]) -> SegmentationHistogram:
+    """The grey-level histogram of the denoised image, as skimage computes it.
+
+    ``skimage.exposure.histogram`` returns ``(counts, bin_centers)`` over the
+    image's own intensity range with ``_HISTOGRAM_BINS`` bins. This is the same
+    distribution multi-Otsu splits, so the thresholds fall in its valleys.
+    """
+    counts, centers = grey_histogram(smooth, nbins=_HISTOGRAM_BINS)
+    return SegmentationHistogram(
+        bin_centers=tuple(
+            round(float(c), 6) for c in np.asarray(centers, dtype=np.float64)
+        ),
+        counts=tuple(int(v) for v in np.asarray(counts, dtype=np.int64)),
+    )
+
+
 def segment(
     gray: NDArray[np.float64],
     classes: int,
     denoise_weight: float,
     min_size: int,
-) -> tuple[NDArray[np.uint8], NDArray[np.float64]]:
+) -> tuple[NDArray[np.uint8], NDArray[np.float64], SegmentationHistogram]:
     """Shade-based multi-Otsu segmentation.
 
-    Returns ``(labels, thresholds)`` where labels run 0 (darkest) .. classes-1
-    (brightest). Raises ``DomainError`` for images whose histogram cannot be
-    split into the requested number of classes (e.g. a near-uniform image).
+    Returns ``(labels, thresholds, histogram)`` where labels run 0 (darkest) ..
+    classes-1 (brightest) and ``histogram`` is the grey-level distribution of
+    the denoised image. Raises ``DomainError`` for images whose histogram cannot
+    be split into the requested number of classes (e.g. a near-uniform image).
     """
     smooth = np.asarray(
         denoise_tv_chambolle(gray, weight=denoise_weight), dtype=np.float64
     )
+    histogram = _grey_level_histogram(smooth)
     try:
         thresholds = np.asarray(
             threshold_multiotsu(smooth, classes=classes), dtype=np.float64
@@ -127,7 +151,7 @@ def segment(
             )
             cleaned[mask] = value
 
-    return cleaned, thresholds
+    return cleaned, thresholds, histogram
 
 
 def summarize(
@@ -212,7 +236,9 @@ def run_segmentation(
     else:
         working = gray
 
-    work_labels, thresholds = segment(working, classes, denoise_weight, min_size)
+    work_labels, thresholds, histogram = segment(
+        working, classes, denoise_weight, min_size
+    )
 
     if downscaled:
         labels = np.asarray(
@@ -234,6 +260,7 @@ def run_segmentation(
         labels=labels,
         thresholds=tuple(round(float(t), 4) for t in thresholds),
         class_stats=class_stats,
+        histogram=histogram,
         downscaled=downscaled,
     )
 

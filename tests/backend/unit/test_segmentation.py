@@ -40,7 +40,7 @@ def _four_band_image() -> NDArray[np.float64]:
 def test_segment_assigns_one_label_per_intensity_band() -> None:
     gray = _four_band_image()
 
-    labels, thresholds = segment(gray, classes=4, denoise_weight=0.01, min_size=0)
+    labels, thresholds, _ = segment(gray, classes=4, denoise_weight=0.01, min_size=0)
 
     assert labels.dtype == np.uint8
     assert sorted(np.unique(labels).tolist()) == [0, 1, 2, 3]
@@ -50,14 +50,31 @@ def test_segment_assigns_one_label_per_intensity_band() -> None:
     assert labels[90, 90] == 3
 
 
+def test_segment_reports_grey_level_histogram() -> None:
+    gray = _four_band_image()
+
+    labels, thresholds, histogram = segment(gray, 4, 0.01, 0)
+
+    # Parallel bins, 256 of them (skimage default), summing to every pixel.
+    assert len(histogram.bin_centers) == 256
+    assert len(histogram.counts) == len(histogram.bin_centers)
+    assert sum(histogram.counts) == labels.size
+    # Bin centres are normalized intensities and every threshold falls inside
+    # the histogram's own range (its valleys), by construction.
+    assert all(0.0 <= c <= 1.0 for c in histogram.bin_centers)
+    lo, hi = histogram.bin_centers[0], histogram.bin_centers[-1]
+    assert all(lo <= float(t) <= hi for t in thresholds)
+
+
 def test_segment_is_deterministic() -> None:
     gray = _four_band_image()
 
-    first, first_thresholds = segment(gray, 4, 0.02, 50)
-    second, second_thresholds = segment(gray, 4, 0.02, 50)
+    first, first_thresholds, first_hist = segment(gray, 4, 0.02, 50)
+    second, second_thresholds, second_hist = segment(gray, 4, 0.02, 50)
 
     assert np.array_equal(first, second)
     assert np.array_equal(first_thresholds, second_thresholds)
+    assert first_hist == second_hist
 
 
 def test_segment_raises_for_a_uniform_image() -> None:
@@ -71,7 +88,7 @@ def test_segment_raises_for_a_uniform_image() -> None:
 
 def test_summarize_reports_pixels_area_and_mean_intensity() -> None:
     gray = _four_band_image()
-    labels, thresholds = segment(gray, 4, 0.01, 0)
+    labels, thresholds, _ = segment(gray, 4, 0.01, 0)
 
     stats = summarize(labels, gray, thresholds, nm_per_px=2.0)
 
@@ -94,7 +111,7 @@ def test_summarize_reports_pixels_area_and_mean_intensity() -> None:
 
 def test_summarize_leaves_area_none_without_calibration() -> None:
     gray = _four_band_image()
-    labels, thresholds = segment(gray, 4, 0.01, 0)
+    labels, thresholds, _ = segment(gray, 4, 0.01, 0)
 
     stats = summarize(labels, gray, thresholds, nm_per_px=None)
 

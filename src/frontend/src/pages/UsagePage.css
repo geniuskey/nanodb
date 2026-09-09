@@ -6,6 +6,11 @@
   --usage-done: #0f7a48;
   --usage-done-tint: #e6f3ec;
 
+  /* Match the home page: centre the column and add symmetric side gutters. */
+  max-width: 1160px;
+  margin-inline: auto;
+  padding-left: 40px;
+  padding-right: 40px;
   display: flex;
   flex-direction: column;
   gap: 46px;

@@ -205,6 +205,18 @@ class SegmentationClassStatView(BaseModel):
     area_nm2: float | None
 
 
+class SegmentationHistogramView(BaseModel):
+    """Grey-level histogram of the denoised image (skimage exposure.histogram).
+
+    ``bin_centers`` and ``counts`` are parallel: normalized intensity in [0, 1]
+    against pixel count. ``None`` for segmentations run before histograms were
+    reported.
+    """
+
+    bin_centers: list[float]
+    counts: list[int]
+
+
 class SegmentationResultView(BaseModel):
     image_id: int
     method: str
@@ -213,6 +225,7 @@ class SegmentationResultView(BaseModel):
     min_size: int
     thresholds: list[float]
     class_stats: list[SegmentationClassStatView]
+    histogram: SegmentationHistogramView | None = None
     duration_ms: int
     downscaled: bool
     has_tagged_tiff: bool

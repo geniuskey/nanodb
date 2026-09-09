@@ -10,6 +10,7 @@ from nanodb.api.schemas import (
     PointView,
     SegmentationBatchResultView,
     SegmentationClassStatView,
+    SegmentationHistogramView,
     SegmentationResultView,
     SkippedFeatureViewSchema,
 )
@@ -135,6 +136,14 @@ def segmentation_result_view(
             )
             for stat in result.class_stats
         ],
+        histogram=(
+            SegmentationHistogramView(
+                bin_centers=list(result.histogram.bin_centers),
+                counts=list(result.histogram.counts),
+            )
+            if result.histogram is not None
+            else None
+        ),
         duration_ms=result.duration_ms,
         downscaled=result.downscaled,
         has_tagged_tiff=result.tagged_path is not None,

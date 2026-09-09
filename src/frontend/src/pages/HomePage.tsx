@@ -365,6 +365,13 @@ function IntroVideo() {
       <p className="video-caption" data-testid="video-caption">
         NANoDB 소개 영상입니다. 영상 없이도 아래 내용만으로 NANoDB를 확인할 수 있습니다.
       </p>
+      {/* The <1분 walk-through: watch the video, then jump straight into the
+          live demo. This is the primary path for a walk-up visitor. */}
+      <div className="video-cta">
+        <Link className="button primary lg aurora" to="/demo" data-testid="home-start-demo">
+          1분 데모 시연 시작하기 →
+        </Link>
+      </div>
     </section>
   );
 }

@@ -17,8 +17,6 @@ import type {
   MeasurementView,
   FeatureExtractionInput,
   FeatureExtractionResultView,
-  SegmentationBatchInput,
-  SegmentationBatchResultView,
   SegmentationResultView,
   SegmentationRunInput,
   SummaryView,
@@ -188,11 +186,5 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(value ?? {}),
-    }),
-  runSegmentationBatch: (value: SegmentationBatchInput) =>
-    request<SegmentationBatchResultView>("/api/segmentation/batch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(value),
     }),
 };

@@ -4,6 +4,10 @@
 추정 점수는 표시하지 않고, 각 근거에 요구사항·산출물 위치·확인한 working tree 버전·확인 시각·
 `pass`/`fail`/`unverified` 상태를 함께 제시합니다.
 
+> [!TIP] 코드베이스를 이어받는 개발자라면
+> 유지보수성 항목의 근거를 실제 소스 구조와 함께 보려면 **[개발자 가이드](/guide/)** 를 참고하세요.
+> 아키텍처·데이터 모델·API·확장 방법을 코드에 근거해 정리해 두었습니다.
+
 - **확인 기준 시각**: 2026-09-08
 - **확인 working tree**: `19b2af6` (Evidence Site 생성 직전 Core 상태)
 - **상태 어휘**: `pass`(이 저장소에서 실행·확인), `unverified`(별도 환경에서 판정 필요, 미실행),
@@ -65,7 +69,7 @@ AI-DLC v1.0.1 워크플로우로 INCEPTION → CONSTRUCTION을 단계별로 수�
   내보내, 외부 AI 개발 도구가 사람의 반복 설명 없이 소비하도록 설계.
 - **산출물**: 컨텍스트 내보내기 구현과 계약
   (`GET /api/images/{id}/context-export`, 4파일 ZIP: `context.md`/`data.json`/`task.md`/
-  `checks.json`, `schema_version 2.0` — 저장 측정과 각 측정의 라벨·메모를 함께 포함),
+  `checks.json`, `schema_version 3.1` — 저장 측정과 각 측정의 라벨·메모를 함께 포함),
   `aidlc-docs/construction/nanodb-core/code/api-reference.md`,
   외부 검증 자산 `validation/external-ai/`.
 - **상태**: `pass` (엔드포인트·스키마·검증 자산 존재).
@@ -141,8 +145,8 @@ AI-DLC v1.0.1 워크플로우로 INCEPTION → CONSTRUCTION을 단계별로 수�
 ## 실행 방법 (재현)
 
 ```bash
-git clone https://github.com/geniuskey/nanodb_mvp.git
-cd nanodb_mvp
+git clone https://github.com/geniuskey/nanodb.git
+cd nanodb
 cp .env.example .env
 make install && make build-frontend
 make demo            # 컨테이너 스택 + demo 데이터 (Docker 필요)
@@ -183,7 +187,7 @@ make test            # backend(pytest) + frontend(vitest)
 | --- | --- | --- |
 | 구현 완료 | 코드가 저장소에 존재하고 정적/단위 게이트 통과 | US-01~US-07 완료 |
 | 외부 AI 데모 실행 | `validation/external-ai/`의 실제 비교 실행·기록 | 자산 준비, 실행 기록은 후속 |
-| 게시 상태 | 이 Evidence Site의 GitHub Pages 실제 배포 | `pass` — `main` 머지에서 build·deploy job 모두 성공([run](https://github.com/geniuskey/nanodb_mvp/actions/runs/34225740216)) |
+| 게시 상태 | 이 Evidence Site의 GitHub Pages 실제 배포 | `pass` — `main` 머지에서 build·deploy job 모두 성공([run](https://github.com/geniuskey/nanodb/actions/runs/34225740216)) |
 
 ## 게시 안전 원칙
 

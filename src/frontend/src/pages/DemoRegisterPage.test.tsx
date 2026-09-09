@@ -1,11 +1,14 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { jsonResponse, renderWithRouter } from "../test/helpers";
 import { DemoRegisterPage } from "./DemoRegisterPage";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  window.localStorage.clear();
+});
 
 const listItem = {
   id: 7,
@@ -32,8 +35,12 @@ const segResult = {
   classes: 3,
   denoise_weight: 0.1,
   min_size: 64,
-  thresholds: [80, 160],
-  class_stats: [],
+  thresholds: [0.31, 0.62],
+  class_stats: [
+    { class_index: 0, intensity_range: [0, 0.31], pixels: 6000, area_fraction: 0.6, mean_intensity: 0.18, area_nm2: 375 },
+    { class_index: 1, intensity_range: [0.31, 0.62], pixels: 3000, area_fraction: 0.3, mean_intensity: 0.47, area_nm2: null },
+    { class_index: 2, intensity_range: [0.62, 1], pixels: 1000, area_fraction: 0.1, mean_intensity: 0.8, area_nm2: null },
+  ],
   duration_ms: 42,
   downscaled: false,
   has_tagged_tiff: true,
@@ -48,7 +55,10 @@ const featResult = {
   target_class: 0,
   region_area_px: 5000,
   region_clipped: false,
-  measurements: [{ id: 9 }, { id: 10 }],
+  measurements: [
+    { id: 9, measurement_type: "length", points: [{ x: 0, y: 0 }, { x: 10, y: 0 }] },
+    { id: 10, measurement_type: "curvature", points: [{ x: 0, y: 0 }, { x: 5, y: 5 }, { x: 10, y: 0 }] },
+  ],
   skipped: [],
   preserved_adjusted: 0,
 };
@@ -69,42 +79,102 @@ function stubApi() {
 }
 
 describe("DemoRegisterPage", () => {
-  it("lists existing images to pick from", async () => {
+  it("opens on the pick tab and lists existing images", async () => {
     stubApi();
     renderWithRouter(<DemoRegisterPage />);
+
+    expect(screen.getByTestId("demo-tab-pick")).toHaveAttribute("aria-selected", "true");
+    // The analysis tabs are locked until a photo is chosen.
+    expect(screen.getByTestId("demo-tab-segment")).toBeDisabled();
+    expect(screen.getByTestId("demo-tab-measure")).toBeDisabled();
 
     const options = await screen.findAllByTestId("demo-image-option");
     expect(options).toHaveLength(1);
     expect(options[0]).toHaveTextContent("wafer-07.png");
   });
 
-  it("fills the properties and runs the analysis pipeline on the picked image", async () => {
+  it("runs the pipeline, showing the segmentation histogram then auto measurements", async () => {
     stubApi();
     renderWithRouter(<DemoRegisterPage />);
 
     const option = await screen.findByTestId("demo-image-option");
     await userEvent.click(option);
 
-    // Properties are filled from the selected image.
-    const props = await screen.findByTestId("demo-properties");
+    // Picking a photo advances to the segmentation tab and fills the properties.
+    await waitFor(() =>
+      expect(screen.getByTestId("demo-tab-segment")).toHaveAttribute("aria-selected", "true"),
+    );
+    const props = screen.getByTestId("demo-properties");
     expect(props).toHaveTextContent("wafer-07.png");
     expect(props).toHaveTextContent("Gate Etch");
     expect(props).toHaveTextContent("512 × 384 px");
 
-    // The three pipeline steps all finish.
+    // All three pipeline steps finish.
     await waitFor(() => expect(screen.getByTestId("demo-step-features")).toHaveClass("done"));
     expect(screen.getByTestId("demo-step-detail")).toHaveClass("done");
     expect(screen.getByTestId("demo-step-segment")).toHaveClass("done");
 
-    // Segmentation output and the auto-measurement count are shown.
+    // Segmentation output: the class map, the brightness/threshold histogram
+    // that explains the criterion, and a bar per class in the area histogram.
     expect(screen.getByTestId("demo-segmentation-map")).toHaveAttribute(
       "src",
       "/api/images/7/segmentation/map",
     );
-    expect(screen.getByTestId("demo-feature-summary")).toHaveTextContent("자동 측정 2개");
+    expect(screen.getByTestId("demo-intensity-histogram")).toBeInTheDocument();
+    expect(screen.getByTestId("demo-intensity-histogram")).toHaveTextContent("0.31");
+    const bars = screen.getAllByTestId("demo-histogram-bar");
+    expect(bars).toHaveLength(3);
+    expect(within(bars[0]).getByText("60.0%")).toBeInTheDocument();
 
-    // A link leads to the full measurement screen for the analysed image.
-    expect(screen.getByTestId("demo-open-image")).toHaveAttribute("href", "/images/7");
+    // The demo then advances itself to the measurement tab (after the dwell).
+    await waitFor(
+      () => expect(screen.getByTestId("demo-tab-measure")).toHaveAttribute("aria-selected", "true"),
+      { timeout: 6000 },
+    );
+
+    // The auto measurements are broken down by kind (length / curvature).
+    const summary = screen.getByTestId("demo-feature-summary");
+    expect(summary).toHaveTextContent("자동 측정 2개");
+    expect(summary).toHaveTextContent("길이 1 · 곡률 1");
+
+    // Once every shape is drawn, a link leads to the full measurement screen.
+    await waitFor(
+      () => expect(screen.getByTestId("demo-open-image")).toHaveAttribute("href", "/images/7"),
+      { timeout: 6000 },
+    );
+  });
+
+  it("pins an image to the top of the grid and remembers it", async () => {
+    const second = { ...listItem, id: 8, original_filename: "wafer-08.png" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith("/api/images")) {
+          return Promise.resolve(jsonResponse([listItem, second]));
+        }
+        return Promise.resolve(jsonResponse({}));
+      }),
+    );
+    renderWithRouter(<DemoRegisterPage />);
+
+    // Server order: wafer-07 first, wafer-08 second.
+    let options = await screen.findAllByTestId("demo-image-option");
+    expect(options[0]).toHaveTextContent("wafer-07.png");
+    expect(options[1]).toHaveTextContent("wafer-08.png");
+
+    // Pin the second card; it jumps to the front of the grid.
+    const cards = screen.getAllByTestId("demo-image-card");
+    await userEvent.click(within(cards[1]).getByTestId("demo-image-pin"));
+
+    options = screen.getAllByTestId("demo-image-option");
+    expect(options[0]).toHaveTextContent("wafer-08.png");
+    expect(options[1]).toHaveTextContent("wafer-07.png");
+
+    // The pin is persisted for the next visit.
+    expect(
+      JSON.parse(window.localStorage.getItem("nanodb.demo.pinnedImages") ?? "[]"),
+    ).toContain(8);
   });
 
   it("names the screen in the document title", async () => {

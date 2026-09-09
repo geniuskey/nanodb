@@ -116,12 +116,13 @@ describe("HomePage", () => {
 
     renderWithRouter(<HomePage />);
 
+    expect(screen.getByTestId("home-start-demo")).toHaveAttribute("href", "/demo");
     expect(screen.getByTestId("home-register-image")).toHaveAttribute("href", "/images/new");
     expect(screen.getByTestId("home-browse-images")).toHaveAttribute("href", "/images");
-    // HOM-005: with no images registered these two are the whole set, so the
-    // static argument of the page still navigates nowhere on its own.
+    // HOM-005: even with no images registered, the page's only in-body links are
+    // these deliberate entry points -- the 1분 demo, plus register and browse.
     const links = [...document.querySelectorAll("main a[href^='/']")];
-    expect(links).toHaveLength(2);
+    expect(links).toHaveLength(3);
   });
 
   it("opens the measurement screen from a recent image card", async () => {

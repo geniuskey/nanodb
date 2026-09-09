@@ -582,7 +582,14 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 /* The edit form reuses the registration form's field styling but sits in the
    narrow controls column, so it stacks tighter than the full register page. */
 .image-edit-form { gap: 12px; }
-.image-edit-form .actions { display: flex; gap: 8px; margin-top: 4px; }
+.image-edit-form .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+
+/* The edit form opens in a modal: widen the dialog and let it scroll, and drop
+   the form's own card chrome so it doesn't nest a panel inside the dialog. */
+.dialog-form { width: min(540px, 100%); max-height: min(86vh, 760px); overflow-y: auto; }
+.dialog-form > h2 { margin: 0 0 16px; }
+.dialog-form .registration-form { padding: 0; border: 0; border-radius: 0; background: none; }
+.dialog-form .field-hint { margin: 0; }
 
 /* Success feedback (UIX-002). Failures keep role="alert" and the danger colour. */
 .status-banner {

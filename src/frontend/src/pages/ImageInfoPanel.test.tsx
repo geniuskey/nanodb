@@ -94,6 +94,22 @@ it("saves corrected fields and reports the updated image", async () => {
   expect(screen.queryByTestId("image-edit-form")).toBeNull();
 });
 
+it("opens the editor in a modal over the still-visible facts and closes on Escape", async () => {
+  const user = userEvent.setup();
+  stubFetch();
+  renderPanel();
+
+  await user.click(screen.getByTestId("image-edit"));
+  await screen.findByTestId("image-edit-form");
+  // The facts list stays mounted behind the dialog rather than being replaced.
+  expect(screen.getByTestId("image-facts")).toBeInTheDocument();
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+  await user.keyboard("{Escape}");
+
+  await waitFor(() => expect(screen.queryByTestId("image-edit-form")).toBeNull());
+});
+
 it("blocks saving when the calibration is not a positive number", async () => {
   const fetchMock = stubFetch();
   renderPanel();

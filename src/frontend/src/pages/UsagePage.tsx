@@ -64,7 +64,7 @@ const STEPS: Step[] = [
     body: "SEM/TEM 이미지와 Product·Lot·Wafer, 원본 파일명을 함께 남깁니다. nm/pixel 보정값을 입력해 픽셀을 실제 길이로 잇습니다.",
     fact: (
       <>
-        DEMO-DRAM-1Z · 보정값 <b>0.6295 nm/pixel</b>
+        AACE · First Etch · 보정값 <b>0.8845 nm/pixel</b>
       </>
     ),
     shot: { src: collectShot, alt: "데모 시연 화면에서 분석할 이미지를 고르는 모습" },
@@ -75,7 +75,7 @@ const STEPS: Step[] = [
     body: "사진을 클릭하면 밝기 차이로 층을 나눠 구조 경계를 찾습니다. Grey level 변곡으로 구획합니다.",
     fact: (
       <>
-        multi-Otsu k=4 · 임계값 <b>0.294 · 0.563 · 0.817</b>
+        multi-Otsu k=4 · 임계값 <b>0.221 · 0.432 · 0.600</b>
       </>
     ),
     shot: { src: segmentShot, alt: "밝기 차이로 네 층으로 나뉜 클래스 맵" },
@@ -86,7 +86,7 @@ const STEPS: Step[] = [
     body: "그 경계에서 폭(CD), 높이, 측벽각, 곡률을 nm 단위로 산출해 이미지 위에 하나씩 그립니다.",
     fact: (
       <>
-        폭 <b>307.8 nm</b> · 높이 <b>94.42 nm</b> · 측벽각 <b>1.27°</b> · 곡률 <b>92.66 nm</b>
+        폭 <b>199.0 nm</b> · 높이 <b>364.4 nm</b> · 측벽각 <b>1.16°</b> · 곡률 <b>4586 nm</b>
       </>
     ),
     shot: { src: measureShot, alt: "자동 계측값이 라벨로 표시된 단면 이미지" },
@@ -143,13 +143,13 @@ function ContractCard() {
     <pre className="usage-contract" aria-label="개발 컨텍스트 내보내기 예시">
       <span className="c">// context-export</span>
       {"\n"}
-      <span className="k">&quot;product_id&quot;</span>: <span className="s">&quot;DEMO-DRAM-1Z&quot;</span>,
+      <span className="k">&quot;product_id&quot;</span>: <span className="s">&quot;AACE&quot;</span>,
       {"\n"}
-      <span className="k">&quot;calibration_nm_per_pixel&quot;</span>: <span className="n">0.6295</span>,
+      <span className="k">&quot;calibration_nm_per_pixel&quot;</span>: <span className="n">0.8845</span>,
       {"\n"}
       <span className="k">&quot;parameter_type&quot;</span>: <span className="s">&quot;CD&quot;</span>,
       {"\n"}
-      <span className="k">&quot;value_nm&quot;</span>: <span className="n">307.8</span>
+      <span className="k">&quot;value_nm&quot;</span>: <span className="n">199.0</span>
       {"\n\n"}
       <span className="c">// 좌표·계산 규칙도 함께</span>
     </pre>

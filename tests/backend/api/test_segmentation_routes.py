@@ -15,7 +15,11 @@ from fastapi.testclient import TestClient
 from nanodb.api.errors import install_error_handlers
 from nanodb.api.middleware import install_request_middleware
 from nanodb.api.routes import router
-from nanodb.domain.entities import SegmentationClassStat, SegmentationResult
+from nanodb.domain.entities import (
+    SegmentationClassStat,
+    SegmentationHistogram,
+    SegmentationResult,
+)
 from nanodb.domain.errors import DomainError
 from nanodb.services.segmentation_service import SegmentationParams, SegmentationRun
 
@@ -40,6 +44,10 @@ def _result(image_id: int, *, tagged: str | None) -> SegmentationResult:
                 mean_intensity=0.1,
                 area_nm2=4.0,
             ),
+        ),
+        histogram=SegmentationHistogram(
+            bin_centers=(0.1, 0.3, 0.5, 0.7),
+            counts=(10, 20, 30, 40),
         ),
         map_path="derived/1/segmentation_map.png",
         boundary_path="derived/1/boundary_overlay.png",

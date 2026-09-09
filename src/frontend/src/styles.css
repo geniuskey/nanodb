@@ -555,6 +555,7 @@ h2 { letter-spacing: -0.02em; font-size: 1.5rem; margin: 0 0 6px; }
 .seg-intensity figcaption { margin-bottom: 4px; font-size: 0.8rem; color: var(--ink-muted); font-weight: 700; }
 .seg-intensity svg { display: block; width: 100%; height: auto; }
 .seg-intensity-axis { stroke: var(--line); stroke-width: 1; }
+.seg-intensity-area { fill: color-mix(in srgb, var(--accent) 55%, transparent); stroke: var(--accent); stroke-width: 0.75; }
 .seg-intensity-thresh { stroke: var(--danger); stroke-width: 1; stroke-dasharray: 3 3; }
 .seg-intensity-val { fill: var(--ink); font-size: 10px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .seg-intensity-tick { fill: var(--ink-muted); font-size: 9px; font-variant-numeric: tabular-nums; }

@@ -217,6 +217,20 @@ class SegmentationClassStat:
 
 
 @dataclass(frozen=True, slots=True)
+class SegmentationHistogram:
+    """The grey-level histogram skimage builds from the denoised image.
+
+    ``bin_centers`` are normalized intensities in [0, 1] and ``counts`` the
+    pixel count in each bin; the two tuples are parallel and equal length. This
+    is the exact distribution ``threshold_multiotsu`` splits, so the stored
+    thresholds fall in its valleys.
+    """
+
+    bin_centers: tuple[float, ...]
+    counts: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class SegmentationResult:
     """A stored multi-Otsu segmentation of one image and its derived artifacts.
 
@@ -234,6 +248,7 @@ class SegmentationResult:
     min_size: int
     thresholds: tuple[float, ...]
     class_stats: tuple[SegmentationClassStat, ...]
+    histogram: SegmentationHistogram | None
     map_path: str
     boundary_path: str
     labels_path: str

@@ -225,6 +225,10 @@ class SegmentationResultModel(Base):
     min_size: Mapped[int] = mapped_column(Integer, nullable=False)
     thresholds: Mapped[list[float]] = mapped_column(JSONB, nullable=False)
     class_stats: Mapped[list[dict[str, object]]] = mapped_column(JSONB, nullable=False)
+    # Grey-level histogram of the denoised image: {"bin_centers": [...],
+    # "counts": [...]}. Nullable so segmentation rows created before the
+    # histogram was reported keep working until they are re-run.
+    histogram: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
     map_path: Mapped[str] = mapped_column(String(512), nullable=False)
     boundary_path: Mapped[str] = mapped_column(String(512), nullable=False)
     labels_path: Mapped[str] = mapped_column(String(512), nullable=False)

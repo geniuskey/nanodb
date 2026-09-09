@@ -175,6 +175,11 @@ export interface SegmentationClassStat {
   area_nm2: number | null;
 }
 
+export interface SegmentationHistogram {
+  bin_centers: number[];
+  counts: number[];
+}
+
 export interface SegmentationResultView {
   image_id: number;
   method: string;
@@ -183,6 +188,7 @@ export interface SegmentationResultView {
   min_size: number;
   thresholds: number[];
   class_stats: SegmentationClassStat[];
+  histogram: SegmentationHistogram | null;
   duration_ms: number;
   downscaled: boolean;
   has_tagged_tiff: boolean;

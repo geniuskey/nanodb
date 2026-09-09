@@ -9,6 +9,7 @@ import type {
   MeasurementType,
   MeasurementView,
   SegmentationClassStat,
+  SegmentationHistogram as SegmentationHistogramData,
   SegmentationResultView,
 } from "../api/types";
 import { MeasurementOverlay } from "../measurement/MeasurementOverlay";
@@ -159,19 +160,89 @@ function typeBreakdown(measurements: MeasurementView[]): string {
 }
 
 /**
- * The segmentation *criterion*, drawn as a histogram over pixel brightness.
- * Segmentation runs multi-Otsu on the normalised grayscale (0 dark .. 1 bright),
- * so each class is a brightness band [lo, hi]; the bar height is that band's
- * share of the image and the dashed red lines are the Otsu thresholds that cut
- * one class from the next. This is what answers "on what basis is it split?".
+ * The real grey-level histogram from the backend: pixel count per normalised
+ * intensity bin, drawn as a filled area with the Otsu thresholds overlaid as
+ * dashed lines that sit in its valleys. Mirrors the offline matplotlib figure.
+ */
+function GreyLevelHistogramChart({
+  histogram,
+  thresholds,
+}: {
+  histogram: SegmentationHistogramData;
+  thresholds: number[];
+}) {
+  const { bin_centers: centers, counts } = histogram;
+
+  // Geometry in viewBox units; the <svg> scales to the panel width.
+  const W = 300;
+  const H = 148;
+  const padX = 12;
+  const top = 22; // headroom for the threshold labels
+  const baseline = 118; // the intensity axis
+  const plotW = W - padX * 2;
+  const plotH = baseline - top;
+  const x = (v: number) => padX + Math.min(Math.max(v, 0), 1) * plotW;
+  const maxCount = Math.max(...counts, 1);
+  const y = (count: number) => baseline - (count / maxCount) * plotH;
+
+  // Filled area: baseline -> across every (center, count) -> back to baseline.
+  const area = [
+    `M ${x(centers[0]).toFixed(2)} ${baseline}`,
+    ...centers.map((c, i) => `L ${x(c).toFixed(2)} ${y(counts[i]).toFixed(2)}`),
+    `L ${x(centers[centers.length - 1]).toFixed(2)} ${baseline}`,
+    "Z",
+  ].join(" ");
+
+  const thresholdLabel = thresholds.map((t) => t.toFixed(3)).join(", ");
+
+  return (
+    <figure className="seg-intensity" data-testid="demo-intensity-histogram">
+      <figcaption>그레이 레벨 히스토그램 · Otsu 임계값</figcaption>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        role="img"
+        aria-label={`탈잡음 이미지의 그레이 레벨 히스토그램. Otsu 임계값 ${thresholdLabel}이 골짜기에 위치`}
+      >
+        <path d={area} className="seg-intensity-area" />
+        <line x1={padX} y1={baseline} x2={W - padX} y2={baseline} className="seg-intensity-axis" />
+        {thresholds.map((t, i) => (
+          <g key={i}>
+            <line x1={x(t)} y1={top - 8} x2={x(t)} y2={baseline} className="seg-intensity-thresh" />
+            <text x={x(t)} y={top - 10} textAnchor="middle" className="seg-intensity-tick">
+              {t.toFixed(3)}
+            </text>
+          </g>
+        ))}
+        <text x={padX} y={baseline + 13} textAnchor="start" className="seg-intensity-tick">0.0</text>
+        <text x={W - padX} y={baseline + 13} textAnchor="end" className="seg-intensity-tick">1.0</text>
+        <text x={W / 2} y={H - 3} textAnchor="middle" className="seg-intensity-caption">
+          정규화 밝기 (0 어두움 → 1 밝음) · 픽셀 수
+        </text>
+      </svg>
+    </figure>
+  );
+}
+
+/**
+ * The segmentation *criterion*, drawn as the grey-level histogram of the
+ * denoised image (the exact distribution skimage's ``exposure.histogram``
+ * produces and multi-Otsu splits). The dashed lines are the Otsu thresholds,
+ * which fall in the histogram's valleys. When a backend histogram is not
+ * available (segmentations run before it was reported) it falls back to a
+ * coarse per-class brightness-band bar chart.
  */
 function IntensityThresholdChart({
   stats,
   thresholds,
+  histogram,
 }: {
   stats: SegmentationClassStat[];
   thresholds: number[];
+  histogram: SegmentationHistogramData | null;
 }) {
+  if (histogram && histogram.counts.length > 0) {
+    return <GreyLevelHistogramChart histogram={histogram} thresholds={thresholds} />;
+  }
   if (stats.length === 0) return null;
   const ordered = [...stats].sort((a, b) => a.class_index - b.class_index);
   const maxFraction = Math.max(...ordered.map((s) => s.area_fraction), 0.0001);
@@ -734,6 +805,7 @@ export function DemoRegisterPage() {
                   <IntensityThresholdChart
                     stats={segmentation.class_stats}
                     thresholds={segmentation.thresholds}
+                    histogram={segmentation.histogram}
                   />
                   <SegmentationHistogram stats={segmentation.class_stats} />
                   <figure>

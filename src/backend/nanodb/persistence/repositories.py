@@ -23,6 +23,7 @@ from nanodb.domain.entities import (
     MeasurementTypeStat,
     Point,
     SegmentationClassStat,
+    SegmentationHistogram,
     SegmentationResult,
 )
 from nanodb.persistence.models import (
@@ -643,6 +644,20 @@ def _class_stat_from_entry(entry: dict[str, object]) -> SegmentationClassStat:
     )
 
 
+def _histogram_from_entry(
+    entry: dict[str, object] | None,
+) -> SegmentationHistogram | None:
+    """Rebuild the grey-level histogram from JSONB, or None for legacy rows."""
+    if not entry:
+        return None
+    centers = cast("list[float]", entry["bin_centers"])
+    counts = cast("list[int]", entry["counts"])
+    return SegmentationHistogram(
+        bin_centers=tuple(float(value) for value in centers),
+        counts=tuple(int(value) for value in counts),
+    )
+
+
 def _to_segmentation_result(model: SegmentationResultModel) -> SegmentationResult:
     return SegmentationResult(
         id=model.id,
@@ -655,6 +670,7 @@ def _to_segmentation_result(model: SegmentationResultModel) -> SegmentationResul
         class_stats=tuple(
             _class_stat_from_entry(entry) for entry in model.class_stats
         ),
+        histogram=_histogram_from_entry(model.histogram),
         map_path=model.map_path,
         boundary_path=model.boundary_path,
         labels_path=model.labels_path,
@@ -707,6 +723,7 @@ class SegmentationResultRepository:
         min_size: int,
         thresholds: tuple[float, ...],
         class_stats: tuple[SegmentationClassStat, ...],
+        histogram: SegmentationHistogram | None,
         map_path: str,
         boundary_path: str,
         labels_path: str,
@@ -737,6 +754,14 @@ class SegmentationResultRepository:
                 }
                 for stat in class_stats
             ],
+            "histogram": (
+                {
+                    "bin_centers": list(histogram.bin_centers),
+                    "counts": list(histogram.counts),
+                }
+                if histogram is not None
+                else None
+            ),
             "map_path": map_path,
             "boundary_path": boundary_path,
             "labels_path": labels_path,

@@ -143,6 +143,7 @@ class SegmentationService:
                 min_size=params.min_size,
                 thresholds=output.thresholds,
                 class_stats=output.class_stats,
+                histogram=output.histogram,
                 map_path=map_key,
                 boundary_path=boundary_key,
                 labels_path=labels_key,

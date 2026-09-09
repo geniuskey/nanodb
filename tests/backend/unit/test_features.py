@@ -14,11 +14,13 @@ from nanodb.domain.calculations import calculate_measurement
 from nanodb.domain.entities import UNIT_BY_TYPE, MeasurementType
 from nanodb.domain.features import (
     FEATURE_BOTTOM_CURVATURE,
+    FEATURE_CIRCLE_RADIUS,
     FEATURE_HEIGHT,
     FEATURE_SIDEWALL_LEFT,
     FEATURE_SIDEWALL_RIGHT,
     FEATURE_SPACING,
     FEATURE_WIDTH,
+    _pick_region,
     extract_features,
 )
 
@@ -66,6 +68,37 @@ def _two_trapezoids() -> np.ndarray:
             frac = (y - top) / (bottom - top)
             half = int(round(20 - 6 * frac))
             labels[y, center - half : center + half] = 0
+    return labels
+
+
+def _disc(center_x: int, center_y: int, radius: int) -> np.ndarray:
+    """A single filled disc of class 0 on a class-1 background."""
+    labels = np.ones((_H, _W), dtype=np.uint8)
+    yy, xx = np.ogrid[:_H, :_W]
+    labels[(xx - center_x) ** 2 + (yy - center_y) ** 2 <= radius**2] = np.uint8(0)
+    return labels
+
+
+def _disc_row(centers_x: tuple[int, ...], center_y: int, radius: int) -> np.ndarray:
+    """A row of like-sized discs -- a simple repeated pattern."""
+    labels = np.ones((_H, _W), dtype=np.uint8)
+    yy, xx = np.ogrid[:_H, :_W]
+    for center_x in centers_x:
+        labels[(xx - center_x) ** 2 + (yy - center_y) ** 2 <= radius**2] = np.uint8(0)
+    return labels
+
+
+def _disc_grid(
+    centers_x: tuple[int, ...], centers_y: tuple[int, ...], radius: int
+) -> np.ndarray:
+    """An N×M grid of like-sized discs."""
+    labels = np.ones((_H, _W), dtype=np.uint8)
+    yy, xx = np.ogrid[:_H, :_W]
+    for center_y in centers_y:
+        for center_x in centers_x:
+            labels[
+                (xx - center_x) ** 2 + (yy - center_y) ** 2 <= radius**2
+            ] = np.uint8(0)
     return labels
 
 
@@ -233,6 +266,96 @@ def test_border_touching_region_is_flagged_clipped() -> None:
 
     assert extraction is not None
     assert extraction.region_clipped is True
+
+
+def test_circle_unit_yields_circle_radius_recovering_the_radius() -> None:
+    extraction = extract_features(_disc(100, 100, 40), target_class=0)
+
+    assert extraction is not None
+    assert FEATURE_CIRCLE_RADIUS in _keys(extraction)
+    circle = next(
+        p for p in extraction.primitives if p.key == FEATURE_CIRCLE_RADIUS
+    )
+    assert circle.measurement_type is MeasurementType.CURVATURE
+    result = calculate_measurement(
+        circle.measurement_type,
+        circle.points,
+        _CALIB,
+        pixel_width=_W,
+        pixel_height=_H,
+    )
+    assert abs(result.value - 40 * _CALIB) < 40 * _CALIB * 0.15
+
+
+def test_circle_unit_skips_bottom_curvature_and_sidewalls() -> None:
+    extraction = extract_features(_disc(100, 100, 40), target_class=0)
+
+    assert extraction is not None
+    assert FEATURE_BOTTOM_CURVATURE not in _keys(extraction)
+    assert FEATURE_SIDEWALL_LEFT not in _keys(extraction)
+    assert FEATURE_SIDEWALL_RIGHT not in _keys(extraction)
+    for key in (FEATURE_SIDEWALL_LEFT, FEATURE_SIDEWALL_RIGHT):
+        reason = _skip_reason(extraction, key)
+        assert reason is not None and "circular" in reason
+
+
+def test_non_circular_unit_skips_circle_radius_with_reason() -> None:
+    extraction = extract_features(_trapezoid(), target_class=0)
+
+    assert extraction is not None
+    assert FEATURE_CIRCLE_RADIUS not in _keys(extraction)
+    reason = _skip_reason(extraction, FEATURE_CIRCLE_RADIUS)
+    assert reason is not None and "circular" in reason
+
+
+def test_dome_is_not_treated_as_a_full_circle() -> None:
+    # The lower half of a disc is a rounded bottom, not a round unit: it must
+    # still be measured as bottom curvature, not a full-circle radius.
+    extraction = extract_features(_dome(), target_class=0)
+
+    assert extraction is not None
+    assert FEATURE_BOTTOM_CURVATURE in _keys(extraction)
+    assert FEATURE_CIRCLE_RADIUS not in _keys(extraction)
+
+
+def test_circle_unit_round_trips() -> None:
+    extraction = extract_features(_disc(100, 100, 35), target_class=0)
+    assert extraction is not None
+    assert extraction.primitives
+    _assert_round_trips(extraction)
+
+
+def test_pattern_row_measures_the_central_unit() -> None:
+    labels = _disc_row((40, 100, 160), center_y=100, radius=20)
+    picked = _pick_region(labels, target_class=0, min_area=200)
+
+    assert picked is not None
+    representative, kept = picked
+    assert len(kept) == 3
+    # The unit nearest the image centre (x≈100) is the representative.
+    assert abs(float(representative.centroid[1]) - 100.0) < 5.0
+
+
+def test_pattern_grid_measures_the_central_unit() -> None:
+    labels = _disc_grid((40, 100, 160), (40, 100, 160), radius=18)
+    picked = _pick_region(labels, target_class=0, min_area=200)
+
+    assert picked is not None
+    representative, kept = picked
+    assert len(kept) == 9
+    assert abs(float(representative.centroid[0]) - 100.0) < 5.0
+    assert abs(float(representative.centroid[1]) - 100.0) < 5.0
+
+
+def test_single_dominant_region_is_still_picked_over_speckle() -> None:
+    # One large trench plus a small comparable-but-not blob: the large one wins.
+    labels = _trapezoid(center_x=100)
+    picked = _pick_region(labels, target_class=0, min_area=200)
+
+    assert picked is not None
+    representative, _ = picked
+    # The trapezoid is centred on x=100; a stray pick would sit elsewhere.
+    assert abs(float(representative.centroid[1]) - 100.0) < 8.0
 
 
 def test_points_stay_within_image_bounds() -> None:

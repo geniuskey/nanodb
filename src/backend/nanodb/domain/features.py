@@ -16,6 +16,7 @@ forced into a meaningless number.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Protocol, cast
 
@@ -23,6 +24,7 @@ import numpy as np
 from numpy.typing import NDArray
 from skimage.measure import label as cc_label
 from skimage.measure import regionprops
+from skimage.segmentation import find_boundaries
 
 from nanodb.domain.entities import MeasurementType, Point
 
@@ -49,6 +51,7 @@ class _Region(Protocol):
 FEATURE_WIDTH = "width_cd"
 FEATURE_HEIGHT = "height"
 FEATURE_SPACING = "spacing"
+FEATURE_CIRCLE_RADIUS = "circle_radius"
 FEATURE_BOTTOM_CURVATURE = "bottom_curvature"
 FEATURE_SIDEWALL_LEFT = "sidewall_angle_left"
 FEATURE_SIDEWALL_RIGHT = "sidewall_angle_right"
@@ -57,6 +60,7 @@ _LABELS: dict[str, str] = {
     FEATURE_WIDTH: "auto: 폭(CD)",
     FEATURE_HEIGHT: "auto: 높이",
     FEATURE_SPACING: "auto: 간격",
+    FEATURE_CIRCLE_RADIUS: "auto: 원 반경",
     FEATURE_BOTTOM_CURVATURE: "auto: 바닥 곡률 반경",
     FEATURE_SIDEWALL_LEFT: "auto: 좌측 측벽 각도",
     FEATURE_SIDEWALL_RIGHT: "auto: 우측 측벽 각도",
@@ -67,12 +71,33 @@ FEATURE_ORDER: tuple[str, ...] = (
     FEATURE_WIDTH,
     FEATURE_HEIGHT,
     FEATURE_SPACING,
+    FEATURE_CIRCLE_RADIUS,
     FEATURE_BOTTOM_CURVATURE,
     FEATURE_SIDEWALL_LEFT,
     FEATURE_SIDEWALL_RIGHT,
 )
 
 _MIN_TILT_PX = 1.0  # below this horizontal run a sidewall counts as vertical
+
+# A class often appears as a repeated array of like-sized units (a row of cells,
+# an N×M grid, a field of contact holes). When two or more comparable units are
+# present the extractor measures the one nearest the image centre -- the cleanest
+# representative -- rather than the largest, which is often a cropped edge unit.
+_PATTERN_AREA_FRAC = 0.5  # a unit this fraction of the largest counts as comparable
+
+# Circle detection. A unit is treated as a full circle (round cell / contact
+# hole) only when its outline fits a circle tightly, it fills that circle like a
+# disc (not a thin arc or ring), and its bounding box is roughly square. Curvature
+# is then the fitted radius -- "곡률은 원형이 보이면 그때만".
+_CIRCLE_MAX_RMS_FRAC = 0.14  # outline points must sit within this fraction of r
+_CIRCLE_FILL_RANGE = (0.72, 1.28)  # area / (π r²): a filled disc, not an arc/ring
+_CIRCLE_ASPECT_RANGE = (0.72, 1.39)  # bbox width / height near 1
+
+# Bottom-arc curvature (trench / dome bottom) is emitted only when the sampled
+# bottom is a clean circular arc: it must bow by at least this many pixels and
+# fit a circle at least this tightly. A near-flat or ragged bottom is skipped.
+_MIN_ARC_SAGITTA_PX = 2.0
+_ARC_MAX_RMS_FRAC = 0.2
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,9 +173,13 @@ def _pick_region(
 ) -> tuple[_Region, list[_Region]] | None:
     """Return the representative region and every kept region of the class.
 
-    The representative region is the largest non-clipped component (an interior
-    structure measures cleanly); if all touch the border, the largest overall is
-    used and flagged clipped by the caller.
+    Preferring interior (non-clipped) components -- an interior structure
+    measures cleanly -- the representative is chosen so a repeated pattern is
+    handled well: when two or more comparably-sized units are present (a row of
+    cells, an N×M grid, a field of holes) the unit nearest the image centre is
+    measured, since edge units are often cropped or distorted. With a single
+    dominant structure the largest is used. If every component touches the
+    border the largest overall is used and flagged clipped by the caller.
     """
     mask = np.asarray(labels == target_class, dtype=np.int32)
     components = cc_label(mask, connectivity=2)
@@ -166,7 +195,23 @@ def _pick_region(
 
     interior = [r for r in kept if not clipped(r)]
     pool = interior or kept
-    representative = max(pool, key=lambda r: int(r.area))
+    max_area = max(int(r.area) for r in pool)
+    comparable = [r for r in pool if int(r.area) >= _PATTERN_AREA_FRAC * max_area]
+    if len(comparable) >= 2:
+        # A repeated pattern: measure the unit whose centroid is closest to the
+        # image centre. Ties break toward the larger unit, then (via ``min``
+        # returning the first minimum) the earliest label, so the pick is stable.
+        center_row, center_col = (height - 1) / 2.0, (width - 1) / 2.0
+        representative = min(
+            comparable,
+            key=lambda r: (
+                (float(r.centroid[0]) - center_row) ** 2
+                + (float(r.centroid[1]) - center_col) ** 2,
+                -int(r.area),
+            ),
+        )
+    else:
+        representative = max(pool, key=lambda r: int(r.area))
     return representative, kept
 
 
@@ -275,6 +320,88 @@ def _spacing_feature(
     )
 
 
+def _region_outline(
+    region: _Region,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Outline pixel coordinates of the region, in image pixels."""
+    local = np.asarray(region.image, dtype=np.bool_)
+    outline = np.asarray(find_boundaries(local, mode="inner"), dtype=np.bool_)
+    rows, cols = np.where(outline)
+    min_row, min_col = region.bbox[0], region.bbox[1]
+    xs = np.asarray(cols, dtype=np.float64) + float(min_col)
+    ys = np.asarray(rows, dtype=np.float64) + float(min_row)
+    return xs, ys
+
+
+def _extreme_points(region: _Region) -> tuple[Point, Point, Point]:
+    """Topmost, rightmost and bottommost foreground pixels, in image pixels.
+
+    On a round unit these three lie on the circle and are never collinear, so a
+    three-point fit recovers the radius. They are real pixels, not synthesised.
+    """
+    min_row, min_col = region.bbox[0], region.bbox[1]
+    local = np.asarray(region.image, dtype=np.bool_)
+    rows, cols = np.where(local)
+    top = int(np.argmin(rows))
+    bottom = int(np.argmax(rows))
+    right = int(np.argmax(cols))
+    return (
+        Point(float(min_col + int(cols[top])), float(min_row + int(rows[top]))),
+        Point(float(min_col + int(cols[right])), float(min_row + int(rows[right]))),
+        Point(float(min_col + int(cols[bottom])), float(min_row + int(rows[bottom]))),
+    )
+
+
+def _circle_feature(
+    region: _Region, clipped: bool
+) -> tuple[FeaturePrimitive | None, str | None]:
+    """Emit a full-circle radius when the unit reads as a round disc, else skip.
+
+    A clipped unit is never trusted as a circle (a cropped fragment is not round).
+    The gate combines a tight least-squares circle fit on the outline, a disc-like
+    fill ratio (rejecting thin arcs and rings) and a near-square bounding box.
+    """
+    if clipped:
+        return None, "unit is clipped at the image border"
+    local = np.asarray(region.image, dtype=np.bool_)
+    box_h, box_w = local.shape
+    if box_h < 3 or box_w < 3:
+        return None, "unit too small for a circle fit"
+    aspect = box_w / box_h
+    aspect_lo, aspect_hi = _CIRCLE_ASPECT_RANGE
+    if not aspect_lo <= aspect <= aspect_hi:
+        return None, "unit is not circular (elongated)"
+    xs, ys = _region_outline(region)
+    fit = _fit_circle(xs, ys)
+    if fit is None or fit[2] <= 0:
+        return None, "unit is not circular (no circle fit)"
+    cx, cy, radius = fit
+    if _circle_rms(xs, ys, cx, cy, radius) / radius > _CIRCLE_MAX_RMS_FRAC:
+        return None, "unit is not circular (edge deviates from a circle)"
+    fill = float(region.area) / (math.pi * radius**2)
+    fill_lo, fill_hi = _CIRCLE_FILL_RANGE
+    if not fill_lo <= fill <= fill_hi:
+        return None, "unit is not a filled circle (arc or ring)"
+    p_top, p_right, p_bottom = _extreme_points(region)
+    area2 = (p_right.x - p_top.x) * (p_bottom.y - p_top.y) - (
+        p_right.y - p_top.y
+    ) * (p_bottom.x - p_top.x)
+    if abs(area2) <= 1e-6:
+        return None, "unit outline is degenerate"
+    rms = _circle_rms(xs, ys, cx, cy, radius)
+    confidence = _clamp01(1.0 - rms / max(radius, 1.0))
+    return (
+        FeaturePrimitive(
+            key=FEATURE_CIRCLE_RADIUS,
+            label=_LABELS[FEATURE_CIRCLE_RADIUS],
+            measurement_type=MeasurementType.CURVATURE,
+            points=(p_top, p_right, p_bottom),
+            confidence=confidence,
+        ),
+        None,
+    )
+
+
 def _bottom_points(
     region: _Region, curvature_frac: float
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
@@ -313,6 +440,10 @@ def _curvature_feature(
     area2 = (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x)
     if abs(area2) <= 1e-6:
         return None, "bottom is flat (collinear)"
+    # The bottom must actually bow: a near-flat bottom has no circular arc to
+    # measure ("곡률은 원형이 보이면 그때만").
+    if float(ys.max() - ys.min()) < _MIN_ARC_SAGITTA_PX:
+        return None, "bottom is flat (no measurable curvature)"
     fit = _fit_circle(xs, ys)
     width_px = region.bbox[3] - region.bbox[1]
     if fit is not None and fit[2] > max_radius_factor * max(width_px, 1):
@@ -321,6 +452,9 @@ def _curvature_feature(
         confidence = 0.5
     else:
         rms = _circle_rms(xs, ys, *fit)
+        # Reject a ragged bottom that only loosely resembles a circular arc.
+        if rms / max(fit[2], 1.0) > _ARC_MAX_RMS_FRAC:
+            return None, "bottom is not a clean circular arc"
         confidence = _clamp01(1.0 - rms / max(fit[2], 1.0))
     return (
         FeaturePrimitive(
@@ -412,25 +546,44 @@ def extract_features(
         min_row == 0 or min_col == 0 or max_row == height or max_col == width
     )
 
-    builders: list[tuple[FeaturePrimitive | None, str | None]] = [
-        _width_feature(representative),
-        _height_feature(representative, width, height),
-        _spacing_feature(representative, kept, width, height),
-        _curvature_feature(representative, curvature_frac, max_radius_factor),
-        _sidewall_feature(representative, sidewall_band, "left"),
-        _sidewall_feature(representative, sidewall_band, "right"),
-    ]
-    keys = [
-        FEATURE_WIDTH,
-        FEATURE_HEIGHT,
-        FEATURE_SPACING,
-        FEATURE_BOTTOM_CURVATURE,
-        FEATURE_SIDEWALL_LEFT,
-        FEATURE_SIDEWALL_RIGHT,
-    ]
+    # A round unit (contact hole / circular cell) is measured as a full circle:
+    # its radius is the curvature, and it has no bottom arc or vertical sidewalls
+    # to measure. A trench-like unit keeps the bottom-arc + sidewall features.
+    circle = _circle_feature(representative, clipped)
+    is_circular = circle[0] is not None
+    if is_circular:
+        curvature: tuple[FeaturePrimitive | None, str | None] = (
+            None,
+            "unit is circular (measured as full-circle radius)",
+        )
+        sidewall_left: tuple[FeaturePrimitive | None, str | None] = (
+            None,
+            "circular unit has no measurable sidewall",
+        )
+        sidewall_right: tuple[FeaturePrimitive | None, str | None] = (
+            None,
+            "circular unit has no measurable sidewall",
+        )
+    else:
+        curvature = _curvature_feature(
+            representative, curvature_frac, max_radius_factor
+        )
+        sidewall_left = _sidewall_feature(representative, sidewall_band, "left")
+        sidewall_right = _sidewall_feature(representative, sidewall_band, "right")
+
+    by_key: dict[str, tuple[FeaturePrimitive | None, str | None]] = {
+        FEATURE_WIDTH: _width_feature(representative),
+        FEATURE_HEIGHT: _height_feature(representative, width, height),
+        FEATURE_SPACING: _spacing_feature(representative, kept, width, height),
+        FEATURE_CIRCLE_RADIUS: circle,
+        FEATURE_BOTTOM_CURVATURE: curvature,
+        FEATURE_SIDEWALL_LEFT: sidewall_left,
+        FEATURE_SIDEWALL_RIGHT: sidewall_right,
+    }
     primitives: list[FeaturePrimitive] = []
     skipped: list[SkippedFeature] = []
-    for key, (primitive, reason) in zip(keys, builders, strict=True):
+    for key in FEATURE_ORDER:
+        primitive, reason = by_key[key]
         if primitive is not None:
             primitives.append(primitive)
         else:

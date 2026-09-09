@@ -12,15 +12,23 @@ import { MeasurementPage } from "./pages/MeasurementPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ErrorBoundary } from "./ui/ErrorBoundary";
 
-const REAL_TABS = [
+const REAL_TABS: {
+  to: string;
+  label: string;
+  end: boolean;
+  notOn?: string;
+  // The demo is the fast, click-through path a walk-up visitor takes after the
+  // home video; it is highlighted so it reads as "start here", not just a tab.
+  cta?: boolean;
+}[] = [
   { to: "/", label: "홈", end: true },
   // `/images` stays non-exact so an image detail keeps the catalog tab lit,
   // but `/images/new` is its own tab: without this both would read as the
   // current location at once.
   { to: "/images", label: "이미지DB", end: false, notOn: "/images/new" },
   { to: "/images/new", label: "이미지 등록", end: false },
-  { to: "/demo", label: "등록 데모", end: false },
-  { to: "/catalog", label: "목록 관리", end: false },
+  { to: "/demo", label: "데모 시연", end: false, cta: true },
+  { to: "/catalog", label: "카테고리", end: false },
 ];
 
 function StatusPill() {
@@ -73,9 +81,12 @@ function Shell() {
               key={tab.to}
               to={tab.to}
               end={tab.end}
-              className={({ isActive }) =>
-                isActive && pathname !== tab.notOn ? "tab active" : "tab"
-              }
+              className={({ isActive }) => {
+                const active = isActive && pathname !== tab.notOn;
+                return ["tab", active ? "active" : "", tab.cta ? "tab-cta" : ""]
+                  .filter(Boolean)
+                  .join(" ");
+              }}
             >
               <span className="tab-label">{tab.label}</span>
             </NavLink>

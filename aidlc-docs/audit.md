@@ -1956,3 +1956,49 @@ UIX-009: 목록과 홈 KPI의 첫 조회에 결과와 같은 모양의 자리 �
 **Context**: CONSTRUCTION - new capability plus a recorded narrowing of RES-007; verified end to end before push
 
 ---
+
+## Demo Page — Tabbed Pipeline Walkthrough with Segmentation Histogram
+**Timestamp**: 2026-09-09T13:40:00Z
+**User Input**: "demo 페이지에서 세그맨테이션 히스토그램을 표현해줘. 그리고 탭으로 그림선택/세그맨테이션/자동 측정 탭이 있고, 그림 선택하면 세그맨테이션 동작 보여주다가 자동 측정 탭으로 넘어가서 길이/곡률 측정되는 것을 보여주도록"
+**AI Response**: "Reworked DemoRegisterPage from a two-mode (picker → cinema) view into a three-tab walkthrough: 그림 선택 / 세그멘테이션 / 자동 측정 (role=tablist, aria-selected/aria-controls, segment+measure tabs disabled until their data exists). Picking a photo starts the same pipeline (getImage → runSegmentation → extractFeatures) and jumps to the 세그멘테이션 tab; when extraction finishes the demo auto-advances to 자동 측정 after ADVANCE_TO_MEASURE_MS (1400ms; instant under prefers-reduced-motion), and tabs stay clickable to step back. Added a SegmentationHistogram component rendering one horizontal bar per SegmentationClassStat (area_fraction, colour-matched to the backend viridis class palette #440154…#f0f921, direct % labels + row labels so identity is never colour-alone, per-bar title tooltip with px/intensity/nm²). The measurement reveal now runs only while the 자동 측정 tab is showing, and its summary breaks the drawn measurements down by kind (길이/곡률/각도, zeros dropped). The shared image stage shows the boundary overlay on the segmentation tab and the MeasurementOverlay on the measurement tab; both tab detail panels stay mounted (hidden) so state is preserved across tab switches. CSS: replaced .demo-cinema/.demo-picker-page with .demo-page + .demo-tabbar/.demo-tab + .demo-stage-body (grid, own stage height since the old fixed-height shell is gone) and .seg-histogram styles; updated the ≤900px media query. Tests: rewrote DemoRegisterPage.test.tsx to cover the default pick tab with locked analysis tabs, the histogram (3 bars, 60.0%), auto-advance to the measurement tab, and the 길이 1 · 곡률 1 breakdown. Gates: vitest 126 passed, tsc -p tsconfig.app.json clean, vite production build clean. Applied adaptive depth (minimal): implemented the scoped UI change directly rather than running the full inception/approval ceremony; audit logged per the mandatory logging rule."
+**Context**: CONSTRUCTION - scoped frontend feature on the existing demo page; verified via unit tests, typecheck, and production build
+
+---
+
+## Demo Page — Slower Advance + Brightness/Threshold Histogram
+**Timestamp**: 2026-09-09T13:44:00Z
+**User Input**: "세그맨테이션에서 자동 측정 넘어가는 것이 너무 빨라. 그리고 세그맨테이션이 어떤 기준으로되는 것인지 히스토그램 차트도 같이 보여줘야해"
+**AI Response**: "Two changes on the demo segmentation tab. (1) Slowed the auto-advance to the measurement tab: ADVANCE_TO_MEASURE_MS 1400 → 3600ms, so the histograms are actually readable before the demo moves on (still instant under prefers-reduced-motion). (2) Added IntensityThresholdChart, a histogram over pixel brightness that shows the segmentation *criterion*: since segmentation is multi-Otsu on the normalised grayscale (backend edges = [0.0, *thresholds, 1.0], so intensity is 0..1, not 0..255), each class is drawn as a bar spanning its intensity_range on a 0→1 brightness axis, bar height = area_fraction, with the Otsu thresholds drawn as dashed red cut lines labelled with their values, plus a one-line caption '픽셀 밝기를 multi-Otsu 임계값으로 나눠 N개 클래스로 분류합니다'. Rendered as inline SVG (role=img with an aria-label summarising the split; per-bar <title>). Kept the existing per-class area bars below it as the exact breakdown, and fixed both charts' tooltips to format intensity as 0..1 (toFixed(2)) instead of assuming 0..255. CSS: .seg-intensity block (axis/threshold/value/tick/caption). Tests: DemoRegisterPage.test.tsx now uses realistic normalised class_stats (thresholds [0.31,0.62], ranges [0,0.31]/[0.31,0.62]/[0.62,1]), asserts the intensity histogram renders with the 0.31 threshold label, and its waitFor timeouts were raised to 6000ms to cover the longer dwell. Gates: vitest 126 passed, tsc -p tsconfig.app.json clean, vite build clean."
+**Context**: CONSTRUCTION - demo-tab pacing + criterion visualisation; verified via unit tests, typecheck, build
+
+---
+
+## Top Nav — Rename "등록 데모" → "데모", Highlight It, Add Home Video CTA
+**Timestamp**: 2026-09-09T13:52:00Z
+**User Input**: ""등록 데모" 는 "데모" 라고 해놓고 누르고 싶게끔 하이라이트 해줘. 이게 실제 운영이 아니라 약 1분 이내에 보여주는 서비스가 되어서 홈의 영상을 보고 바로 데모 페이지로 수동으로 넘어가게끔 하려해"
+**AI Response**: "Reframed the demo as the primary walk-up path (a <1분 show-and-tell, not real operation). App.tsx: renamed the /demo tab '등록 데모' → '데모' and gave REAL_TABS an explicit type with an optional cta flag (cta: true on /demo); the NavLink className now appends 'tab-cta'. CSS: .tab.tab-cta is a filled accent pill (white label, rounded, soft box-shadow) with a 2.2s pulse animation to invite the click, disabled under prefers-reduced-motion; hover/active use accent-strong. HomePage: added a prominent '1분 데모 시작하기 →' CTA (Link to /demo, .button.primary.lg, data-testid home-start-demo) directly under the intro-video caption so a visitor watches the video then jumps straight into the demo; CSS .video-cta (centered) + .button.lg (larger padding/weight). Updated the HOM-005 test 'puts the only in-body links at the end of the usage flow' to expect 3 deliberate entry points (demo + register + browse) and assert the /demo href, since the demo link is an intentional new home entry point. Gates: vitest 126 passed, tsc -p tsconfig.app.json clean, vite build clean."
+**Context**: CONSTRUCTION - navigation/onboarding tweak for the demo-as-showcase flow; verified via unit tests, typecheck, build
+
+---
+
+## Local Restart + Demo Affordance — "데모 시연" Rename & Aurora Aura
+**Timestamp**: 2026-09-09T13:59:00Z
+**User Input**: ""데모" -> "데모 시연" 그리고 처음부터 클릭한 것처럼 보라로 표현한것 제거하고 버튼 주변부에 오로라가 펼쳐지듯 화려한 아우라로 감싸아줘." / "localhost 다시 띄워줘. 꺼졌어. 그리고 구현 요청한 것 계속"
+**AI Response**: "Restarted local: backend uvicorn on 127.0.0.1:8000 (native uv, against the already-running Postgres on 5432) and vite on 127.0.0.1:5173; both verified 200. Implementation: renamed the demo entry from '데모' → '데모 시연' (App.tsx nav tab) and the home CTA to '1분 데모 시연 시작하기'. Removed the solid-purple filled tab pill that read as already-clicked/selected — the .tab.tab-cta now keeps a surface background with a gradient-clipped label. Added a shared aurora aura for both the demo tab and the home demo button (.button.aurora): two absolutely-positioned pseudo layers (a blurred outer bloom + a tighter brighter ring) with a rotating conic gradient. The rotation is done by animating the gradient angle via @property --aurora-a (0→360deg) rather than transform:rotate — the first attempt rotated the whole pseudo box, which on the wide button ballooned into a full-height column; animating the angle keeps the aura hugging the control's edges at any size. Reduced-motion disables the animation. Verified visually via Playwright screenshots of the header tab and the CTA button (aura hugs both, gradient text, no pre-clicked purple). Updated HomePage test's home-start-demo href assertion already covers the CTA. Gates: tsc -p tsconfig.app.json clean, vitest App+Home 13 passed."
+**Context**: CONSTRUCTION - demo affordance restyle + local dev restart; verified via unit tests, typecheck, live screenshots
+
+## Server Restart — serve app at localhost:8000
+**Timestamp**: 2026-09-09T00:00:00Z
+**User Input**: "localhost:8000 으로 접속 할 수 있게 재구동. 이전에 계속 그랬어"
+**AI Response**: "Rebuilt the frontend (npm run build → dist/frontend, bundle index-CkzHaVCq.js) so the served SPA reflects the latest '데모 시연' + aurora changes. Restarted uvicorn from the repo root with an absolute FRONTEND_DIST=/Users/edwin/git/nanodb_mvp/dist/frontend so the backend's relative Path('dist/frontend') resolves. Verified: GET / → 200, GET /demo (SPA fallback) → 200, GET /api/images → 200, and the served JS bundle → 200. App is reachable at http://localhost:8000."
+**Context**: Operations — local run/serve. Backend FastAPI serves the built frontend (StaticFiles /assets + index.html SPA fallback) on :8000.
+
+---
+
+## Demo CTA legibility — 데모 시연 label
+**Timestamp**: 2026-09-09T00:10:00Z
+**User Input**: "데모 시연 글씨를 잘 보이게 해줘. 지금은 글로우와 너무 비슷하게 보여"
+**AI Response**: "The '데모 시연' tab label used a purple/pink gradient text-fill in the same hues as the aurora glow, so it blended into the glow. Replaced it with a solid high-contrast color: var(--ink) (#191a2c) plus a thin white text-shadow halo so it stays crisp over the bright rotating ring. Rebuilt (dist/frontend, bundle index-CnXtO-v_.js) and confirmed :8000 serves it (200)."
+**Context**: Construction — UI polish. src/frontend/src/styles.css .tab.tab-cta .tab-label.
+
+---

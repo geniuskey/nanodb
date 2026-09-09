@@ -830,7 +830,8 @@ export function MeasurementPage() {
       </div>
       <div className="measurement-tables">
         <section className="table-panel" aria-labelledby="items-heading" data-testid="measurement-items">
-          <h2 id="items-heading">측정 항목 ({detail.product_id})</h2>
+          <details className="panel-fold" data-testid="measurement-items-fold">
+            <summary><h2 id="items-heading">측정 항목 ({detail.product_id})</h2></summary>
           <p className="note-hint">제품별 측정 항목을 관리합니다. 항목의 종류(길이/각도/곡률)가 이미지 위에서 쓰는 도구를 정합니다.</p>
           <table className="data-table items-table">
             <thead>
@@ -877,9 +878,11 @@ export function MeasurementPage() {
             <button type="submit" className="button" disabled={itemBusy} data-testid="item-add">항목 추가</button>
           </form>
           {itemError && <p role="alert" data-testid="item-error">{itemError}</p>}
+          </details>
         </section>
         <section className="table-panel" aria-labelledby="saved-heading" data-testid="saved-measurements">
-          <h2 id="saved-heading">저장된 측정</h2>
+          <details className="panel-fold" data-testid="saved-measurements-fold">
+            <summary><h2 id="saved-heading">저장된 측정 ({detail.measurements.length})</h2></summary>
           {detail.measurements.length === 0 ? (
             <p>저장된 측정이 없습니다. 항목과 종류를 고른 뒤 이미지 위에서 점을 찍어 첫 측정을 저장하세요.</p>
           ) : (
@@ -956,6 +959,7 @@ export function MeasurementPage() {
               </tbody>
             </table>
           )}
+          </details>
         </section>
       </div>
       <section className="segmentation-panel table-panel" aria-labelledby="segmentation-heading" data-testid="segmentation-panel">

@@ -28,8 +28,8 @@ const GAP = 11;
 const MARGIN = 3;
 /** Chips closer than this on both axes count as overlapping. */
 const CLEARANCE = 3;
-/** How many offsets to try before giving up and accepting an overlap. */
-const MAX_STEPS = 7;
+/** How many radial offsets to try before giving up and accepting an overlap. */
+const MAX_STEPS = 10;
 
 export interface LabelRequest {
   /** Identifies the caption; carried through to the placement. */
@@ -123,52 +123,67 @@ export function layoutLabels(
       length > 0
         ? { x: request.direction.x / length, y: request.direction.y / length }
         : { x: 0, y: -1 };
+    // Direction at right angles to `unit`, used to slide a crowded caption
+    // sideways into a gap instead of only pushing it further out.
+    const perp = { x: -unit.y, y: unit.x };
     // Half the chip's extent along `unit`, so `GAP` is measured from its edge
     // rather than its centre and the chip never covers its own anchor.
     const reach = (Math.abs(unit.x) * width + Math.abs(unit.y) * height) / 2;
+    const lateralStep = width * 0.75;
 
     let chosen: PlacedLabel | null = null;
+    let fallback: PlacedLabel | null = null;
     for (let step = 0; step <= MAX_STEPS && !chosen; step += 1) {
       // Alternate sides from the second step on, so a crowded caption can fall
       // back to the far side of its shape instead of drifting ever further.
       const signs = step === 0 ? [1] : [1, -1];
+      const distance = reach + GAP + step * (height + CLEARANCE * 2);
+      // Try dead ahead first (preferred spot), then widen sideways the further
+      // out we are, so an overlapping caption slides laterally to a free gap.
+      const laterals: number[] = [0];
+      for (let l = 1; l <= step; l += 1) laterals.push(l, -l);
       for (const sign of signs) {
-        const distance = reach + GAP + step * (height + CLEARANCE * 2);
-        const candidate: PlacedLabel = {
-          key: request.key,
-          text: request.text,
-          anchor: request.anchor,
-          center: {
-            x: clamp(
-              request.anchor.x + unit.x * distance * sign,
-              width / 2 + MARGIN,
-              Math.max(width / 2 + MARGIN, bounds.width - width / 2 - MARGIN),
-            ),
-            y: clamp(
-              request.anchor.y + unit.y * distance * sign,
-              height / 2 + MARGIN,
-              Math.max(height / 2 + MARGIN, bounds.height - height / 2 - MARGIN),
-            ),
-          },
-          width,
-          height,
-          leader: false,
-        };
-        candidate.leader =
-          Math.hypot(
-            candidate.center.x - request.anchor.x,
-            candidate.center.y - request.anchor.y,
-          ) >
-          reach + GAP + height * 0.75;
-        if (!placed.some((other) => overlaps(other, candidate))) {
-          chosen = candidate;
-          break;
+        for (const lateral of laterals) {
+          const offset = lateral * lateralStep;
+          const candidate: PlacedLabel = {
+            key: request.key,
+            text: request.text,
+            anchor: request.anchor,
+            center: {
+              x: clamp(
+                request.anchor.x + unit.x * distance * sign + perp.x * offset,
+                width / 2 + MARGIN,
+                Math.max(width / 2 + MARGIN, bounds.width - width / 2 - MARGIN),
+              ),
+              y: clamp(
+                request.anchor.y + unit.y * distance * sign + perp.y * offset,
+                height / 2 + MARGIN,
+                Math.max(height / 2 + MARGIN, bounds.height - height / 2 - MARGIN),
+              ),
+            },
+            width,
+            height,
+            leader: false,
+          };
+          candidate.leader =
+            Math.hypot(
+              candidate.center.x - request.anchor.x,
+              candidate.center.y - request.anchor.y,
+            ) >
+            reach + GAP + height * 0.75;
+          if (!placed.some((other) => overlaps(other, candidate))) {
+            chosen = candidate;
+            break;
+          }
+          fallback = candidate;
         }
-        chosen = chosen ?? null;
-        if (step === MAX_STEPS && sign === signs[signs.length - 1]) chosen = candidate;
+        if (chosen) break;
       }
     }
-    if (chosen) placed.push(chosen);
+    // A caption that never found a free spot keeps its last candidate rather
+    // than disappearing -- a slightly crowded caption still beats a missing one.
+    const result = chosen ?? fallback;
+    if (result) placed.push(result);
   }
   return placed;
 }

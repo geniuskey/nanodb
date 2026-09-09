@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from nanodb.domain.calculations import calculate_measurement
-from nanodb.domain.entities import Measurement, MeasurementType, Point
+from nanodb.domain.entities import (
+    POINT_COUNT_BY_TYPE,
+    Measurement,
+    MeasurementType,
+    Point,
+)
 from nanodb.domain.errors import DomainError
 from nanodb.persistence.repositories import (
     ImageRepository,
@@ -107,6 +113,83 @@ class MeasurementService:
                 label=label,
                 note=note,
             )
+            if measurement is None:
+                raise DomainError("MEASUREMENT_NOT_FOUND", "Measurement was not found.")
+            session.commit()
+            return measurement
+
+    def update_geometry(
+        self,
+        image_id: int,
+        measurement_id: int,
+        *,
+        points: tuple[Point, ...],
+    ) -> Measurement:
+        """Move a saved measurement's points and revalue it from them.
+
+        Automatic extraction is not exact and a hand-placed point can miss, so
+        the geometry is correctable. What it is a measurement *of* is not: the
+        type and the calibration stay as recorded, the point count must match
+        the type, and the value is recomputed here rather than accepted from the
+        caller -- the same server-authoritative path a new measurement takes.
+        The first correction preserves the original geometry and value.
+        """
+        with self._session_factory() as session:
+            image = ImageRepository(session).find(image_id)
+            if image is None:
+                raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
+            repository = MeasurementRepository(session)
+            existing = repository.find(image_id, measurement_id)
+            if existing is None:
+                raise DomainError("MEASUREMENT_NOT_FOUND", "Measurement was not found.")
+            expected = POINT_COUNT_BY_TYPE[existing.measurement_type]
+            if len(points) != expected:
+                raise DomainError(
+                    "INVALID_POINT_COUNT",
+                    f"{existing.measurement_type.value} needs exactly "
+                    f"{expected} points.",
+                    field="points",
+                )
+            result = calculate_measurement(
+                existing.measurement_type,
+                points,
+                existing.calibration_nm_per_pixel,
+                pixel_width=image.pixel_width,
+                pixel_height=image.pixel_height,
+            )
+            measurement = repository.update_geometry(
+                image_id,
+                measurement_id,
+                points=points,
+                result=result,
+                adjusted_at=datetime.now(UTC),
+            )
+            if measurement is None:
+                raise DomainError("MEASUREMENT_NOT_FOUND", "Measurement was not found.")
+            session.commit()
+            return measurement
+
+    def revert_geometry(self, image_id: int, measurement_id: int) -> Measurement:
+        """Put a corrected measurement back to the geometry it was produced with.
+
+        Correcting an automatic value is a judgement call, so it has to be
+        undoable: this restores the extractor's own answer (or the first hand
+        placement) exactly, and clears the correction trail with it.
+        """
+        with self._session_factory() as session:
+            if ImageRepository(session).find(image_id) is None:
+                raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
+            repository = MeasurementRepository(session)
+            existing = repository.find(image_id, measurement_id)
+            if existing is None:
+                raise DomainError("MEASUREMENT_NOT_FOUND", "Measurement was not found.")
+            if not existing.is_adjusted:
+                raise DomainError(
+                    "MEASUREMENT_NOT_ADJUSTED",
+                    "This measurement still reads as first produced.",
+                    status=409,
+                )
+            measurement = repository.revert_geometry(image_id, measurement_id)
             if measurement is None:
                 raise DomainError("MEASUREMENT_NOT_FOUND", "Measurement was not found.")
             session.commit()

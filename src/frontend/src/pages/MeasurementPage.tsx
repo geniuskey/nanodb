@@ -1,4 +1,12 @@
-import { FormEvent, MouseEvent, useEffect, useRef, useState } from "react";
+import {
+  FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { ApiError, api } from "../api/client";
@@ -10,7 +18,11 @@ import type {
   MeasurementView,
   SegmentationResultView,
 } from "../api/types";
-import { toOriginalPoint, type Point } from "../measurement/coordinates";
+import {
+  toOriginalPoint,
+  toOriginalPointClamped,
+  type Point,
+} from "../measurement/coordinates";
 import {
   DRAW_HINT,
   POINT_COUNT,
@@ -70,6 +82,17 @@ export function MeasurementPage() {
   const [showShapes, setShowShapes] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
   const [onlySelected, setOnlySelected] = useState(false);
+  // Correcting a saved measurement. Automatic extraction is not exact and a
+  // hand-placed point can miss, so the points can be dragged; `adjustPoints` is
+  // the working copy, and nothing is written until it is saved.
+  const [adjustId, setAdjustId] = useState<number | null>(null);
+  const [adjustPoints, setAdjustPoints] = useState<Point[] | null>(null);
+  const [activeHandle, setActiveHandle] = useState<number | null>(null);
+  const [adjustBusy, setAdjustBusy] = useState(false);
+  // Which handle a pointer is dragging, on a saved measurement or on the draft.
+  const [dragging, setDragging] = useState<{ kind: "adjust" | "draft"; index: number } | null>(null);
+  // Pointer position while drawing, so the shape follows the cursor.
+  const [cursor, setCursor] = useState<Point | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -174,6 +197,56 @@ export function MeasurementPage() {
     return () => window.removeEventListener("resize", update);
   }, [detail, zoom, viewport.width, viewport.height]);
 
+  // A drag is tracked on the window, not on the handle: the pointer routinely
+  // leaves the image mid-gesture, and the handle has to keep following it.
+  useEffect(() => {
+    if (!dragging || !detail) return;
+    const originalSize = { width: detail.pixel_width, height: detail.pixel_height };
+    const move = (event: PointerEvent) => {
+      const rect = imageRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const point = toOriginalPointClamped(
+        { x: event.clientX, y: event.clientY },
+        rect,
+        originalSize,
+      );
+      if (!point) return;
+      const replace = (points: Point[]) =>
+        points.map((current, index) => (index === dragging.index ? point : current));
+      if (dragging.kind === "adjust") {
+        setAdjustPoints((current) => (current ? replace(current) : current));
+      } else {
+        setDraft(replace);
+      }
+    };
+    const end = () => setDragging(null);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+    };
+  }, [dragging, detail]);
+
+  // Escape backs out of whatever is in progress, innermost first: a correction
+  // that has not been saved, then a drawing that has not been finished.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (adjustId !== null) {
+        setAdjustId(null);
+        setAdjustPoints(null);
+        setActiveHandle(null);
+      } else if (draft.length > 0) {
+        setDraft([]);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [adjustId, draft.length]);
+
   if (error && !detail) {
     return (
       <main>
@@ -199,6 +272,32 @@ export function MeasurementPage() {
     draft.length === needed
       ? previewValue(measurementType, draft, detail.calibration_nm_per_pixel)
       : null;
+  const adjusting =
+    adjustId !== null
+      ? detail.measurements.find((item) => item.id === adjustId) ?? null
+      : null;
+  // Client-side preview of the correction, mirroring the server formulas, so
+  // the operator sees what a nudge is worth before committing to it. Null when
+  // the dragged points are degenerate -- the server would refuse them too.
+  const adjustPreview =
+    adjusting && adjustPoints
+      ? previewValue(
+          adjusting.measurement_type,
+          adjustPoints,
+          adjusting.calibration_nm_per_pixel,
+        )
+      : null;
+  const adjustDelta =
+    adjusting && adjustPreview ? adjustPreview.value - adjusting.value : null;
+  const adjustMoved = Boolean(
+    adjusting &&
+      adjustPoints &&
+      adjustPoints.some(
+        (point, index) =>
+          point.x !== adjusting.points[index]?.x ||
+          point.y !== adjusting.points[index]?.y,
+      ),
+  );
 
   // Scale that makes the whole image fit the viewport at zoom 1. Never above
   // 1, so a small image is not blown up just because the panel is large.
@@ -226,6 +325,10 @@ export function MeasurementPage() {
     setDraft([]);
   }
 
+  function undoPoint() {
+    setDraft((current) => current.slice(0, -1));
+  }
+
   function selectItem(value: string) {
     setItemId(value === "adhoc" ? null : Number(value));
     setDraft([]);
@@ -236,7 +339,149 @@ export function MeasurementPage() {
     setDraft([]);
   }
 
+  /**
+   * Measurements as they read right now: the working copy while one is being
+   * corrected, carrying the previewed value as well as the moved points, so the
+   * caption on the image counts along with the drag instead of showing the
+   * value that is about to be replaced.
+   */
+  function shownMeasurements(): MeasurementView[] {
+    if (!detail) return [];
+    if (adjustId === null || !adjustPoints) return detail.measurements;
+    return detail.measurements.map((item) =>
+      item.id === adjustId
+        ? {
+            ...item,
+            points: adjustPoints,
+            value: adjustPreview ? adjustPreview.value : item.value,
+          }
+        : item,
+    );
+  }
+
+  function startAdjust(item: MeasurementView) {
+    setAdjustId(item.id);
+    setAdjustPoints(item.points.map((point) => ({ ...point })));
+    setSelectedId(item.id);
+    setActiveHandle(null);
+    setDraft([]);
+    setError(null);
+    setStatus(null);
+  }
+
+  function cancelAdjust() {
+    setAdjustId(null);
+    setAdjustPoints(null);
+    setActiveHandle(null);
+  }
+
+  function moveHandle(index: number, delta: Point) {
+    if (!detail) return;
+    const apply = (points: Point[]) =>
+      points.map((point, current) =>
+        current === index
+          ? {
+              // A nudge cannot push a point off the image: the server would
+              // reject the whole correction over one out-of-bounds pixel.
+              x: Math.min(Math.max(point.x + delta.x, 0), detail.pixel_width - 1),
+              y: Math.min(Math.max(point.y + delta.y, 0), detail.pixel_height - 1),
+            }
+          : point,
+      );
+    if (adjustId !== null) {
+      setAdjustPoints((current) => (current ? apply(current) : current));
+    } else {
+      setDraft(apply);
+    }
+  }
+
+  /**
+   * Arrow keys nudge the focused point by one original pixel, or ten with
+   * Shift. At the zoom where a correction matters, one pixel is smaller than
+   * the shake in a hand, so dragging alone cannot place a point exactly.
+   */
+  function handleKeyDown(index: number, event: ReactKeyboardEvent<SVGCircleElement>) {
+    const step = event.shiftKey ? 10 : 1;
+    const deltas: Record<string, Point> = {
+      ArrowLeft: { x: -step, y: 0 },
+      ArrowRight: { x: step, y: 0 },
+      ArrowUp: { x: 0, y: -step },
+      ArrowDown: { x: 0, y: step },
+    };
+    const delta = deltas[event.key];
+    if (!delta) return;
+    event.preventDefault();
+    setActiveHandle(index);
+    moveHandle(index, delta);
+  }
+
+  function beginDrag(kind: "adjust" | "draft", index: number, event: ReactPointerEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    setActiveHandle(index);
+    setDragging({ kind, index });
+  }
+
+  async function saveAdjust() {
+    if (!detail || adjustId === null || !adjustPoints || adjustBusy) return;
+    setAdjustBusy(true); setError(null); setStatus(null);
+    try {
+      const updated = await api.updateMeasurementGeometry(imageId, adjustId, {
+        points: adjustPoints,
+      });
+      setDetail((current) => current && ({
+        ...current,
+        measurements: current.measurements.map((item) =>
+          item.id === updated.id ? updated : item,
+        ),
+      }));
+      cancelAdjust();
+      setStatus(
+        `${updated.label ?? TYPE_LABEL[updated.measurement_type]} 측정을 ${formatValue(updated.value, updated.unit)}(으)로 보정했습니다.`,
+      );
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : "측정을 보정하지 못했습니다.");
+    } finally { setAdjustBusy(false); }
+  }
+
+  async function revertAdjust(measurementId: number) {
+    if (adjustBusy) return;
+    setAdjustBusy(true); setError(null); setStatus(null);
+    try {
+      const updated = await api.revertMeasurementGeometry(imageId, measurementId);
+      setDetail((current) => current && ({
+        ...current,
+        measurements: current.measurements.map((item) =>
+          item.id === updated.id ? updated : item,
+        ),
+      }));
+      if (adjustId === measurementId) {
+        setAdjustPoints(updated.points.map((point) => ({ ...point })));
+      }
+      setStatus("보정을 되돌려 처음 측정값으로 복원했습니다.");
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : "보정을 되돌리지 못했습니다.");
+    } finally { setAdjustBusy(false); }
+  }
+
+  /** Follow the pointer while drawing so the shape previews before it is placed. */
+  function trackCursor(event: MouseEvent<HTMLImageElement>) {
+    if (!detail || adjustId !== null || draft.length >= needed) {
+      if (cursor !== null) setCursor(null);
+      return;
+    }
+    const point = toOriginalPoint(
+      { x: event.clientX, y: event.clientY },
+      event.currentTarget.getBoundingClientRect(),
+      { width: detail.pixel_width, height: detail.pixel_height },
+    );
+    setCursor(point);
+  }
+
   function placePoint(event: MouseEvent<HTMLImageElement>) {
+    // While a saved measurement is being corrected the image is the correction
+    // surface, not a drawing surface: a stray click must not start a new draft.
+    if (adjustId !== null) return;
     if (!detail || draft.length >= needed) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const point = toOriginalPoint(
@@ -436,8 +681,12 @@ export function MeasurementPage() {
       setDetail(refreshed);
       const kept = result.measurements.length;
       const skipped = result.skipped.length;
+      // Corrections survive a re-run, and saying so is the difference between
+      // trusting the button and re-checking every value after pressing it.
+      const preserved = result.preserved_adjusted;
       setStatus(
-        `자동 특징 ${kept}개를 추출했습니다${skipped > 0 ? ` (건너뜀 ${skipped}개)` : ""}.`,
+        `자동 특징 ${kept}개를 추출했습니다${skipped > 0 ? ` (건너뜀 ${skipped}개)` : ""}.` +
+          (preserved > 0 ? ` 직접 보정한 ${preserved}개는 그대로 두었습니다.` : ""),
       );
     } catch (caught) {
       setSegError(
@@ -468,8 +717,8 @@ export function MeasurementPage() {
             </div>
             <div className="image-viewport" ref={viewportRef} tabIndex={0} aria-label="이미지 뷰어. 확대한 뒤에는 스크롤이나 방향키로 이동합니다.">
               <div className="image-stage" style={displayWidth > 0 ? { width: displayWidth } : undefined}>
-                <img ref={imageRef} src={detail.file_url} alt={detail.original_filename} onClick={placePoint} style={displayWidth > 0 ? { width: displayWidth } : undefined} onLoad={() => { const rect = imageRef.current?.getBoundingClientRect(); if (rect) setRendered({ width: rect.width, height: rect.height }); }} data-testid="measurement-image" />
-                {rendered.width > 0 && <MeasurementOverlay width={rendered.width} height={rendered.height} original={{ width: detail.pixel_width, height: detail.pixel_height }} measurements={showShapes ? detail.measurements : []} selectedId={selectedId} draft={draft} draftType={measurementType} showLabels={showLabels} onlySelected={onlySelected} />}
+                <img ref={imageRef} src={detail.file_url} alt={detail.original_filename} onClick={placePoint} onMouseMove={trackCursor} onMouseLeave={() => setCursor(null)} className={adjustId !== null ? "adjusting" : undefined} style={displayWidth > 0 ? { width: displayWidth } : undefined} onLoad={() => { const rect = imageRef.current?.getBoundingClientRect(); if (rect) setRendered({ width: rect.width, height: rect.height }); }} data-testid="measurement-image" />
+                {rendered.width > 0 && <MeasurementOverlay width={rendered.width} height={rendered.height} original={{ width: detail.pixel_width, height: detail.pixel_height }} measurements={showShapes ? shownMeasurements() : []} selectedId={selectedId} draft={draft} draftType={measurementType} showLabels={showLabels} onlySelected={onlySelected} editingId={showShapes ? adjustId : null} activeHandle={activeHandle} onHandleDown={(index, event) => beginDrag("adjust", index, event)} onHandleKeyDown={handleKeyDown} draftCursor={cursor} onDraftHandleDown={draft.length > 0 ? (index, event) => beginDrag("draft", index, event) : undefined} />}
               </div>
             </div>
             {detail.measurements.some((item) => item.source === "auto") && (
@@ -500,6 +749,35 @@ export function MeasurementPage() {
               <div><dt>등록</dt><dd>{new Date(detail.created_at).toLocaleString()}</dd></div>
             </dl>
           </section>
+          {adjusting ? (
+            <section className="adjust-panel" aria-labelledby="adjust-heading" data-testid="adjust-panel">
+              <h2 id="adjust-heading">측정 보정</h2>
+              <p className="note-hint">
+                이미지 위의 점을 끌어서 옮기세요. 점을 클릭(탭)해 선택한 뒤 방향키로 1px, Shift+방향키로 10px씩 옮길 수 있습니다. 저장하기 전에는 아무것도 바뀌지 않습니다.
+              </p>
+              <dl data-testid="adjust-facts">
+                <div><dt>측정</dt><dd>{adjusting.label ?? TYPE_LABEL[adjusting.measurement_type]}</dd></div>
+                <div><dt>지금 값</dt><dd data-testid="adjust-preview">{adjustPreview ? formatValue(adjustPreview.value, adjustPreview.unit) : "값을 계산할 수 없는 위치입니다"}</dd></div>
+                <div><dt>저장된 값</dt><dd>{formatValue(adjusting.value, adjusting.unit)}</dd></div>
+                {/* Only once a point has actually moved: before that the
+                    client preview and the stored value differ by float noise,
+                    which would read as a difference nobody made. */}
+                {adjustMoved && adjustDelta !== null && (
+                  <div><dt>차이</dt><dd data-testid="adjust-delta">{adjustDelta >= 0 ? "+" : "−"}{formatValue(Math.abs(adjustDelta), adjusting.unit)}</dd></div>
+                )}
+              </dl>
+              <p className="note-hint">값은 저장할 때 서버가 점으로부터 다시 계산합니다. 종류와 보정값(nm/pixel)은 바뀌지 않습니다.</p>
+              {error && <p role="alert">{error}</p>}
+              <div className="actions">
+                <button type="button" onClick={cancelAdjust} disabled={adjustBusy} data-testid="adjust-cancel">취소</button>
+                {adjusting.adjusted_at && (
+                  <button type="button" onClick={() => revertAdjust(adjusting.id)} disabled={adjustBusy} data-testid="adjust-revert">처음 값으로</button>
+                )}
+                <button type="button" className="primary" onClick={saveAdjust} disabled={adjustBusy || adjustPreview === null || !adjustMoved} data-testid="adjust-save">{adjustBusy ? "저장 중…" : "보정 저장"}</button>
+              </div>
+            </section>
+          ) : (
+          <>
           <label>측정 항목
             <select value={itemId ?? "adhoc"} onChange={(event) => selectItem(event.target.value)} data-testid="measurement-item-select">
               <option value="adhoc">직접 지정 (항목 없음)</option>
@@ -527,7 +805,15 @@ export function MeasurementPage() {
           )}
           <label>메모<textarea value={note} onChange={(event) => setNote(event.target.value)} /></label>
           {error && <p role="alert">{error}</p>}
-          <div className="actions"><button type="button" onClick={resetDraft} data-testid="measurement-reset">초기화</button><button type="button" onClick={save} disabled={draft.length !== needed || saving} data-testid="measurement-save">{saving ? "저장 중…" : "측정 저장"}</button></div>
+          <div className="actions">
+            {/* Undoing one click beats starting the drawing over, which is all
+                the old reset offered for a single misplaced point. */}
+            <button type="button" onClick={undoPoint} disabled={draft.length === 0} data-testid="measurement-undo">마지막 점 취소</button>
+            <button type="button" onClick={resetDraft} disabled={draft.length === 0} data-testid="measurement-reset">초기화</button>
+            <button type="button" onClick={save} disabled={draft.length !== needed || saving} data-testid="measurement-save">{saving ? "저장 중…" : "측정 저장"}</button>
+          </div>
+          </>
+          )}
         </aside>
       </div>
       <div className="measurement-tables">
@@ -600,17 +886,36 @@ export function MeasurementPage() {
                           {item.label ? `${item.label} · ` : ""}{TYPE_LABEL[item.measurement_type]} · {formatValue(item.value, item.unit)}
                           {item.source === "auto" ? (
                             <span className="source-badge auto" data-testid="measurement-source" title="자동 추출값 (사람이 검증하지 않음)">
-                              자동{item.confidence !== null ? ` ${Math.round(item.confidence * 100)}%` : ""}
+                              {/* Once a person has moved the points the extractor's
+                                  confidence describes geometry that is no longer the
+                                  stored one, so it is shown with the original value
+                                  below instead of beside the corrected one. */}
+                              자동{item.adjusted_at === null && item.confidence !== null ? ` ${Math.round(item.confidence * 100)}%` : ""}
                             </span>
                           ) : (
                             <span className="source-badge manual" data-testid="measurement-source">수동</span>
                           )}
+                          {item.adjusted_at !== null && (
+                            <span className="source-badge adjusted" data-testid="measurement-adjusted" title="사람이 점을 옮겨 보정한 값">보정됨</span>
+                          )}
                         </strong>
+                        {item.adjusted_at !== null && item.original_value !== null && (
+                          <span className="saved-note" data-testid="measurement-original">
+                            처음 값 {formatValue(item.original_value, item.unit)}
+                            {item.source === "auto" && item.confidence !== null
+                              ? ` (자동 ${Math.round(item.confidence * 100)}%)`
+                              : ""}
+                            {" · "}
+                            {new Date(item.adjusted_at).toLocaleString()} 보정
+                          </span>
+                        )}
                         {item.note && <span className="saved-note">{item.note}</span>}
                         {editId === item.id && (
                           <div className="note-editor" onClick={(event) => event.stopPropagation()}>
-                            {/* Only the annotation is editable: points, type, value and
-                                calibration stay as measured (RES-007). */}
+                            {/* This editor covers the annotation only. Points are
+                                correctable, but through the '보정' tool, which
+                                revalues the measurement and keeps what it first
+                                read; type and calibration stay as measured. */}
                             <label>
                               측정 항목 명
                               <input value={edit.label} maxLength={255} autoFocus onChange={(event) => setEdit((current) => ({ ...current, label: event.target.value }))} data-testid="label-input" />
@@ -619,7 +924,7 @@ export function MeasurementPage() {
                               메모
                               <textarea value={edit.note} onChange={(event) => setEdit((current) => ({ ...current, note: event.target.value }))} data-testid="note-input" />
                             </label>
-                            <p className="note-hint">점·종류·값·보정값은 측정한 그대로 유지됩니다.</p>
+                            <p className="note-hint">라벨과 메모만 바뀝니다. 점의 위치는 '보정'에서 옮기고, 종류·보정값(nm/pixel)은 측정한 그대로 유지됩니다.</p>
                             <div className="actions">
                               <button type="button" onClick={() => setEditId(null)} data-testid="note-cancel">취소</button>
                               <button type="button" onClick={() => saveAnnotation(item.id)} disabled={savingEdit} data-testid="note-save">{savingEdit ? "저장 중…" : "라벨·메모 저장"}</button>
@@ -629,6 +934,7 @@ export function MeasurementPage() {
                       </td>
                       <td className="saved-time">{new Date(item.created_at).toLocaleString()}</td>
                       <td className="table-actions">
+                        <button type="button" className="edit-note" onClick={(event) => { event.stopPropagation(); startAdjust(item); }} disabled={adjustId === item.id} data-testid="adjust-measurement" aria-label={`${item.label ?? TYPE_LABEL[item.measurement_type]} 측정 위치 보정`}>보정</button>
                         <button type="button" className="edit-note" onClick={(event) => { event.stopPropagation(); setEditId(item.id); setEdit({ label: item.label ?? "", note: item.note ?? "" }); }} data-testid="edit-annotation" aria-label={`${item.label ?? TYPE_LABEL[item.measurement_type]} 측정 라벨과 메모 수정`}>라벨·메모</button>
                         <button type="button" className="delete-measurement" onClick={(event) => { event.stopPropagation(); setPending({ kind: "measurement", id: item.id }); }} data-testid="delete-measurement" aria-label={`${item.label ?? TYPE_LABEL[item.measurement_type]} 측정 삭제`}>삭제</button>
                       </td>
@@ -642,7 +948,7 @@ export function MeasurementPage() {
       </div>
       <section className="segmentation-panel table-panel" aria-labelledby="segmentation-heading" data-testid="segmentation-panel">
         <h2 id="segmentation-heading">자동 분석 (세그멘테이션 · 특징)</h2>
-        <p className="note-hint">원본 이미지는 절대 수정하지 않습니다. 결과는 모두 파생 파일로만 저장됩니다. 자동 측정값은 사람이 검증한 값이 아니며, 저장된 측정 목록에서 '자동'으로 구분됩니다.</p>
+        <p className="note-hint">원본 이미지는 절대 수정하지 않습니다. 결과는 모두 파생 파일로만 저장됩니다. 자동 측정값은 사람이 검증한 값이 아니며, 저장된 측정 목록에서 '자동'으로 구분됩니다. 다시 실행하면 자동 측정은 새로 계산되지만, 직접 보정한 항목은 그대로 유지됩니다.</p>
         {segError && <p role="alert" data-testid="segmentation-error">{segError}</p>}
         <div className="actions">
           <button type="button" className="button primary" onClick={runSegmentation} disabled={segRunning} data-testid="run-segmentation">

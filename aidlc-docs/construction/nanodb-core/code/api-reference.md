@@ -30,6 +30,8 @@
 | --- | --- |
 | `IMAGE_NOT_FOUND`, `IMAGE_FILE_NOT_FOUND` | 이미지 또는 저장 파일을 찾을 수 없음 |
 | `MEASUREMENT_NOT_FOUND` | 해당 이미지에 그 측정이 없음 |
+| `INVALID_POINT_COUNT` | 보정한 점 개수가 저장된 측정 종류와 다름 |
+| `MEASUREMENT_NOT_ADJUSTED` | 보정한 적이 없어 되돌릴 대상이 없음(409) |
 | `REQUIRED_FIELD` | 필수 메타데이터 문자열 누락 |
 | `UNSUPPORTED_IMAGE_FORMAT`, `INVALID_IMAGE_FILE`, `INVALID_IMAGE_DIMENSIONS` | 디코딩 불가·미지원 형식·비정상 크기 |
 | `EMPTY_FILE`, `FILE_TOO_LARGE` | 빈 파일 또는 20MB 초과 |
@@ -114,12 +116,34 @@ PostgreSQL(`SELECT 1`)과 upload root 읽기/쓰기 준비를 확인한다. 성�
 
 ### `PATCH /api/images/{image_id}/measurements/{measurement_id}`
 
-저장된 측정의 라벨과 메모를 함께 교체한다. 좌표·항목·픽셀 거리·계산값·보정값은 측정
-근거이므로 변경하지 않는다.
+저장된 측정의 라벨과 메모를 함께 교체한다. 좌표는 이 경로로 바꾸지 않는다(아래
+`.../geometry` 참고). 항목·종류·보정값·계산값은 이 경로에서 변경하지 않는다.
 
 - 요청 `MeasurementAnnotationSchema`: `label`(선택, ≤255자), `note`(선택, ≤4000자).
   둘 다 전체 교체이며, 비우면 `null`로 저장한다.
 - 성공: `MeasurementView`. 실패: `IMAGE_NOT_FOUND`, `MEASUREMENT_NOT_FOUND`.
+
+### `PATCH /api/images/{image_id}/measurements/{measurement_id}/geometry`
+
+저장된 측정의 점 위치를 옮기고, 옮긴 점으로부터 값을 다시 계산한다. 자동 추출이 항상
+정확하지는 않고 손으로 찍은 점도 빗나갈 수 있으므로 좌표는 보정 가능하다. 다만 보정은
+기록으로 남는다: 첫 보정 때 그 측정이 처음 가졌던 좌표와 값을 `original_points`,
+`original_value`에 보존하고 `adjusted_at`을 기록한다(이후 보정은 이 최초 기록을 덮어쓰지
+않는다). 종류와 보정값(nm/pixel)은 바꿀 수 없고, 값은 요청에서 받지 않고 서버가 저장된
+점으로부터 계산한다 — export 검증기가 재계산하는 것과 같은 경로다.
+
+- 요청 `MeasurementGeometrySchema`: `points`(필수). 개수는 저장된 종류와 일치해야 한다
+  (길이 2개, 각도·곡률 3개).
+- 성공: `MeasurementView`. 실패: `IMAGE_NOT_FOUND`, `MEASUREMENT_NOT_FOUND`,
+  `INVALID_POINT_COUNT`, `POINT_OUT_OF_BOUNDS`, `IDENTICAL_POINTS`.
+
+### `POST /api/images/{image_id}/measurements/{measurement_id}/geometry/reset`
+
+보정을 되돌려 그 측정이 처음 가졌던 좌표와 값으로 복원하고 보정 기록을 지운다. 보정은
+사람의 판단이므로 되돌릴 수 있어야 한다.
+
+- 성공: `MeasurementView`. 실패: `IMAGE_NOT_FOUND`, `MEASUREMENT_NOT_FOUND`,
+  `MEASUREMENT_NOT_ADJUSTED`(409, 아직 보정한 적이 없음).
 
 ### `DELETE /api/images/{image_id}/measurements/{measurement_id}`
 

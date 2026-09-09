@@ -198,3 +198,59 @@ def test_uniform_class_region_reports_no_feature_region(
         features.run(image_id, FeatureParams(target_class=5, min_area=1_000_000))
 
     assert info.value.code == "NO_FEATURE_REGION"
+
+
+def test_rerun_keeps_an_auto_measurement_a_person_corrected(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+    tmp_path,  # type: ignore[no-untyped-def]
+) -> None:
+    """A correction is human work the extractor cannot reproduce.
+
+    Auto rows are replaced on a re-run, but once an operator has moved the
+    points of one, wiping it would destroy their judgement silently -- and they
+    would only notice by the value changing back.
+    """
+    _, factory = database_engine
+    image_id, _ = _register_structured_image(factory, tmp_path)
+    segmentation, features = _services(factory, tmp_path)
+    segmentation.run(image_id, SegmentationParams(classes=2))
+    measurements = MeasurementService(factory)
+
+    first = features.run(image_id, FeatureParams(target_class=0))
+    corrected_target = next(
+        m for m in first.measurements if m.measurement_type is MeasurementType.LENGTH
+    )
+    untouched_ids = {m.id for m in first.measurements} - {corrected_target.id}
+    corrected = measurements.update_geometry(
+        image_id,
+        corrected_target.id,
+        points=(Point(12.0, 30.0), Point(64.0, 30.0)),
+    )
+
+    second = features.run(image_id, FeatureParams(target_class=0))
+
+    rows = MeasurementRepository(db_session).list_by_image(image_id)
+    stored = {m.id: m for m in rows}
+    assert corrected.id in stored
+    assert stored[corrected.id].points == corrected.points
+    assert stored[corrected.id].is_adjusted
+    # Every auto row the operator had not touched was still replaced.
+    assert untouched_ids.isdisjoint(stored)
+    assert second.preserved_adjusted == 1
+
+
+def test_rerun_reports_no_preserved_rows_when_nothing_was_corrected(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+    tmp_path,  # type: ignore[no-untyped-def]
+) -> None:
+    _, factory = database_engine
+    image_id, _ = _register_structured_image(factory, tmp_path)
+    segmentation, features = _services(factory, tmp_path)
+    segmentation.run(image_id, SegmentationParams(classes=2))
+
+    features.run(image_id, FeatureParams(target_class=0))
+    second = features.run(image_id, FeatureParams(target_class=0))
+
+    assert second.preserved_adjusted == 0

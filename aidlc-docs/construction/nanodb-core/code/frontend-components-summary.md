@@ -54,6 +54,14 @@ An unknown address renders `NotFoundPage` through a catch-all route rather than 
 - Selection keeps the measurement's own colour — the tie to its row in the table — and is marked by a white under-stroke plus painting it last; the rest fade to 45%.
 - The viewer toolbar can hide the shapes, hide the captions, or draw only the selected measurement, which is what makes a single value legible on a region carrying six of them.
 
+### Correcting and drawing (added 2026-09-09)
+
+- A saved measurement's points are correctable, because automatic extraction is not exact and a hand-placed point can miss. `보정` puts grab handles on the selected measurement's points; the shape and its caption follow the drag, and the panel shows the previewed value, the stored value and the difference. Nothing is written until `보정 저장`, which sends only the points — the server revalues them.
+- Handles are focusable and take arrow keys (1 original pixel, 10 with Shift). At the zoom where a correction matters, one pixel is smaller than the shake in a hand, so dragging alone cannot place a point exactly.
+- What a measurement *is* stays fixed: type and calibration are not editable, and the value is never accepted from the client. This narrows RES-007 from "the coordinates are immutable" to "the coordinates are correctable, and every correction is recorded and reversible" — `보정됨` marks the row, the first reading stays beside it, and `처음 값으로` restores it.
+- Re-running feature extraction replaces auto measurements but leaves corrected ones standing, and the status line says how many were kept — otherwise the safe move after pressing the button is to re-check every value.
+- Drawing got the same treatment: the shape follows the cursor while points are placed, a placed point can be dragged before saving, `마지막 점 취소` takes back one click instead of the whole drawing, and Escape abandons a draft (or an unsaved correction).
+
 ## Accessibility and automation contract
 
 - Navigation, links, form controls, buttons, headings, lists, and status text use native semantic elements.

@@ -93,7 +93,21 @@ export interface MeasurementView {
   /** 0..1 self-estimate for auto measurements; null for manual. */
   confidence: number | null;
   reference_status: "unreviewed";
+  /**
+   * Correction trail. `points` and `value` always read as the measurement
+   * stands now; once `adjusted_at` is set a person has moved the points and
+   * these hold what it read when first produced, so the machine's answer stays
+   * comparable. All three are null while the measurement is uncorrected.
+   */
+  original_points: Point[] | null;
+  original_value: number | null;
+  adjusted_at: string | null;
   created_at: string;
+}
+
+/** New positions for a saved measurement's points; the server revalues them. */
+export interface MeasurementGeometryInput {
+  points: Point[];
 }
 
 /** Auto values are never presented as verified: the two are kept distinct. */
@@ -180,6 +194,8 @@ export interface FeatureExtractionResultView {
   region_clipped: boolean;
   measurements: MeasurementView[];
   skipped: SkippedFeature[];
+  /** Auto measurements a person had corrected, which this run left standing. */
+  preserved_adjusted: number;
 }
 
 export interface FeatureExtractionInput {

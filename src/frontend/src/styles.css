@@ -272,9 +272,12 @@ h2 { letter-spacing: -0.02em; font-size: 1.5rem; margin: 0 0 6px; }
 .batch-feature-toggle { display: inline-flex; align-items: center; gap: 8px; }
 .batch-result { margin: 8px 0; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
 .batch-result ul { margin: 8px 0 0; padding-left: 18px; color: var(--danger); }
-.source-badge { margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; vertical-align: middle; }
+.source-badge { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; vertical-align: middle; white-space: nowrap; }
 .source-badge.manual { background: var(--accent-tint); color: var(--accent); }
 .source-badge.auto { background: #fef3c7; color: #92600a; }
+/* A value a person moved into place: no longer raw machine output, and not a
+   plain hand-drawn measurement either. */
+.source-badge.adjusted { background: #dcfce7; color: #166534; }
 .segmentation-views { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin: 12px 0; }
 .segmentation-views figure { margin: 0; }
 .segmentation-views img { width: 100%; border-radius: 10px; background: #101718; }
@@ -472,6 +475,19 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 }
 .measurement-caption.selected .caption-plate { fill: rgba(12, 17, 18, .95); stroke-width: 2.5; }
 .draft-line { stroke: #ffc24b; stroke-width: 3; stroke-dasharray: 7 4; }
+/* Grab handles for correcting a saved measurement. The visible dot stays small
+   so it does not hide the feature being aligned to; a larger transparent circle
+   takes the pointer, and is the only part of the overlay that accepts one. */
+.adjust-handle-hit { fill: transparent; stroke: none; pointer-events: auto; cursor: grab; }
+.adjust-handle-hit:active { cursor: grabbing; }
+.adjust-handle-halo { fill: rgba(255, 255, 255, .28); stroke: none; }
+.adjust-handle-dot { fill: #ffc24b; stroke: #101718; stroke-width: 2; }
+.adjust-handle.active .adjust-handle-halo { fill: rgba(255, 255, 255, .55); }
+.adjust-handle.active .adjust-handle-dot { stroke: #ffffff; stroke-width: 2.5; }
+.adjust-handle-hit:focus-visible { outline: none; }
+.adjust-handle-hit:focus-visible + *, .adjust-handle:has(:focus-visible) .adjust-handle-halo { fill: rgba(255, 194, 75, .7); }
+/* While correcting, the image is a correction surface rather than a drawing one. */
+.image-stage > img.adjusting { cursor: default; }
 .draft-point { fill: #ffc24b; }
 .measurement-controls { padding: 24px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); }
 .measurement-controls label { display: grid; gap: 7px; margin-bottom: 14px; font-weight: 700; }
@@ -479,9 +495,18 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .measurement-controls textarea { min-height: 80px; }
 .measurement-controls button { padding: 10px 12px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); color: var(--accent); font-weight: 700; cursor: pointer; }
 .measurement-controls button:disabled { opacity: .45; cursor: not-allowed; }
+.measurement-controls button.primary { background: var(--accent); color: #fff; }
+.adjust-panel h2 { margin: 0 0 10px; font-size: 1.05rem; }
+.adjust-panel dl { display: grid; gap: 6px; margin: 0 0 12px; }
+.adjust-panel dl div { display: grid; grid-template-columns: 88px 1fr; gap: 8px; }
+.adjust-panel dt { color: var(--ink-muted); font-size: 0.85rem; }
+.adjust-panel dd { margin: 0; font-weight: 700; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.adjust-panel .actions { display: flex; flex-wrap: wrap; gap: 8px; }
 /* Full-width tables below the image, on the light surface so the dark text is
    readable (the viewer panel is near-black). */
-.measurement-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 28px; align-items: start; }
+/* The saved list carries more per row than the item catalogue (value, source,
+   correction trail, three actions), so it gets the wider half. */
+.measurement-tables { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 24px; margin-top: 28px; align-items: start; }
 .table-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; color: var(--ink); }
 .table-panel h2 { margin: 0 0 12px; }
 .table-panel > p { color: var(--ink-muted); }
@@ -498,7 +523,15 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .items-add select { padding: 9px 10px; border: 1px solid #b7bdc8; border-radius: 8px; font: inherit; }
 .table-panel [role="alert"] { color: var(--danger); margin: 10px 0 0; }
 .saved-table .swatch-col { width: 48px; }
+.swatch-col { white-space: nowrap; }
 .measurement-swatch { display: inline-block; width: 18px; height: 18px; border-radius: 5px; border: 1px solid rgba(0,0,0,0.2); }
+/* The measurement column absorbs whatever the other three do not need, so
+   adding an action button does not wrap the measurement name one syllable per
+   line. The swatch, timestamp and action cells size to their own content --
+   the actions never wrap, or each button ends up on a row of its own. */
+.saved-table th:nth-child(2), .saved-table td:nth-child(2) { width: 100%; }
+.saved-table .table-actions { flex-wrap: nowrap; justify-content: flex-end; }
+.saved-table .table-actions button { padding: 6px 10px; font-size: 0.78rem; }
 .saved-row { cursor: pointer; }
 .saved-row:hover { background: var(--accent-track); }
 .saved-row:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }

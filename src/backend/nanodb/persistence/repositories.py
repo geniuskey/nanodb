@@ -72,6 +72,13 @@ def _to_measurement(model: MeasurementModel) -> Measurement:
         note=model.note,
         source=MeasurementSource(model.source),
         confidence=model.confidence,
+        original_points=(
+            tuple(Point(float(x), float(y)) for x, y in model.original_points)
+            if model.original_points is not None
+            else None
+        ),
+        original_value=model.original_value,
+        adjusted_at=model.adjusted_at,
         created_at=model.created_at,
     )
 
@@ -428,6 +435,17 @@ class MeasurementRepository:
             _to_measurement(model) for model in self._session.scalars(statement)
         )
 
+    def find(self, image_id: int, measurement_id: int) -> Measurement | None:
+        """One measurement, scoped to its image.
+
+        A measurement that belongs to a different image is reported as missing,
+        so callers cannot reach across images by guessing ids.
+        """
+        model = self._session.get(MeasurementModel, measurement_id)
+        if model is None or model.image_id != image_id:
+            return None
+        return _to_measurement(model)
+
     def update_annotation(
         self,
         image_id: int,
@@ -477,22 +495,90 @@ class MeasurementRepository:
             count += 1
         return count
 
-    def delete_auto_by_image(self, image_id: int) -> int:
-        """Delete only the auto (feature-extractor) measurements for an image.
+    def delete_auto_by_image(self, image_id: int) -> tuple[int, int]:
+        """Delete the replaceable auto measurements of an image.
 
         Human-drawn ('manual') measurements are never touched, so re-running the
         feature extractor replaces machine output without erasing evidence a
-        person recorded.
+        person recorded. An auto measurement whose points a person has corrected
+        is that same evidence: the correction is human work that the extractor
+        cannot reproduce, so it is preserved too.
+
+        Returns ``(deleted, preserved)`` so the caller can tell the operator
+        that their corrections survived the re-run.
         """
-        count = 0
+        deleted = 0
+        preserved = 0
         statement = select(MeasurementModel).where(
             MeasurementModel.image_id == image_id,
             MeasurementModel.source == MeasurementSource.AUTO.value,
         )
         for model in self._session.scalars(statement):
+            if model.adjusted_at is not None:
+                preserved += 1
+                continue
             self._session.delete(model)
-            count += 1
-        return count
+            deleted += 1
+        return deleted, preserved
+
+    def update_geometry(
+        self,
+        image_id: int,
+        measurement_id: int,
+        *,
+        points: tuple[Point, ...],
+        result: MeasurementResult,
+        adjusted_at: datetime,
+    ) -> Measurement | None:
+        """Move a measurement's points and store the recomputed value.
+
+        The first correction copies the current points and value into the
+        ``original_*`` columns, so what the extractor (or the first hand
+        placement) produced is still readable afterwards; later corrections
+        leave that first record alone. Type and calibration are never writable:
+        the value stays derivable from the stored points, which is what the
+        export validator recomputes.
+
+        Returns ``None`` when the measurement is missing or belongs to a
+        different image, so callers cannot edit across images by guessing ids.
+        """
+        model = self._session.get(MeasurementModel, measurement_id)
+        if model is None or model.image_id != image_id:
+            return None
+        if model.adjusted_at is None:
+            model.original_points = model.points
+            model.original_value = model.value
+        model.points = [[point.x, point.y] for point in points]
+        model.value = result.value
+        model.unit = result.unit
+        model.adjusted_at = adjusted_at
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_measurement(model)
+
+    def revert_geometry(
+        self,
+        image_id: int,
+        measurement_id: int,
+    ) -> Measurement | None:
+        """Put a corrected measurement back to the geometry it was produced with.
+
+        Returns ``None`` when the measurement is missing, belongs to a different
+        image, or was never corrected -- there is nothing to revert to.
+        """
+        model = self._session.get(MeasurementModel, measurement_id)
+        if model is None or model.image_id != image_id:
+            return None
+        if model.adjusted_at is None or model.original_points is None:
+            return None
+        model.points = model.original_points
+        model.value = model.original_value if model.original_value is not None else 0.0
+        model.original_points = None
+        model.original_value = None
+        model.adjusted_at = None
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_measurement(model)
 
     def delete_all(self) -> None:
         for model in self._session.scalars(select(MeasurementModel)):

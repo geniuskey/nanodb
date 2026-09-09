@@ -111,6 +111,12 @@ class MeasurementModel(Base):
             "confidence IS NULL OR (confidence >= 0 AND confidence <= 1)",
             name="ck_measurements_confidence_range",
         ),
+        CheckConstraint(
+            "(adjusted_at IS NULL AND original_points IS NULL "
+            "AND original_value IS NULL) OR (adjusted_at IS NOT NULL "
+            "AND original_points IS NOT NULL AND original_value IS NOT NULL)",
+            name="ck_measurements_adjustment_complete",
+        ),
         Index("ix_measurements_image_created", "image_id", "created_at", "id"),
     )
 
@@ -140,6 +146,19 @@ class MeasurementModel(Base):
         String(16), nullable=False, server_default="manual"
     )
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Correction trail. 'points'/'value' always hold what the measurement reads
+    # now; these hold what it read when first produced, written once on the
+    # first correction so the machine's (or the first hand-placed) answer is
+    # never lost. All three are NULL while the measurement is uncorrected.
+    # ``none_as_null`` so clearing the trail writes SQL NULL rather than a JSON
+    # 'null', which would satisfy the column but not the check constraint below.
+    original_points: Mapped[list[list[float]] | None] = mapped_column(
+        JSONB(none_as_null=True), nullable=True
+    )
+    original_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    adjusted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

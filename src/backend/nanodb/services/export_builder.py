@@ -48,6 +48,16 @@ def _data_json(snapshot: ExportSnapshot) -> str:
                 "note": item.note,
                 "measurement_method": item.measurement_method,
                 "reference_status": item.reference_status.value,
+                # Null unless a person corrected the points after the
+                # measurement was produced; then the original geometry and
+                # value are carried alongside so both readings are available.
+                "adjusted_at": _iso(item.adjusted_at) if item.adjusted_at else None,
+                "original_points": (
+                    [[point.x, point.y] for point in item.original_points]
+                    if item.original_points is not None
+                    else None
+                ),
+                "original_value": item.original_value,
                 "created_at": _iso(item.created_at),
             }
             for item in snapshot.measurements
@@ -72,7 +82,13 @@ unit is nm for length and curvature, deg for angle.
 Stored precision is used for calculations.
 Display values use decimal half-up to 2 places.
 item_id links to a per-product measurement item definition, or is null for ad-hoc.
-measurement_method is manual and reference_status is unreviewed.
+measurement_method is manual for a human-drawn measurement and auto for one derived
+by the feature extractor from a segmentation; reference_status is unreviewed.
+adjusted_at is null unless a person corrected the points after the measurement was
+produced. When it is set, points and value read as corrected and original_points and
+original_value carry what the measurement read before, so the two are comparable.
+Recompute value from points in every case: it is always derived from the points
+stored alongside it.
 Measurements are references, not certified ground truth or automatic boundary detection.
 
 Every measurement is annotated by its own two fields, both optional and both free

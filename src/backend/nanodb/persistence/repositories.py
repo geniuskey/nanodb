@@ -296,6 +296,37 @@ class ImageRepository:
         model = self._session.get(ImageModel, image_id)
         return _to_image(model) if model else None
 
+    def update(
+        self,
+        image_id: int,
+        *,
+        image_type: str,
+        product_id: str,
+        lot_id: str,
+        wafer_id: str,
+        calibration_nm_per_pixel: float,
+        process_step: str | None,
+        note: str | None,
+    ) -> Image | None:
+        """Update an image's editable information.
+
+        The file, its stored keys and pixel dimensions are left untouched: only
+        the metadata a person supplied at registration is writable.
+        """
+        model = self._session.get(ImageModel, image_id)
+        if model is None:
+            return None
+        model.image_type = image_type
+        model.product_id = product_id
+        model.lot_id = lot_id
+        model.wafer_id = wafer_id
+        model.process_step = process_step
+        model.note = note
+        model.calibration_nm_per_pixel = calibration_nm_per_pixel
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_image(model)
+
     def count(self) -> int:
         return self._session.scalar(select(func.count(ImageModel.id))) or 0
 

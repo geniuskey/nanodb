@@ -25,6 +25,7 @@ from nanodb.api.schemas import (
     FeatureExtractionResultView,
     ImageDetailView,
     ImageListView,
+    ImageUpdateSchema,
     ImageView,
     MeasurementAnnotationSchema,
     MeasurementGeometrySchema,
@@ -43,7 +44,7 @@ from nanodb.api.schemas import (
 )
 from nanodb.domain.entities import Point
 from nanodb.services.feature_service import FeatureParams
-from nanodb.services.image_service import ImageRegistration
+from nanodb.services.image_service import ImageRegistration, ImageUpdate
 from nanodb.services.measurement_service import MeasurementInput
 from nanodb.services.segmentation_service import SegmentationParams
 
@@ -132,6 +133,27 @@ def image_detail(image_id: int, request: Request) -> ImageDetailView:
         **image_view(image).model_dump(),
         measurements=[measurement_view(item) for item in measurements],
     )
+
+
+@router.patch("/images/{image_id}", response_model=ImageView)
+def update_image(
+    image_id: int,
+    payload: ImageUpdateSchema,
+    request: Request,
+) -> ImageView:
+    image = request.app.state.image_service.update(
+        image_id,
+        ImageUpdate(
+            image_type=payload.image_type,
+            product_id=payload.product_id,
+            lot_id=payload.lot_id,
+            wafer_id=payload.wafer_id,
+            calibration_nm_per_pixel=payload.calibration_nm_per_pixel,
+            process_step=payload.process_step,
+            note=payload.note,
+        ),
+    )
+    return image_view(image)
 
 
 @router.get("/images/{image_id}/file")

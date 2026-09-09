@@ -98,6 +98,21 @@ a, button, [role="button"], input, select, textarea, summary, [tabindex] {
 .tab.active { background: var(--accent-track); }
 .tab.active .tab-label { color: var(--accent); }
 
+/* The disclosure button only appears once the tabs no longer fit (see the
+   narrow-screen media query); on desktop the tabs are always inline. */
+.nav-toggle { display: none; }
+.nav-toggle-bars, .nav-toggle-bars::before, .nav-toggle-bars::after {
+  display: block; width: 18px; height: 2px; border-radius: 2px;
+  background: var(--ink); transition: transform 0.18s ease, top 0.18s ease;
+}
+.nav-toggle-bars { position: relative; }
+.nav-toggle-bars::before, .nav-toggle-bars::after { content: ""; position: absolute; left: 0; }
+.nav-toggle-bars::before { top: -6px; }
+.nav-toggle-bars::after { top: 6px; }
+.app-header.menu-open .nav-toggle-bars { background: transparent; }
+.app-header.menu-open .nav-toggle-bars::before { top: 0; transform: rotate(45deg); }
+.app-header.menu-open .nav-toggle-bars::after { top: 0; transform: rotate(-45deg); }
+
 /* ---------- Layout ---------- */
 main { width: 100%; margin: 0; padding: 48px 32px 64px; }
 /* The home page is a reading/intro page, not a tool screen: cap its content
@@ -561,6 +576,13 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .image-facts dl div { display: grid; grid-template-columns: 88px 1fr; gap: 8px; }
 .image-facts dt { color: var(--ink-muted); font-size: 0.85rem; }
 .image-facts dd { margin: 0; font-weight: 700; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.image-facts-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.image-facts-head h2 { margin: 0; }
+.image-facts-head .button { padding: 6px 12px; font-size: 0.82rem; }
+/* The edit form reuses the registration form's field styling but sits in the
+   narrow controls column, so it stacks tighter than the full register page. */
+.image-edit-form { gap: 12px; }
+.image-edit-form .actions { display: flex; gap: 8px; margin-top: 4px; }
 
 /* Success feedback (UIX-002). Failures keep role="alert" and the danger colour. */
 .status-banner {
@@ -684,6 +706,10 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .data-table th, .data-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
 .data-table th { font-size: 0.8rem; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.02em; }
 .data-table .table-empty { color: var(--ink-muted); text-align: center; }
+/* Keep the segmentation stats on one line each and let the whole table scroll
+   sideways on narrow screens rather than stacking "클래스" letter by letter. */
+.table-scroll { overflow-x: auto; }
+.seg-class-table th, .seg-class-table td { white-space: nowrap; }
 .data-table input, .data-table select { padding: 7px 8px; border: 1px solid #b7bdc8; border-radius: 8px; font: inherit; }
 .table-actions { display: flex; gap: 6px; white-space: nowrap; }
 .table-actions button { padding: 6px 12px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); color: var(--accent); font-weight: 700; font-size: 0.8rem; cursor: pointer; }
@@ -762,7 +788,19 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
   .image-card { grid-template-columns: 1fr; }
   .recent-grid { grid-template-columns: repeat(2, 1fr); }
   .hero-card { padding: 24px; }
-  .app-shell > .app-header { flex-direction: column; align-items: flex-start; gap: 12px; padding: 12px 16px; }
+  /* Collapse the tabs behind a hamburger: the brand and the toggle share the
+     top row, the tabs and the status pill drop into the opened panel. */
+  .app-shell > .app-header { flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 12px 16px; }
+  .nav-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-left: auto; width: 44px; height: 40px;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--surface); cursor: pointer;
+  }
+  .tabbar { order: 3; flex-basis: 100%; flex-direction: column; gap: 4px; margin-right: 0; display: none; }
+  .app-header.menu-open .tabbar { display: flex; }
+  .tab { padding: 12px; border-radius: 10px; }
+  .status-pill { order: 4; display: none; }
+  .app-header.menu-open .status-pill { display: inline-flex; align-self: flex-start; }
   main { padding: 32px 16px 48px; }
 }
 
@@ -782,11 +820,24 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .combobox-create-label { color: var(--accent); font-weight: 800; }
 
 /* ---------- Catalog management ---------- */
-.catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; align-items: stretch; }
+/* A narrower track lets all five categories share one row on a wide screen
+   instead of leaving the last card stranded on a line of its own. */
+.catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; align-items: stretch; }
 .catalog-card { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px; min-width: 0; }
 .catalog-card h2 { margin: 0 0 14px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
 .catalog-count { margin-left: auto; color: var(--ink-muted); font-weight: 700; font-size: 0.78rem; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
-.catalog-values { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 6px; max-height: 300px; overflow-y: auto; }
+/* Scroll shadows (Lea Verou's technique): the top/bottom shadow only shows
+   while there is more of the list to scroll to, hinting the hidden values. */
+.catalog-values {
+  list-style: none; margin: 0 0 14px; padding: 2px 0; display: grid; gap: 6px;
+  max-height: 300px; overflow-y: auto;
+  background:
+    linear-gradient(var(--surface) 30%, transparent) top / 100% 18px no-repeat,
+    linear-gradient(transparent, var(--surface) 70%) bottom / 100% 18px no-repeat,
+    radial-gradient(farthest-side at 50% 0, rgba(25, 26, 44, 0.12), transparent) top / 100% 7px no-repeat,
+    radial-gradient(farthest-side at 50% 100%, rgba(25, 26, 44, 0.12), transparent) bottom / 100% 7px no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
 .catalog-value { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
 .catalog-value-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .catalog-empty { color: var(--ink-muted); font-size: 0.85rem; padding: 6px 2px; }

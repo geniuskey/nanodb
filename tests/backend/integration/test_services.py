@@ -14,7 +14,7 @@ from nanodb.domain.errors import DomainError
 from nanodb.persistence.repositories import ImageRepository, MeasurementRepository
 from nanodb.services.catalog_service import CatalogService
 from nanodb.services.context_export_service import ContextExportService
-from nanodb.services.image_service import ImageRegistration, ImageService
+from nanodb.services.image_service import ImageRegistration, ImageService, ImageUpdate
 from nanodb.services.measurement_service import MeasurementInput, MeasurementService
 from nanodb.services.summary_service import SummaryService
 from PIL import Image as PillowImage
@@ -278,6 +278,92 @@ def test_image_delete_rejects_missing_image(
 
     with pytest.raises(DomainError) as caught:
         service.delete(999)
+
+    assert caught.value.code == "IMAGE_NOT_FOUND"
+
+
+def test_image_update_saves_fields_grows_catalog_and_spares_existing_values(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    db_session: Session,
+    tmp_path: Path,
+) -> None:
+    _, factory = database_engine
+    image_service = ImageService(
+        factory, FileStore(tmp_path), ImageDecoder(), DerivedStore(tmp_path)
+    )
+    content = BytesIO()
+    PillowImage.new("L", (1000, 800)).save(content, format="PNG")
+    content.seek(0)
+    image = image_service.register(
+        content,
+        ImageRegistration(
+            original_filename="wafer.png",
+            image_type="SEM",
+            product_id="P",
+            lot_id="L",
+            wafer_id="W",
+            calibration_nm_per_pixel=0.2,
+        ),
+    )
+    # A measurement made under the original calibration: 300px -> 60nm.
+    existing = MeasurementService(factory).create(image.id, length_input(300))
+    assert existing.value == 60
+
+    updated = image_service.update(
+        image.id,
+        ImageUpdate(
+            image_type="  TEM  ",
+            product_id="  P2  ",
+            lot_id="  L2  ",
+            wafer_id="  W2  ",
+            calibration_nm_per_pixel=0.5,
+            process_step="  Gate Etch  ",
+            note="  재보정 완료  ",
+        ),
+    )
+
+    # Fields are trimmed and persisted; the file and pixel size are untouched.
+    assert updated.image_type == "TEM"
+    assert updated.product_id == "P2"
+    assert updated.process_step == "Gate Etch"
+    assert updated.note == "재보정 완료"
+    assert updated.calibration_nm_per_pixel == 0.5
+    assert updated.original_filename == "wafer.png"
+    assert updated.pixel_width == 1000
+
+    # The reload reflects the change, the new values joined the catalog, and the
+    # measurement taken earlier keeps the value it was computed with.
+    reloaded = image_service.get_image(image.id)
+    assert reloaded.image_type == "TEM"
+    values = {option.value for option in CatalogService(factory).list_all()}
+    assert {"TEM", "P2", "L2", "W2", "Gate Etch"} <= values
+    kept = MeasurementRepository(db_session).list_by_image(image.id)
+    assert kept[0].value == 60
+    assert kept[0].calibration_nm_per_pixel == 0.2
+    # A fresh measurement now uses the corrected calibration: 300px -> 150nm.
+    assert MeasurementService(factory).create(image.id, length_input(300)).value == 150
+
+
+def test_image_update_rejects_missing_image(
+    database_engine: tuple[Engine, sessionmaker[Session]],
+    tmp_path: Path,
+) -> None:
+    _, factory = database_engine
+    service = ImageService(
+        factory, FileStore(tmp_path), ImageDecoder(), DerivedStore(tmp_path)
+    )
+
+    with pytest.raises(DomainError) as caught:
+        service.update(
+            999,
+            ImageUpdate(
+                image_type="TEM",
+                product_id="P",
+                lot_id="L",
+                wafer_id="W",
+                calibration_nm_per_pixel=0.2,
+            ),
+        )
 
     assert caught.value.code == "IMAGE_NOT_FOUND"
 

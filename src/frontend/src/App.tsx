@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, Route, Routes, useLocation } from "react-router-dom";
 
 import logo from "../../../assets/logo/nanodb_logo_horizontal.svg";
@@ -42,17 +43,31 @@ function StatusPill() {
 function Shell() {
   const summary = useSummaryFetch();
   const { pathname } = useLocation();
+  // On narrow screens the tabs collapse behind a disclosure button; navigating
+  // (or growing the viewport back to desktop) closes it again.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => setMenuOpen(false), [pathname]);
   return (
     <SummaryContext.Provider value={summary}>
     <div className="app-shell">
       {/* The header sits before the body; give keyboard users one hop past
           it (UIX-005). */}
       <a className="skip-link" href="#main-content">본문으로 건너뛰기</a>
-      <header className="app-header">
+      <header className={menuOpen ? "app-header menu-open" : "app-header"}>
         <NavLink className="brand" to="/" aria-label="NANoDB 홈">
           <img src={logo} alt="NANoDB" />
         </NavLink>
-        <nav className="tabbar" aria-label="주요 메뉴">
+        <button
+          type="button"
+          className="nav-toggle"
+          aria-expanded={menuOpen}
+          aria-controls="primary-nav"
+          aria-label="주요 메뉴 열기"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span className="nav-toggle-bars" aria-hidden="true" />
+        </button>
+        <nav className="tabbar" id="primary-nav" aria-label="주요 메뉴">
           {REAL_TABS.map((tab) => (
             <NavLink
               key={tab.to}

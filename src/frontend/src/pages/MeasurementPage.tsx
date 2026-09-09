@@ -32,6 +32,7 @@ import {
   previewValue,
 } from "../measurement/geometry";
 import { MeasurementOverlay } from "../measurement/MeasurementOverlay";
+import { ImageInfoPanel } from "./ImageInfoPanel";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { StatusBanner } from "../ui/StatusBanner";
 import { useDocumentTitle } from "../ui/useDocumentTitle";
@@ -702,7 +703,6 @@ export function MeasurementPage() {
 
   return (
     <main>
-      <Link to="/images">← 목록으로</Link>
       <StatusBanner message={status} />
       <div className="measurement-layout">
         <section className="viewer-panel" aria-label="측정 이미지">
@@ -742,21 +742,12 @@ export function MeasurementPage() {
           </div>
         </section>
         <aside className="measurement-controls">
-          <section className="image-facts" aria-labelledby="image-facts-heading">
-            <h2 id="image-facts-heading">이미지 정보</h2>
-            <dl data-testid="image-facts">
-              {/* The identifying attributes used to sit in the page title bar;
-                  they belong with the rest of the image's facts. */}
-              <div><dt>종류</dt><dd data-testid="image-type">{detail.image_type}</dd></div>
-              <div><dt>Product</dt><dd>{detail.product_id}</dd></div>
-              <div><dt>Lot</dt><dd>{detail.lot_id}</dd></div>
-              <div><dt>Wafer</dt><dd>{detail.wafer_id}</dd></div>
-              <div><dt>보정값</dt><dd>{detail.calibration_nm_per_pixel} nm/pixel</dd></div>
-              <div><dt>원본 크기</dt><dd>{detail.pixel_width} × {detail.pixel_height} px</dd></div>
-              {detail.process_step && <div><dt>공정 Step</dt><dd data-testid="image-process-step">{detail.process_step}</dd></div>}
-              <div><dt>등록</dt><dd>{new Date(detail.created_at).toLocaleString()}</dd></div>
-            </dl>
-          </section>
+          <ImageInfoPanel
+            detail={detail}
+            onUpdated={(image) =>
+              setDetail((current) => (current ? { ...current, ...image } : current))
+            }
+          />
           {adjusting ? (
             <section className="adjust-panel" aria-labelledby="adjust-heading" data-testid="adjust-panel">
               <h2 id="adjust-heading">측정 보정</h2>
@@ -992,20 +983,22 @@ export function MeasurementPage() {
               <figure><img src={segmentation.map_url} alt="클래스 맵" data-testid="segmentation-map" /><figcaption>클래스 맵</figcaption></figure>
               <figure><img src={segmentation.boundary_url} alt="경계 오버레이" data-testid="segmentation-boundary" /><figcaption>경계 오버레이</figcaption></figure>
             </div>
-            <table className="data-table">
-              <thead><tr><th scope="col">클래스</th><th scope="col">픽셀</th><th scope="col">면적 비율</th><th scope="col">평균 강도</th><th scope="col">면적(nm²)</th></tr></thead>
-              <tbody>
-                {segmentation.class_stats.map((stat) => (
-                  <tr key={stat.class_index} data-testid="segmentation-class-row">
-                    <td>{stat.class_index}</td>
-                    <td>{stat.pixels.toLocaleString()}</td>
-                    <td>{(stat.area_fraction * 100).toFixed(1)}%</td>
-                    <td>{stat.mean_intensity !== null ? stat.mean_intensity.toFixed(1) : "-"}</td>
-                    <td>{stat.area_nm2 !== null ? stat.area_nm2.toFixed(1) : "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="table-scroll">
+              <table className="data-table seg-class-table">
+                <thead><tr><th scope="col">클래스</th><th scope="col">픽셀</th><th scope="col">면적 비율</th><th scope="col">평균 강도</th><th scope="col">면적(nm²)</th></tr></thead>
+                <tbody>
+                  {segmentation.class_stats.map((stat) => (
+                    <tr key={stat.class_index} data-testid="segmentation-class-row">
+                      <td>{stat.class_index}</td>
+                      <td>{stat.pixels.toLocaleString()}</td>
+                      <td>{(stat.area_fraction * 100).toFixed(1)}%</td>
+                      <td>{stat.mean_intensity !== null ? stat.mean_intensity.toFixed(1) : "-"}</td>
+                      <td>{stat.area_nm2 !== null ? stat.area_nm2.toFixed(1) : "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {segmentation.has_tagged_tiff && (
               <p><a className="button" href={`/api/images/${imageId}/tagged`} download data-testid="tagged-download">태그된 TIFF 다운로드</a></p>
             )}

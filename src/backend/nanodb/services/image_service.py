@@ -36,6 +36,23 @@ class ImageRegistration:
     note: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class ImageUpdate:
+    """The editable information of an already-registered image.
+
+    The file, its pixel dimensions and its stored keys are fixed; these are the
+    values a person typed at registration and can now correct.
+    """
+
+    image_type: str
+    product_id: str
+    lot_id: str
+    wafer_id: str
+    calibration_nm_per_pixel: float
+    process_step: str | None = None
+    note: str | None = None
+
+
 class ImageService:
     def __init__(
         self,
@@ -50,14 +67,7 @@ class ImageService:
         self._derived_store = derived_store
 
     @staticmethod
-    def _validate_registration(registration: ImageRegistration) -> None:
-        fields = {
-            "original_filename": registration.original_filename,
-            "image_type": registration.image_type,
-            "product_id": registration.product_id,
-            "lot_id": registration.lot_id,
-            "wafer_id": registration.wafer_id,
-        }
+    def _validate_fields(fields: dict[str, str], calibration: float) -> None:
         for field, value in fields.items():
             if not value.strip():
                 raise DomainError(
@@ -65,13 +75,37 @@ class ImageService:
                     f"{field} is required.",
                     field=field,
                 )
-        calibration = registration.calibration_nm_per_pixel
         if not math.isfinite(calibration) or calibration <= 0:
             raise DomainError(
                 "INVALID_CALIBRATION",
                 "Calibration must be a finite number greater than zero.",
                 field="calibration_nm_per_pixel",
             )
+
+    @classmethod
+    def _validate_registration(cls, registration: ImageRegistration) -> None:
+        cls._validate_fields(
+            {
+                "original_filename": registration.original_filename,
+                "image_type": registration.image_type,
+                "product_id": registration.product_id,
+                "lot_id": registration.lot_id,
+                "wafer_id": registration.wafer_id,
+            },
+            registration.calibration_nm_per_pixel,
+        )
+
+    @classmethod
+    def _validate_update(cls, update: ImageUpdate) -> None:
+        cls._validate_fields(
+            {
+                "image_type": update.image_type,
+                "product_id": update.product_id,
+                "lot_id": update.lot_id,
+                "wafer_id": update.wafer_id,
+            },
+            update.calibration_nm_per_pixel,
+        )
 
     def register(self, stream: BinaryIO, registration: ImageRegistration) -> Image:
         self._validate_registration(registration)
@@ -161,6 +195,47 @@ class ImageService:
         if image is None:
             raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
         return image
+
+    def update(self, image_id: int, update: ImageUpdate) -> Image:
+        """Correct an image's editable information.
+
+        The file and its pixel dimensions stay as decoded at registration; only
+        the operator-supplied metadata and calibration change. Any new catalog
+        value is remembered so it appears in the combobox next time, mirroring
+        registration. Existing measurements keep the calibration they were
+        computed with, so this never silently rewrites a stored value.
+        """
+        self._validate_update(update)
+        image_type = update.image_type.strip()
+        product_id = update.product_id.strip()
+        lot_id = update.lot_id.strip()
+        wafer_id = update.wafer_id.strip()
+        process_step = (update.process_step or "").strip() or None
+        note = (update.note or "").strip() or None
+        with self._session_factory() as session:
+            image = ImageRepository(session).update(
+                image_id,
+                image_type=image_type,
+                product_id=product_id,
+                lot_id=lot_id,
+                wafer_id=wafer_id,
+                calibration_nm_per_pixel=update.calibration_nm_per_pixel,
+                process_step=process_step,
+                note=note,
+            )
+            if image is None:
+                raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
+            catalog_values: dict[CatalogCategory, str] = {
+                CatalogCategory.IMAGE_TYPE: image_type,
+                CatalogCategory.PRODUCT_ID: product_id,
+                CatalogCategory.LOT_ID: lot_id,
+                CatalogCategory.WAFER_ID: wafer_id,
+            }
+            if process_step:
+                catalog_values[CatalogCategory.PROCESS_STEP] = process_step
+            CatalogRepository(session).ensure_many(catalog_values)
+            session.commit()
+            return image
 
     def delete(self, image_id: int) -> None:
         """Delete an image with its measurements, then its file.

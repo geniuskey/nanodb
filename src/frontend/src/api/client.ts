@@ -6,6 +6,7 @@ import type {
   ImageDetailView,
   ImageListView,
   ImageType,
+  ImageUpdateInput,
   ImageView,
   MeasurementAnnotationInput,
   MeasurementGeometryInput,
@@ -90,6 +91,12 @@ export const api = {
     return request<ImageListView[]>(`/api/images${qs ? `?${qs}` : ""}`);
   },
   getImage: (imageId: number) => request<ImageDetailView>(`/api/images/${imageId}`),
+  updateImage: (imageId: number, value: ImageUpdateInput) =>
+    request<ImageView>(`/api/images/${imageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    }),
   createMeasurement: (imageId: number, value: MeasurementCreateInput) =>
     request<MeasurementView>(`/api/images/${imageId}/measurements`, {
       method: "POST",

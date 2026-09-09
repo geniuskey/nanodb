@@ -70,8 +70,8 @@ Playwright가 자동 캡처한 실제 동작 화면입니다(캡처 시각 2026-
 ### 1. Clean setup과 locked install
 
 ```bash
-git clone https://github.com/geniuskey/nanodb_mvp.git
-cd nanodb_mvp
+git clone https://github.com/geniuskey/nanodb.git
+cd nanodb
 cp .env.example .env        # 필요 시 값 수정
 make install                # uv sync --frozen + npm ci
 make build-frontend         # dist/frontend 생성
@@ -328,7 +328,7 @@ uv run python scripts/tem_metadata.py data/samples/tem/images/tem_001.tif
 ## 저장소 구조
 
 ```text
-nanodb_mvp/
+nanodb/
 ├── src/
 │   ├── backend/nanodb/          # FastAPI app, domain, services, persistence, adapters
 │   └── frontend/                # React 19 + Vite frontend
@@ -364,7 +364,7 @@ cd docs
 npm ci                      # docs/package-lock.json 고정 설치
 npm run docs:dev            # 로컬 개발 서버
 npm run docs:build          # 정적 build → docs/.vitepress/dist
-npm run docs:preview        # build 결과 미리보기 (배포와 동일 base /nanodb_mvp/)
+npm run docs:preview        # build 결과 미리보기 (배포와 동일 base /nanodb/)
 ```
 
 Node 버전은 루트 `.nvmrc`(22.17.1)로 로컬·CI를 일치시킵니다.

@@ -8,6 +8,7 @@ import type {
   ImageType,
   ImageView,
   MeasurementAnnotationInput,
+  MeasurementGeometryInput,
   MeasurementCreateInput,
   MeasurementItemCreateInput,
   MeasurementItemUpdateInput,
@@ -130,6 +131,27 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(value),
     }),
+  // Correcting the geometry is a separate call from the annotation: it moves
+  // evidence, the server revalues it, and the first correction preserves what
+  // the measurement was produced with.
+  updateMeasurementGeometry: (
+    imageId: number,
+    measurementId: number,
+    value: MeasurementGeometryInput,
+  ) =>
+    request<MeasurementView>(
+      `/api/images/${imageId}/measurements/${measurementId}/geometry`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(value),
+      },
+    ),
+  revertMeasurementGeometry: (imageId: number, measurementId: number) =>
+    request<MeasurementView>(
+      `/api/images/${imageId}/measurements/${measurementId}/geometry/reset`,
+      { method: "POST" },
+    ),
   deleteMeasurement: (imageId: number, measurementId: number) =>
     requestVoid(`/api/images/${imageId}/measurements/${measurementId}`, {
       method: "DELETE",

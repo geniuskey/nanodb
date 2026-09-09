@@ -446,7 +446,7 @@ def test_context_export_carries_measurement_annotations(
     with ZipFile(BytesIO(archive)) as bundle:
         data = json.loads(bundle.read("data.json").decode("utf-8"))
 
-    assert data["schema_version"] == "3.0"
+    assert data["schema_version"] == "3.1"
     assert data["image"]["process_step"] == "Gate Etch"
     assert [item["id"] for item in data["measurements"]] == [labelled.id, bare.id]
     assert data["measurements"][0]["label"] == "게이트 상단"

@@ -45,11 +45,14 @@ describe("coordinate adapter", () => {
 
     // A drag that leaves the image on the top-left snaps to the origin.
     expect(toOriginalPointClamped({ x: 40, y: 20 }, rendered, original)).toEqual({ x: 0, y: 0 });
-    // A drag past the bottom-right snaps to the far corner (original size).
-    expect(toOriginalPointClamped({ x: 900, y: 900 }, rendered, original)).toEqual({
-      x: 1000,
-      y: 800,
-    });
+    // A drag past the bottom-right snaps to the far corner -- just inside it,
+    // since a valid point satisfies 0 <= x < pixel_width and the edge itself
+    // would be rejected by the server.
+    const corner = toOriginalPointClamped({ x: 900, y: 900 }, rendered, original)!;
+    expect(corner.x).toBeLessThan(1000);
+    expect(corner.x).toBeCloseTo(1000, 4);
+    expect(corner.y).toBeLessThan(800);
+    expect(corner.y).toBeCloseTo(800, 4);
     // An in-bounds drag maps like the strict adapter.
     expect(toOriginalPointClamped({ x: 350, y: 300 }, rendered, original)).toEqual({
       x: 500,

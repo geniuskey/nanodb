@@ -3,9 +3,10 @@
 The extractor turns each structural feature into an app measurement whose value
 the server recomputes from its points, then persists it with ``source = AUTO``
 and a confidence. Auto measurements are never presented as a verified reference:
-a prior extraction's auto rows are replaced on each run, and human (manual) rows
-are never touched. After persisting, the segmentation's TIFF ``features`` tag is
-refreshed so the derived copy carries the same values.
+a prior extraction's auto rows are replaced on each run, while human (manual) rows
+and auto rows a person has corrected are left standing -- a correction is human
+work the extractor cannot reproduce. After persisting, the segmentation's TIFF
+``features`` tag is refreshed so the derived copy carries the same values.
 """
 
 from __future__ import annotations
@@ -59,6 +60,10 @@ class FeatureExtractionRun:
     region_clipped: bool
     measurements: tuple[Measurement, ...]
     skipped: tuple[SkippedFeatureView, ...]
+    # Auto measurements a person had corrected, which this run left in place
+    # rather than replacing. Their corrections are human work the extractor
+    # cannot reproduce, so the operator is told they survived.
+    preserved_adjusted: int = 0
 
 
 class FeatureExtractionService:
@@ -142,7 +147,7 @@ class FeatureExtractionService:
 
         with self._session_factory() as session:
             repository = MeasurementRepository(session)
-            repository.delete_auto_by_image(image_id)
+            _, preserved_adjusted = repository.delete_auto_by_image(image_id)
             created: list[Measurement] = [
                 repository.create(
                     image_id=image_id,
@@ -177,6 +182,7 @@ class FeatureExtractionService:
                     "image_id": image_id,
                     "target_class": params.target_class,
                     "extracted": len(created),
+                    "preserved_adjusted": preserved_adjusted,
                     "skipped": [s.key for s in skipped],
                 }
             )
@@ -188,6 +194,7 @@ class FeatureExtractionService:
             region_clipped=extraction.region_clipped,
             measurements=tuple(created),
             skipped=skipped,
+            preserved_adjusted=preserved_adjusted,
         )
 
     def _compute(

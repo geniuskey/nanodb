@@ -55,6 +55,18 @@ class MeasurementAnnotationSchema(BaseModel):
     note: str | None = Field(default=None, max_length=4000)
 
 
+class MeasurementGeometrySchema(BaseModel):
+    """New positions for a saved measurement's points.
+
+    Only the points are writable: the measurement type and the calibration stay
+    as recorded, and the value is recomputed on the server from these points
+    rather than accepted from the caller. The point count must match the stored
+    type (2 for length, 3 for angle and curvature).
+    """
+
+    points: list[PointInput] = Field(min_length=2, max_length=3)
+
+
 class PointView(BaseModel):
     x: float
     y: float
@@ -78,6 +90,14 @@ class MeasurementView(BaseModel):
     source: str
     confidence: float | None
     reference_status: ReferenceStatus
+    # Correction trail. ``points``/``value`` always read as the measurement
+    # stands now; when ``adjusted_at`` is set a person has moved the points and
+    # ``original_points``/``original_value`` hold what it read when first
+    # produced, so the machine's answer stays comparable. All three are null
+    # while the measurement is uncorrected.
+    original_points: list[PointView] | None
+    original_value: float | None
+    adjusted_at: datetime | None
     created_at: datetime
 
 
@@ -222,6 +242,9 @@ class FeatureExtractionResultView(BaseModel):
     region_clipped: bool
     measurements: list[MeasurementView]
     skipped: list[SkippedFeatureViewSchema]
+    # Auto measurements a person had corrected, left standing by this run
+    # instead of being replaced. Their corrections are human work.
+    preserved_adjusted: int = 0
 
 
 class SegmentationBatchRequestSchema(BaseModel):

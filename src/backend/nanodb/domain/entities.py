@@ -136,6 +136,19 @@ class Measurement:
     source: MeasurementSource = MeasurementSource.MANUAL
     confidence: float | None = None
     reference_status: ReferenceStatus = ReferenceStatus.UNREVIEWED
+    # Correction trail. Auto extraction is not exact and a hand-placed point can
+    # miss, so the points of a saved measurement can be moved -- but never
+    # silently: the first correction keeps the geometry and value as they were
+    # first produced, and ``adjusted_at`` records that a person moved them.
+    # ``None`` throughout means the measurement still reads as first produced.
+    original_points: tuple[Point, ...] | None = None
+    original_value: float | None = None
+    adjusted_at: datetime | None = None
+
+    @property
+    def is_adjusted(self) -> bool:
+        """True once a person has corrected the points of this measurement."""
+        return self.adjusted_at is not None
 
     @property
     def measurement_method(self) -> str:

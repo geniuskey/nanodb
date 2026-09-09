@@ -29,6 +29,24 @@
 | Security Baseline | No | Requirements Analysis |
 | Property-Based Testing | No | Requirements Analysis |
 
+## Measurement Correction (2026-09-09)
+
+Saved measurements can have their points corrected: automatic extraction is not
+exact and a hand-placed point can miss. The correction is recorded rather than
+silent -- the value is recomputed on the server from the moved points, the
+reading the measurement was produced with is preserved beside it, and it can be
+reverted. Type and calibration stay immutable. **Requirement change**: RES-007
+narrows from "a saved measurement's coordinates are immutable" to "coordinates
+are correctable, and every correction is recorded and reversible".
+
+Re-running feature extraction no longer wipes an auto measurement a person
+corrected, and reports how many it kept. New API: `PATCH .../measurements/{id}/
+geometry` and `POST .../geometry/reset`; migration 20260909_0008; export schema
+3.1 carries the correction trail. Manual drawing gained a cursor-following
+preview, draggable draft points, undo of the last point and Escape to abandon.
+All gates green against a throwaway PostgreSQL and the running stack (pytest
+229, vitest 126, playwright 11, ruff/mypy/tsc clean).
+
 ## Auto-Feature Visualisation Fix (2026-09-09)
 
 The measurement overlay was reviewed against real auto-extracted features and

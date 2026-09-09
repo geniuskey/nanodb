@@ -22,6 +22,9 @@ function measurement(overrides: Partial<MeasurementView> & { id: number }): Meas
     source: "manual",
     confidence: null,
     reference_status: "unreviewed",
+    original_points: null,
+    original_value: null,
+    adjusted_at: null,
     created_at: "2026-09-09T00:00:00Z",
     ...overrides,
   };
@@ -179,6 +182,51 @@ describe("MeasurementOverlay", () => {
     expect(group(4)).toHaveAttribute("opacity", "1");
     expect(group(1)).toHaveAttribute("opacity", "0.45");
     expect(group(4).querySelector(".selection-halo")).toBeInTheDocument();
+  });
+
+  it("gives the measurement under correction a handle on every point", () => {
+    renderOverlay({ selectedId: 5, editingId: 5 });
+    const handles = screen.getAllByTestId("adjust-handle");
+
+    expect(handles).toHaveLength(3);
+    // Focusable and named, so a point can be nudged without a mouse.
+    expect(handles[0]).toHaveAttribute("tabindex", "0");
+    expect(handles[0].getAttribute("aria-label")).toContain("1번째 점");
+  });
+
+  it("puts no handles on a measurement that is only selected", () => {
+    renderOverlay({ selectedId: 5 });
+
+    expect(screen.queryAllByTestId("adjust-handle")).toHaveLength(0);
+  });
+
+  it("follows the cursor with the shape while a measurement is drawn", () => {
+    // Two placed points of an angle plus the cursor: the operator sees the
+    // angle they are about to place instead of three unconnected dots.
+    renderOverlay({
+      measurements: [],
+      draft: [{ x: 200, y: 400 }, { x: 200, y: 200 }],
+      draftType: "angle",
+      draftCursor: { x: 400, y: 200 },
+    });
+
+    expect(screen.getByTestId("measurement-draft-shape")).toBeInTheDocument();
+    // Still only the two placed points carry a marker.
+    expect(document.querySelectorAll("circle.draft-point")).toHaveLength(2);
+  });
+
+  it("drops the cursor preview once the last point is placed", () => {
+    renderOverlay({
+      measurements: [],
+      draft: [{ x: 100, y: 100 }, { x: 400, y: 400 }],
+      draftType: "length",
+      draftCursor: { x: 900, y: 700 },
+    });
+    const line = document.querySelector("g[data-testid='measurement-draft-shape'] line")!;
+
+    // The shape spans the two placed points, not the stale cursor.
+    expect(Number(line.getAttribute("x2"))).toBeCloseTo(200, 5);
+    expect(Number(line.getAttribute("y2"))).toBeCloseTo(200, 5);
   });
 
   it("draws the placed points of an incomplete draft without a shape", () => {

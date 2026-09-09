@@ -34,6 +34,9 @@ const detail = {
     source: "manual",
     confidence: null,
     reference_status: "unreviewed",
+    original_points: null,
+    original_value: null,
+    adjusted_at: null,
     created_at: "2026-09-08T04:00:00Z",
   }],
 };
@@ -184,6 +187,127 @@ describe("MeasurementPage", () => {
     })]);
     const legends = await screen.findAllByTestId("viewer-legend");
     expect(legends[0]).toHaveTextContent("점선 = 자동 추출");
+  });
+
+  it("corrects a saved measurement by nudging a point, and revalues it", async () => {
+    // Auto extraction is not exact, so a saved point has to be movable. The
+    // arrow key is the part that matters: at the zoom where a correction
+    // counts, one pixel is smaller than the shake in a hand.
+    const adjusted = {
+      ...detail.measurements[0],
+      points: [{ x: 100, y: 100 }, { x: 400, y: 499 }],
+      value: 99.8,
+      original_points: detail.measurements[0].points,
+      original_value: 100,
+      adjusted_at: "2026-09-09T05:00:00Z",
+    };
+    const fetchMock = renderPage([jsonResponse(detail), jsonResponse(adjusted)]);
+    await preparedImage();
+
+    await userEvent.click(screen.getByTestId("adjust-measurement"));
+    expect(screen.getByTestId("adjust-panel")).toBeInTheDocument();
+    // Nothing has moved yet, so there is nothing to save and no difference.
+    expect(screen.getByTestId("adjust-save")).toBeDisabled();
+    expect(screen.queryByTestId("adjust-delta")).not.toBeInTheDocument();
+
+    const handles = screen.getAllByTestId("adjust-handle");
+    expect(handles).toHaveLength(2);
+    handles[1].focus();
+    fireEvent.keyDown(handles[1], { key: "ArrowUp" });
+
+    expect(screen.getByTestId("adjust-delta")).toBeInTheDocument();
+    await userEvent.click(screen.getByTestId("adjust-save"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("status-banner")).toHaveTextContent("보정했습니다"),
+    );
+    const [path, init] = patchCall(fetchMock);
+    expect(String(path)).toBe("/api/images/1/measurements/1/geometry");
+    expect(init).toMatchObject({ method: "PATCH" });
+    // The moved point is sent in original pixels; the server revalues it.
+    expect(JSON.parse(init!.body as string)).toEqual({
+      points: [{ x: 100, y: 100 }, { x: 400, y: 499 }],
+    });
+    expect(screen.getByTestId("measurement-adjusted")).toBeInTheDocument();
+    expect(screen.getByTestId("measurement-original")).toHaveTextContent("처음 값 100.00nm");
+  });
+
+  it("leaves the saved measurement alone when a correction is cancelled", async () => {
+    const fetchMock = renderPage();
+    await preparedImage();
+
+    await userEvent.click(screen.getByTestId("adjust-measurement"));
+    const handles = screen.getAllByTestId("adjust-handle");
+    fireEvent.keyDown(handles[0], { key: "ArrowRight", shiftKey: true });
+    await userEvent.click(screen.getByTestId("adjust-cancel"));
+
+    expect(screen.queryByTestId("adjust-panel")).not.toBeInTheDocument();
+    expect(patchCall(fetchMock)).toBeUndefined();
+    expect(screen.getByTestId("saved-measurement-item")).toHaveTextContent("100.00nm");
+  });
+
+  it("offers 'back to the first value' only on a corrected measurement", async () => {
+    const adjusted = {
+      ...detail.measurements[0],
+      original_points: [{ x: 100, y: 100 }, { x: 400, y: 500 }],
+      original_value: 100,
+      adjusted_at: "2026-09-09T05:00:00Z",
+      value: 88,
+    };
+    const fetchMock = renderPage([
+      jsonResponse({ ...detail, measurements: [adjusted] }),
+      jsonResponse(detail.measurements[0]),
+    ]);
+    await preparedImage();
+
+    await userEvent.click(screen.getByTestId("adjust-measurement"));
+    await userEvent.click(screen.getByTestId("adjust-revert"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("status-banner")).toHaveTextContent("복원했습니다"),
+    );
+    const call = fetchMock.mock.calls.find((entry) =>
+      String(entry[0]).endsWith("/geometry/reset"),
+    )!;
+    expect(call[1]).toMatchObject({ method: "POST" });
+    expect(screen.queryByTestId("measurement-adjusted")).not.toBeInTheDocument();
+  });
+
+  it("does not start a new drawing from a click meant for a correction", async () => {
+    renderPage();
+    const image = await preparedImage();
+
+    await userEvent.click(screen.getByTestId("adjust-measurement"));
+    fireEvent.click(image, { clientX: 700, clientY: 700 });
+
+    expect(screen.getByTestId("adjust-panel")).toBeInTheDocument();
+    expect(screen.queryByTestId("measurement-preview")).not.toBeInTheDocument();
+  });
+
+  it("undoes the last placed point without discarding the rest", async () => {
+    renderPage();
+    const image = await preparedImage();
+    fireEvent.click(image, { clientX: 100, clientY: 100 });
+    fireEvent.click(image, { clientX: 400, clientY: 500 });
+    expect(screen.getByTestId("measurement-preview")).toHaveTextContent("100.00nm");
+
+    await userEvent.click(screen.getByTestId("measurement-undo"));
+
+    expect(screen.queryByTestId("measurement-preview")).not.toBeInTheDocument();
+    expect(screen.getByText("선택한 점: 1/2")).toBeInTheDocument();
+    // The first point survived, so one more click completes the measurement.
+    fireEvent.click(image, { clientX: 400, clientY: 500 });
+    expect(screen.getByTestId("measurement-preview")).toHaveTextContent("100.00nm");
+  });
+
+  it("abandons an unfinished drawing on Escape", async () => {
+    renderPage();
+    const image = await preparedImage();
+    fireEvent.click(image, { clientX: 100, clientY: 100 });
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(screen.getByText("선택한 점: 0/2")).toBeInTheDocument();
   });
 
   it("removes a saved measurement after confirmation and disables export", async () => {
@@ -693,6 +817,29 @@ describe("MeasurementPage", () => {
     const featCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/features"));
     expect(featCall).toBeTruthy();
     expect(featCall![1]?.method).toBe("POST");
+  });
+
+  it("says that corrections survived a re-run of the extractor", async () => {
+    // A re-run replaces auto rows, so an operator who corrected one needs to be
+    // told it was kept -- otherwise the safe move is to re-check every value.
+    const fetchMock = renderPage([
+      jsonResponse(detail),
+      jsonResponse(segResult),
+      jsonResponse({ ...featResult, preserved_adjusted: 2 }),
+      jsonResponse(detail),
+    ]);
+    await preparedImage();
+
+    await userEvent.click(screen.getByTestId("run-segmentation"));
+    await waitFor(() => expect(screen.getByTestId("run-features")).toBeEnabled());
+    await userEvent.click(screen.getByTestId("run-features"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("status-banner")).toHaveTextContent(
+        "직접 보정한 2개는 그대로 두었습니다",
+      ),
+    );
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/features"))).toBe(true);
   });
 
   it("surfaces a segmentation failure without leaving a result", async () => {

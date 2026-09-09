@@ -27,6 +27,7 @@ from nanodb.api.schemas import (
     ImageListView,
     ImageView,
     MeasurementAnnotationSchema,
+    MeasurementGeometrySchema,
     MeasurementInputSchema,
     MeasurementItemCreateSchema,
     MeasurementItemUpdateSchema,
@@ -193,6 +194,41 @@ def update_measurement_annotation(
             label=label or None,
             note=note or None,
         )
+    )
+
+
+@router.patch(
+    "/images/{image_id}/measurements/{measurement_id}/geometry",
+    response_model=MeasurementView,
+)
+def update_measurement_geometry(
+    image_id: int,
+    measurement_id: int,
+    payload: MeasurementGeometrySchema,
+    request: Request,
+) -> MeasurementView:
+    """Correct where a saved measurement's points sit and revalue it from them."""
+    return measurement_view(
+        request.app.state.measurement_service.update_geometry(
+            image_id,
+            measurement_id,
+            points=tuple(Point(point.x, point.y) for point in payload.points),
+        )
+    )
+
+
+@router.post(
+    "/images/{image_id}/measurements/{measurement_id}/geometry/reset",
+    response_model=MeasurementView,
+)
+def revert_measurement_geometry(
+    image_id: int,
+    measurement_id: int,
+    request: Request,
+) -> MeasurementView:
+    """Put a corrected measurement back to the geometry it was produced with."""
+    return measurement_view(
+        request.app.state.measurement_service.revert_geometry(image_id, measurement_id)
     )
 
 

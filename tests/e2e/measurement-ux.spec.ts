@@ -118,7 +118,7 @@ test("labels a measurement, edits it, and exports a bundle that carries it", asy
     execFileSync("unzip", ["-p", zipPath, "data.json"], { encoding: "utf-8" }),
   );
 
-  expect(data.schema_version).toBe("3.0");
+  expect(data.schema_version).toBe("3.1");
   expect(data.measurements).toHaveLength(1);
   expect(data.measurements[0].label).toBe("홀 경계");
   expect(data.measurements[0].note).toBe("경계 재확인");

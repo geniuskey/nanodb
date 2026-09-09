@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
+import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
 
 import type { MeasurementType, MeasurementView } from "../api/types";
 import { arcGeometry, clipToBox, polylinePath } from "./arc";
-import { formatOverlayValue, measurementColor } from "./geometry";
+import { POINT_COUNT, TYPE_LABEL, formatOverlayValue, measurementColor } from "./geometry";
 import { layoutLabels, truncate, type LabelRequest, type PlacedLabel } from "./labels";
 import { toRenderedPoint, type OriginalSize, type Point, type RenderedRect } from "./coordinates";
 
@@ -18,6 +18,23 @@ interface Props {
   showLabels?: boolean;
   /** Draw only the selected measurement, so one shape can be read on its own. */
   onlySelected?: boolean;
+  /**
+   * The measurement whose points are being corrected. Its points become grab
+   * handles: automatic extraction is not exact, so an operator has to be able
+   * to put a point where it belongs without redrawing the measurement.
+   */
+  editingId?: number | null;
+  /** Handle currently being dragged or focused, highlighted while it moves. */
+  activeHandle?: number | null;
+  onHandleDown?: (index: number, event: PointerEvent<SVGCircleElement>) => void;
+  onHandleKeyDown?: (index: number, event: KeyboardEvent<SVGCircleElement>) => void;
+  /**
+   * Where the pointer is while a measurement is being drawn. The shape follows
+   * it, so the operator sees the segment, angle or arc they are about to place
+   * instead of a scatter of dots.
+   */
+  draftCursor?: Point | null;
+  onDraftHandleDown?: (index: number, event: PointerEvent<SVGCircleElement>) => void;
 }
 
 /** Length in screen pixels of the T-shaped end caps drawn on a length segment. */
@@ -31,6 +48,9 @@ const CENTRE_CROSS = 5;
 const MAX_NAME_CHARS = 14;
 /** Non-selected shapes fade to this opacity while one measurement is selected. */
 const DIMMED = 0.45;
+/** Radius of a grab handle, and of the larger invisible target around it. */
+const HANDLE = 6;
+const HANDLE_HIT = 13;
 
 interface ShapeStyle {
   className: string;
@@ -317,6 +337,59 @@ function describe(
   return null;
 }
 
+/**
+ * A grab handle on one point of the measurement being corrected.
+ *
+ * The visible dot stays small enough not to hide what is underneath it, while
+ * an invisible larger circle takes the pointer, so the point is easy to catch
+ * without enlarging the mark. Handles are focusable and take arrow keys: at the
+ * zoom where a correction actually matters, one pixel is smaller than the
+ * shake in a hand.
+ */
+function Handle({
+  at,
+  index,
+  label,
+  color,
+  active,
+  onPointerDown,
+  onKeyDown,
+}: {
+  at: Point;
+  index: number;
+  label: string;
+  color?: string;
+  active: boolean;
+  onPointerDown?: (index: number, event: PointerEvent<SVGCircleElement>) => void;
+  onKeyDown?: (index: number, event: KeyboardEvent<SVGCircleElement>) => void;
+}) {
+  return (
+    <g className={active ? "adjust-handle active" : "adjust-handle"}>
+      <circle cx={at.x} cy={at.y} r={HANDLE + 4} className="adjust-handle-halo" />
+      <circle
+        cx={at.x}
+        cy={at.y}
+        r={HANDLE}
+        className="adjust-handle-dot"
+        style={color ? { fill: color } : undefined}
+      />
+      <circle
+        cx={at.x}
+        cy={at.y}
+        r={HANDLE_HIT}
+        className="adjust-handle-hit"
+        role="button"
+        tabIndex={0}
+        aria-label={label}
+        data-testid="adjust-handle"
+        data-handle-index={index}
+        onPointerDown={(event) => onPointerDown?.(index, event)}
+        onKeyDown={(event) => onKeyDown?.(index, event)}
+      />
+    </g>
+  );
+}
+
 /** The caption chip: a dark plate so the text survives a bright TEM background. */
 function Caption({ placed, color, selected, auto }: {
   placed: PlacedLabel;
@@ -370,10 +443,23 @@ export function MeasurementOverlay({
   draftType,
   showLabels = true,
   onlySelected = false,
+  editingId = null,
+  activeHandle = null,
+  onHandleDown,
+  onHandleKeyDown,
+  draftCursor = null,
+  onDraftHandleDown,
 }: Props) {
   const rendered: RenderedRect = { left: 0, top: 0, width, height };
   const toRendered = (point: Point) => toRenderedPoint(point, rendered, original);
   const draftPoints = draft.map(toRendered);
+  // The point under the cursor completes the shape while it is being drawn.
+  // It is not placed yet, so it gets no marker of its own -- the cursor is
+  // already there -- and it disappears once the last real point lands.
+  const provisionalDraft =
+    draftCursor !== null && draft.length < POINT_COUNT[draftType]
+      ? [...draft, draftCursor]
+      : draft;
 
   const shown =
     onlySelected && selectedId !== null
@@ -435,12 +521,13 @@ export function MeasurementOverlay({
 
   const draftDrawing = describe(
     draftType,
-    draft,
-    draftPoints,
+    provisionalDraft,
+    provisionalDraft.map(toRendered),
     rendered,
     original,
     { className: "draft-line" },
   );
+  const editing = measurements.find((measurement) => measurement.id === editingId);
 
   return (
     <svg
@@ -491,6 +578,39 @@ export function MeasurementOverlay({
           className="measurement-point draft-point"
         />
       ))}
+      {/* A point placed by mistake can be dragged into place before saving,
+          rather than forcing the operator to start the drawing over. */}
+      {onDraftHandleDown &&
+        draftPoints.map((point, index) => (
+          <Handle
+            key={`draft-handle-${index}`}
+            at={point}
+            index={index}
+            label={`${TYPE_LABEL[draftType]} ${index + 1}번째 점. 끌거나 방향키로 옮깁니다.`}
+            active={activeHandle === index && editingId === null}
+            onPointerDown={onDraftHandleDown}
+            onKeyDown={onHandleKeyDown}
+          />
+        ))}
+      {/* Handles last, so they sit above every shape and stay grabbable. */}
+      {editing && (
+        <g data-testid="adjust-handles">
+          {editing.points.map(toRendered).map((point, index) => (
+            <Handle
+              key={`handle-${index}`}
+              at={point}
+              index={index}
+              label={`${editing.label ?? TYPE_LABEL[editing.measurement_type]} ${
+                index + 1
+              }번째 점. 끌거나 방향키로 옮깁니다.`}
+              color={measurementColor(editing.id)}
+              active={activeHandle === index}
+              onPointerDown={onHandleDown}
+              onKeyDown={onHandleKeyDown}
+            />
+          ))}
+        </g>
+      )}
     </svg>
   );
 }

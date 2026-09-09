@@ -66,6 +66,13 @@ def measurement_view(measurement: Measurement) -> MeasurementView:
         source=measurement.source.value,
         confidence=measurement.confidence,
         reference_status=measurement.reference_status,
+        original_points=(
+            [PointView(x=point.x, y=point.y) for point in measurement.original_points]
+            if measurement.original_points is not None
+            else None
+        ),
+        original_value=measurement.original_value,
+        adjusted_at=measurement.adjusted_at,
         created_at=measurement.created_at,
     )
 
@@ -80,6 +87,7 @@ def feature_extraction_view(run: FeatureExtractionRun) -> FeatureExtractionResul
         skipped=[
             SkippedFeatureViewSchema(key=s.key, reason=s.reason) for s in run.skipped
         ],
+        preserved_adjusted=run.preserved_adjusted,
     )
 
 

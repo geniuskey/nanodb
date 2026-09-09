@@ -77,8 +77,12 @@ seed-demo: ## Load demo images/measurements into the running DB (NANODB_PROFILE=
 	NANODB_PROFILE=demo $(UV) run python scripts/prepare_demo_samples.py --load
 
 .PHONY: reset
-reset: ## Safely reset the demo DB rows and var/uploads (NANODB_PROFILE=demo)
+reset: ## Reset demo DB rows + var/uploads, snapshotting to var/backups first (NANODB_PROFILE=demo)
 	NANODB_PROFILE=demo $(UV) run python scripts/reset_demo.py --yes
+
+.PHONY: restore
+restore: ## Restore the newest var/backups snapshot into the DB and var/uploads (NANODB_PROFILE=demo)
+	NANODB_PROFILE=demo $(UV) run python scripts/restore_demo.py --yes
 
 # --- Container stack --------------------------------------------------------
 

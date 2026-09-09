@@ -43,6 +43,12 @@ const ZOOM_STEPS = [1, 1.5, 2, 3, 4, 6, 8];
 
 const TYPES: MeasurementType[] = ["length", "angle", "curvature"];
 
+// Manual measurement drawing is built and tested but turned off for now: the
+// product ships auto extraction only. Flip this to re-enable the composer,
+// point placement on the image, and the "측정 저장" flow. Correcting an
+// existing (auto) measurement is a separate feature and stays available.
+const MANUAL_MEASUREMENT_ENABLED = false;
+
 /** What a pending confirmation would delete. */
 type PendingDelete =
   | { kind: "measurement"; id: number }
@@ -101,8 +107,6 @@ export function MeasurementPage() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [pending, setPending] = useState<PendingDelete | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   // New-item form (per-product measurement item table below the image).
   const [newItem, setNewItem] = useState<{ name: string; type: MeasurementType }>({
@@ -479,6 +483,7 @@ export function MeasurementPage() {
 
   /** Follow the pointer while drawing so the shape previews before it is placed. */
   function trackCursor(event: MouseEvent<HTMLImageElement>) {
+    if (!MANUAL_MEASUREMENT_ENABLED) return;
     if (!detail || adjustId !== null || draft.length >= needed) {
       if (cursor !== null) setCursor(null);
       return;
@@ -492,6 +497,8 @@ export function MeasurementPage() {
   }
 
   function placePoint(event: MouseEvent<HTMLImageElement>) {
+    // Manual drawing is off: the image is view/correct only, never a canvas.
+    if (!MANUAL_MEASUREMENT_ENABLED) return;
     // While a saved measurement is being corrected the image is the correction
     // surface, not a drawing surface: a stray click must not start a new draft.
     if (adjustId !== null) return;
@@ -647,23 +654,6 @@ export function MeasurementPage() {
     } finally { setDeleting(false); }
   }
 
-  async function exportContext() {
-    if (!detail || detail.measurements.length === 0 || exporting) return;
-    setExporting(true); setExportError(null);
-    try {
-      const archive = await api.downloadContext(imageId);
-      const url = URL.createObjectURL(archive);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `nanodb-image-${imageId}.zip`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setStatus("Context ZIP을 내려받았습니다.");
-    } catch (caught) {
-      setExportError(caught instanceof ApiError ? caught.message : "Context ZIP을 다운로드하지 못했습니다.");
-    } finally { setExporting(false); }
-  }
-
   async function runSegmentation() {
     if (segRunning) return;
     setSegRunning(true); setSegError(null); setStatus(null);
@@ -793,6 +783,19 @@ export function MeasurementPage() {
                 )}
                 <button type="button" className="primary" onClick={saveAdjust} disabled={adjustBusy || adjustPreview === null || !adjustMoved} data-testid="adjust-save">{adjustBusy ? "저장 중…" : "보정 저장"}</button>
               </div>
+            </section>
+          ) : !MANUAL_MEASUREMENT_ENABLED ? (
+            <section className="adjust-panel" aria-labelledby="manual-off-heading" data-testid="manual-measurement-disabled">
+              <h2 id="manual-off-heading">수동 측정 추가</h2>
+              <p className="note-hint">
+                지금은 자동 측정만 제공합니다. 아래 <strong>자동 분석</strong>에서 세그멘테이션과
+                특징 추출을 실행하면 측정값이 자동으로 만들어집니다. 자동 측정값은 이미지 위의 점을
+                끌어 직접 보정할 수 있습니다. 수동으로 새 측정을 그리는 기능은 추후 제공될 예정입니다.
+              </p>
+              {/* Errors from actions that live outside the composer (deleting a
+                  saved measurement) used to surface in the composer; keep a home
+                  for them now that it is hidden. */}
+              {error && <p role="alert">{error}</p>}
             </section>
           ) : (
           <>
@@ -1018,17 +1021,6 @@ export function MeasurementPage() {
             )}
           </div>
         )}
-      </section>
-      <section className="export-panel table-panel" aria-labelledby="context-export-heading">
-        <h2 id="context-export-heading">Context Export</h2>
-        <p>포함: Product ID, Lot ID, Wafer ID, 공정 Step, 원본 파일명, 저장된 측정과 측정별 라벨·메모</p>
-        <p>제외: 이미지 바이너리</p>
-        <p>다운로드한 ZIP은 사용자가 외부 AI 도구에 수동으로 전달합니다. NANoDB가 자동으로 외부에 전송하지 않습니다.</p>
-        {detail.measurements.length === 0 && <p data-testid="context-export-disabled-reason">저장된 측정이 하나 이상 있어야 내보낼 수 있습니다.</p>}
-        {exportError && <p role="alert">{exportError}</p>}
-        <button type="button" className="button" onClick={exportContext} disabled={detail.measurements.length === 0 || exporting} data-testid="context-export-button">
-          {exporting ? "ZIP 생성 중…" : "Context ZIP 다운로드"}
-        </button>
       </section>
       <section className="danger-zone table-panel" aria-labelledby="danger-zone-heading">
         <h2 id="danger-zone-heading">이미지 삭제</h2>

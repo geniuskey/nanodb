@@ -53,14 +53,11 @@ describe("HomePage", () => {
     const summary = await screen.findByTestId("home-summary");
     expect(summary).toHaveTextContent("3");
     expect(summary).toHaveTextContent("7");
-    expect(summary).toHaveTextContent("15.50");
-    expect(summary).toHaveTextContent("길이 평균");
 
-    // Full per-type breakdown with min/max, not just the top-2 tiles.
-    const breakdown = screen.getByTestId("type-breakdown");
-    expect(breakdown).toHaveTextContent("최소");
-    expect(breakdown).toHaveTextContent("10.00");
-    expect(breakdown).toHaveTextContent("21.00");
+    // Cross-image/type averages are gone: a single number over mixed
+    // products and regions is not meaningful, so it is not shown.
+    expect(summary).not.toHaveTextContent("길이 평균");
+    expect(screen.queryByTestId("type-breakdown")).not.toBeInTheDocument();
   });
 
   it("plays a bundled intro video with no third-party embed", () => {

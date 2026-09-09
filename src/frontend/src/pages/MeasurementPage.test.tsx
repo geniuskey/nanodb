@@ -52,7 +52,7 @@ afterEach(() => {
  * The measurement screen makes two loading calls: GET /api/images/:id and, once
  * the product is known, GET /api/measurement-items. The item list is answered
  * from `items`; every other call (getImage, POST/PATCH/DELETE measurements,
- * context export, item mutations) is served in order from `responses`.
+ * item mutations) is served in order from `responses`.
  */
 function renderPage(
   responses: Array<Response | Promise<Response>> = [jsonResponse(detail)],
@@ -116,7 +116,11 @@ function patchCall(fetchMock: ReturnType<typeof vi.fn>) {
 }
 
 describe("MeasurementPage", () => {
-  it("previews two points and ignores a third until reset", async () => {
+  // Manual measurement drawing is turned off (MANUAL_MEASUREMENT_ENABLED = false):
+  // the product ships auto extraction only for now. These composer tests are
+  // skipped rather than deleted so they come back with the feature when the
+  // flag is flipped.
+  it.skip("previews two points and ignores a third until reset", async () => {
     renderPage();
     const image = await preparedImage();
     fireEvent.click(image, { clientX: 100, clientY: 100 });
@@ -127,7 +131,7 @@ describe("MeasurementPage", () => {
     expect(screen.getByTestId("measurement-save")).toBeEnabled();
   });
 
-  it("reset clears only the draft and preserves saved measurements", async () => {
+  it.skip("reset clears only the draft and preserves saved measurements", async () => {
     renderPage();
     const image = await preparedImage();
     fireEvent.click(image, { clientX: 100, clientY: 100 });
@@ -284,7 +288,22 @@ describe("MeasurementPage", () => {
     expect(screen.queryByTestId("measurement-preview")).not.toBeInTheDocument();
   });
 
-  it("undoes the last placed point without discarding the rest", async () => {
+  it("offers auto measurement only: the manual composer is hidden and the image is not a canvas", async () => {
+    renderPage();
+    const image = await preparedImage();
+
+    // The notice replaces the composer; none of the drawing controls render.
+    expect(screen.getByTestId("manual-measurement-disabled")).toBeInTheDocument();
+    expect(screen.queryByTestId("measurement-item-select")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("measurement-save")).not.toBeInTheDocument();
+
+    // Clicking the image starts no draft: it is view/correct only for now.
+    fireEvent.click(image, { clientX: 100, clientY: 100 });
+    fireEvent.click(image, { clientX: 400, clientY: 500 });
+    expect(screen.queryByTestId("measurement-preview")).not.toBeInTheDocument();
+  });
+
+  it.skip("undoes the last placed point without discarding the rest", async () => {
     renderPage();
     const image = await preparedImage();
     fireEvent.click(image, { clientX: 100, clientY: 100 });
@@ -300,7 +319,7 @@ describe("MeasurementPage", () => {
     expect(screen.getByTestId("measurement-preview")).toHaveTextContent("100.00nm");
   });
 
-  it("abandons an unfinished drawing on Escape", async () => {
+  it.skip("abandons an unfinished drawing on Escape", async () => {
     renderPage();
     const image = await preparedImage();
     fireEvent.click(image, { clientX: 100, clientY: 100 });
@@ -310,7 +329,7 @@ describe("MeasurementPage", () => {
     expect(screen.getByText("선택한 점: 0/2")).toBeInTheDocument();
   });
 
-  it("removes a saved measurement after confirmation and disables export", async () => {
+  it("removes a saved measurement after confirmation", async () => {
     const fetchMock = renderPage([jsonResponse(detail), new Response(null, { status: 204 })]);
     await preparedImage();
     expect(screen.getByTestId("saved-measurement-item")).toBeInTheDocument();
@@ -327,7 +346,6 @@ describe("MeasurementPage", () => {
     const [path, init] = deleteCall(fetchMock);
     expect(String(path)).toBe("/api/images/1/measurements/1");
     expect(init).toMatchObject({ method: "DELETE" });
-    expect(screen.getByTestId("context-export-button")).toBeDisabled();
   });
 
   it("keeps the measurement when the confirmation is cancelled", async () => {
@@ -412,7 +430,7 @@ describe("MeasurementPage", () => {
     expect(init).toMatchObject({ method: "DELETE" });
   });
 
-  it("uses the server result after saving and clears the draft", async () => {
+  it.skip("uses the server result after saving and clears the draft", async () => {
     const created = { ...detail.measurements[0], id: 2, value: 101 };
     const fetchMock = renderPage([jsonResponse(detail), jsonResponse(created, 201)]);
     const image = await preparedImage();
@@ -427,7 +445,7 @@ describe("MeasurementPage", () => {
     expect(postCall(fetchMock)).toBeTruthy();
   });
 
-  it("keeps a valid draft visible when server save fails", async () => {
+  it.skip("keeps a valid draft visible when server save fails", async () => {
     renderPage([
       jsonResponse(detail),
       jsonResponse({ code: "STORAGE_FAILED", message: "저장하지 못했습니다." }, 500),
@@ -439,58 +457,6 @@ describe("MeasurementPage", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("저장하지 못했습니다");
     expect(screen.getByTestId("measurement-preview")).toBeInTheDocument();
-  });
-
-  it("discloses included data, image exclusion and the manual transfer boundary", async () => {
-    renderPage();
-    await screen.findByTestId("measurement-image");
-
-    expect(screen.getByText(/저장된 측정과 측정별 라벨·메모/)).toBeInTheDocument();
-    expect(screen.getByText(/제외: 이미지 바이너리/)).toBeInTheDocument();
-    expect(screen.getByText(/자동으로 외부에 전송하지 않습니다/)).toBeInTheDocument();
-    expect(screen.getByTestId("context-export-button")).toBeEnabled();
-  });
-
-  it("disables export and explains why when no measurements are saved", async () => {
-    renderPage([jsonResponse({ ...detail, measurements: [] })]);
-
-    expect(await screen.findByTestId("context-export-button")).toBeDisabled();
-    expect(screen.getByTestId("context-export-disabled-reason")).toHaveTextContent("측정이 하나 이상");
-  });
-
-  it("downloads one successful ZIP and blocks duplicate export requests", async () => {
-    let resolveExport!: (response: Response) => void;
-    const exportResponse = new Promise<Response>((resolve) => { resolveExport = resolve; });
-    const createObjectURL = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:nanodb-export");
-    const revokeObjectURL = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
-    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
-    renderPage([jsonResponse(detail), exportResponse]);
-    const button = await screen.findByTestId("context-export-button");
-
-    await userEvent.click(button);
-    await userEvent.click(button);
-    expect(button).toBeDisabled();
-
-    resolveExport(new Response("PKzip", { headers: { "Content-Type": "application/zip" } }));
-    await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
-    expect(createObjectURL).toHaveBeenCalledTimes(1);
-    expect(revokeObjectURL).toHaveBeenCalledWith("blob:nanodb-export");
-    expect(button).toBeEnabled();
-  });
-
-  it("shows an error envelope without downloading it", async () => {
-    const createObjectURL = vi.spyOn(URL, "createObjectURL");
-    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
-    renderPage([
-      jsonResponse(detail),
-      jsonResponse({ code: "EXPORT_FAILED", message: "ZIP을 생성하지 못했습니다." }, 500),
-    ]);
-
-    await userEvent.click(await screen.findByTestId("context-export-button"));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("ZIP을 생성하지 못했습니다");
-    expect(createObjectURL).not.toHaveBeenCalled();
-    expect(click).not.toHaveBeenCalled();
   });
 
   it("shows the calibration, original size and registration time while measuring", async () => {
@@ -564,7 +530,7 @@ describe("MeasurementPage", () => {
     expect(screen.getByTestId("saved-measurement-item")).toHaveTextContent("길이 · 100.00nm");
   });
 
-  it("sends the drawn geometry with the typed label naming it", async () => {
+  it.skip("sends the drawn geometry with the typed label naming it", async () => {
     const fetchMock = renderPage([
       jsonResponse(detail),
       jsonResponse({ ...detail.measurements[0], id: 2 }, 201),
@@ -586,7 +552,7 @@ describe("MeasurementPage", () => {
     expect(screen.getByTestId("measurement-label-input")).toHaveValue("");
   });
 
-  it("fixes the type from a selected item and names the saved measurement after it", async () => {
+  it.skip("fixes the type from a selected item and names the saved measurement after it", async () => {
     const item = { id: 5, product_id: "P1", name: "코너 각도", measurement_type: "angle" };
     const created = {
       ...detail.measurements[0],
@@ -857,15 +823,4 @@ describe("MeasurementPage", () => {
     expect(screen.queryByTestId("segmentation-result")).not.toBeInTheDocument();
   });
 
-  it("rejects a successful response that is not a ZIP", async () => {
-    const createObjectURL = vi.spyOn(URL, "createObjectURL");
-    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
-    renderPage([jsonResponse(detail), jsonResponse({ message: "not an archive" })]);
-
-    await userEvent.click(await screen.findByTestId("context-export-button"));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("올바른 Context ZIP");
-    expect(createObjectURL).not.toHaveBeenCalled();
-    expect(click).not.toHaveBeenCalled();
-  });
 });

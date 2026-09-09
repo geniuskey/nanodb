@@ -59,8 +59,9 @@ class FakeImageService:
         *,
         query: str | None = None,
         image_type: str | None = None,
+        product_id: str | None = None,
     ) -> tuple[ImageListItem, ...]:
-        self.list_calls.append((query, image_type))
+        self.list_calls.append((query, image_type, product_id))
         return (ImageListItem(sample_image(), 0),)
 
     def get_image(self, image_id: int) -> Image:
@@ -275,10 +276,13 @@ def test_summary_and_catalog_do_not_expose_stored_filename() -> None:
 def test_catalog_forwards_search_and_type_filters_to_service() -> None:
     client = build_client()
 
-    response = client.get("/api/images", params={"q": "lot42", "image_type": "SEM"})
+    response = client.get(
+        "/api/images",
+        params={"q": "lot42", "image_type": "SEM", "product_id": "P1"},
+    )
 
     assert response.status_code == 200
-    assert client.app.state.image_service.list_calls == [("lot42", "SEM")]
+    assert client.app.state.image_service.list_calls == [("lot42", "SEM", "P1")]
 
 
 def test_catalog_without_filters_forwards_none() -> None:
@@ -286,7 +290,7 @@ def test_catalog_without_filters_forwards_none() -> None:
 
     client.get("/api/images")
 
-    assert client.app.state.image_service.list_calls == [(None, None)]
+    assert client.app.state.image_service.list_calls == [(None, None, None)]
 
 
 def test_multipart_registration_returns_safe_image_view() -> None:

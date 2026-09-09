@@ -313,13 +313,14 @@ class ImageRepository:
         *,
         query: str | None = None,
         image_type: str | None = None,
+        product_id: str | None = None,
     ) -> tuple[ImageListItem, ...]:
         """List images newest-first, optionally filtered.
 
         ``query`` is a case-insensitive partial match against original filename,
-        product, lot, wafer and process step. ``image_type`` narrows to an exact
-        imaging modality. A blank query matches everything so the catalog stays
-        visible while typing.
+        product, lot, wafer and process step. ``image_type`` and ``product_id``
+        each narrow to an exact match on that field. A blank query matches
+        everything so the catalog stays visible while typing.
         """
         statement: Select[tuple[ImageModel, int]] = (
             select(ImageModel, func.count(MeasurementModel.id))
@@ -329,6 +330,8 @@ class ImageRepository:
         )
         if image_type is not None:
             statement = statement.where(ImageModel.image_type == image_type)
+        if product_id is not None:
+            statement = statement.where(ImageModel.product_id == product_id)
         if query and query.strip():
             pattern = f"%{query.strip()}%"
             statement = statement.where(

@@ -21,9 +21,12 @@ export function ImageListPage() {
   const [queryInput, setQueryInput] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>(ALL_TYPES);
-  // The image types to offer in the filter. Sourced from the catalog so it
-  // grows as new types are registered, rather than a hard-coded SEM/TEM pair.
+  const [productFilter, setProductFilter] = useState<string>(ALL_TYPES);
+  // The image types and products to offer in the filters. Sourced from the
+  // catalog so they grow as new values are registered, rather than a hard-coded
+  // list.
   const [imageTypes, setImageTypes] = useState<string[]>([]);
+  const [products, setProducts] = useState<string[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -41,8 +44,8 @@ export function ImageListPage() {
     return () => clearTimeout(handle);
   }, [queryInput]);
 
-  // Load the registered image types once for the filter dropdown. A failed
-  // load is not fatal: the filter still offers "전체".
+  // Load the registered image types and products once for the filter
+  // dropdowns. A failed load is not fatal: the filters still offer "전체".
   useEffect(() => {
     let active = true;
     api
@@ -52,6 +55,11 @@ export function ImageListPage() {
         setImageTypes(
           options
             .filter((option) => option.category === "image_type")
+            .map((option) => option.value),
+        );
+        setProducts(
+          options
+            .filter((option) => option.category === "product_id")
             .map((option) => option.value),
         );
       })
@@ -72,6 +80,7 @@ export function ImageListPage() {
       .listImages({
         q: activeQuery || undefined,
         imageType: typeFilter === ALL_TYPES ? undefined : typeFilter,
+        productId: productFilter === ALL_TYPES ? undefined : productFilter,
       })
       .then((value) => {
         if (active) {
@@ -86,7 +95,7 @@ export function ImageListPage() {
     return () => {
       active = false;
     };
-  }, [activeQuery, typeFilter, attempt]);
+  }, [activeQuery, typeFilter, productFilter, attempt]);
 
   function toggleSelect(id: number) {
     setSelected((current) => {
@@ -119,7 +128,10 @@ export function ImageListPage() {
     } finally { setBatchRunning(false); }
   }
 
-  const isFiltered = activeQuery.trim() !== "" || typeFilter !== ALL_TYPES;
+  const isFiltered =
+    activeQuery.trim() !== "" ||
+    typeFilter !== ALL_TYPES ||
+    productFilter !== ALL_TYPES;
 
   return (
     <main>
@@ -154,6 +166,20 @@ export function ImageListPage() {
           {imageTypes.map((type) => (
             <option key={type} value={type}>
               {type}
+            </option>
+          ))}
+        </select>
+        <select
+          className="type-filter"
+          data-testid="product-filter"
+          aria-label="Product 필터"
+          value={productFilter}
+          onChange={(event) => setProductFilter(event.target.value)}
+        >
+          <option value={ALL_TYPES}>전체 Product</option>
+          {products.map((product) => (
+            <option key={product} value={product}>
+              {product}
             </option>
           ))}
         </select>

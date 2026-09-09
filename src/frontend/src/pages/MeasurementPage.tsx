@@ -125,7 +125,20 @@ export function MeasurementPage() {
   const [featRunning, setFeatRunning] = useState(false);
   const [featSummary, setFeatSummary] = useState<FeatureExtractionResultView | null>(null);
 
-  useDocumentTitle(detail?.original_filename ?? "측정");
+  // Identify the image in the tab by its manufacturing context rather than the
+  // raw filename, e.g. "[TEM] P1·L1·W1·Gate Etch".
+  useDocumentTitle(
+    detail
+      ? `[${detail.image_type}] ${[
+          detail.product_id,
+          detail.lot_id,
+          detail.wafer_id,
+          detail.process_step,
+        ]
+          .filter(Boolean)
+          .join("·")}`
+      : "측정",
+  );
 
   useEffect(() => {
     setError(null);

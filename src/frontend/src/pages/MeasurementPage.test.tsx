@@ -728,11 +728,11 @@ describe("MeasurementPage", () => {
     expect(await screen.findByTestId("measurement-image")).toBeInTheDocument();
   });
 
-  it("names the open image in the document title", async () => {
+  it("names the open image by its manufacturing context in the document title", async () => {
     renderPage();
     await preparedImage();
 
-    expect(document.title).toBe("sample.png · NANoDB");
+    expect(document.title).toBe("[TEM] P1·L1·W1·Gate Etch · NANoDB");
   });
 
   const segResult = {

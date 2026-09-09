@@ -109,6 +109,7 @@ def list_images(
     request: Request,
     q: Annotated[str | None, Query(max_length=200)] = None,
     image_type: Annotated[str | None, Query(max_length=64)] = None,
+    product_id: Annotated[str | None, Query(max_length=255)] = None,
 ) -> list[ImageListView]:
     return [
         ImageListView(
@@ -118,6 +119,7 @@ def list_images(
         for item in request.app.state.image_service.list_images(
             query=q,
             image_type=image_type,
+            product_id=product_id,
         )
     ]
 

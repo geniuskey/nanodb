@@ -10,22 +10,31 @@ function urlsOf(fetchMock: ReturnType<typeof vi.fn>): string[] {
   return fetchMock.mock.calls.map((call) => String(call[0]));
 }
 
-/** The image_type options the filter dropdown is built from. */
-const IMAGE_TYPE_OPTIONS = ["SEM", "TEM", "Layout"].map((value, index) => ({
-  id: index + 1,
-  category: "image_type",
-  value,
-  is_predefined: true,
-}));
+/** The catalog options the filter dropdowns are built from. */
+const CATALOG_OPTIONS = [
+  ...["SEM", "TEM", "Layout"].map((value, index) => ({
+    id: index + 1,
+    category: "image_type",
+    value,
+    is_predefined: true,
+  })),
+  ...["P1", "P2"].map((value, index) => ({
+    id: index + 10,
+    category: "product_id",
+    value,
+    is_predefined: false,
+  })),
+];
 
 /**
- * A fetch mock that answers the catalog call with image_type options (so the
- * filter dropdown has choices) and every other call with `images`.
+ * A fetch mock that answers the catalog call with image_type and product_id
+ * options (so the filter dropdowns have choices) and every other call with
+ * `images`.
  */
 function fetchMockFor(images: unknown[]) {
   return vi.fn().mockImplementation((input: RequestInfo | URL) => {
     if (String(input).includes("/api/catalog")) {
-      return Promise.resolve(jsonResponse(IMAGE_TYPE_OPTIONS));
+      return Promise.resolve(jsonResponse(CATALOG_OPTIONS));
     }
     return Promise.resolve(jsonResponse(images));
   });
@@ -120,6 +129,33 @@ describe("ImageListPage", () => {
     await waitFor(() =>
       expect(urlsOf(fetchMock).some((url) => url.includes("image_type=SEM"))).toBe(true),
     );
+  });
+
+  it("narrows by product via the product_id query parameter", async () => {
+    const fetchMock = fetchMockFor([]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderWithRouter(<ImageListPage />);
+    await screen.findByRole("option", { name: "P1" });
+    fireEvent.change(screen.getByTestId("product-filter"), {
+      target: { value: "P1" },
+    });
+
+    await waitFor(() =>
+      expect(urlsOf(fetchMock).some((url) => url.includes("product_id=P1"))).toBe(true),
+    );
+  });
+
+  it("offers 전체 plus every registered product in the filter", async () => {
+    vi.stubGlobal("fetch", fetchMockFor([]));
+
+    renderWithRouter(<ImageListPage />);
+
+    const filter = await screen.findByTestId("product-filter");
+    expect(filter).toHaveValue("ALL");
+    await screen.findByRole("option", { name: "P2" });
+    expect(screen.getByRole("option", { name: "전체 Product" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "P1" })).toBeInTheDocument();
   });
 
   it("offers 전체 plus every registered image type in the filter", async () => {

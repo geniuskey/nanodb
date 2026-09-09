@@ -146,11 +146,13 @@ class ImageService:
         *,
         query: str | None = None,
         image_type: str | None = None,
+        product_id: str | None = None,
     ) -> tuple[ImageListItem, ...]:
         with self._session_factory() as session:
             return ImageRepository(session).list_with_measurement_count(
                 query=query,
                 image_type=image_type,
+                product_id=product_id,
             )
 
     def get_image(self, image_id: int) -> Image:

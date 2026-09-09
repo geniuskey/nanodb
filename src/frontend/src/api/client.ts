@@ -26,6 +26,7 @@ import type {
 export interface ImageListQuery {
   q?: string;
   imageType?: ImageType;
+  productId?: string;
 }
 
 export class ApiError extends Error {
@@ -111,6 +112,7 @@ export const api = {
     const search = new URLSearchParams();
     if (filter?.q?.trim()) search.set("q", filter.q.trim());
     if (filter?.imageType) search.set("image_type", filter.imageType);
+    if (filter?.productId) search.set("product_id", filter.productId);
     const qs = search.toString();
     return request<ImageListView[]>(`/api/images${qs ? `?${qs}` : ""}`);
   },

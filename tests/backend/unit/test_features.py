@@ -437,6 +437,45 @@ def test_pattern_grid_measures_the_central_unit() -> None:
     assert abs(float(representative.centroid[1]) - 100.0) < 5.0
 
 
+def test_top_band_segment_is_not_picked_over_a_central_one() -> None:
+    # A wide bar high in the top band (info/scale-bar-like) has more pixels than
+    # the central disc, but the central disc is the real subject and must win.
+    labels = np.ones((_H, _W), dtype=np.uint8)
+    yy, xx = np.ogrid[:_H, :_W]
+    labels[(xx - 100) ** 2 + (yy - 100) ** 2 <= 25**2] = np.uint8(0)  # central disc
+    labels[2:30, 10:190] = np.uint8(0)  # larger bar in the top band (centroid ~row 15)
+
+    picked = _pick_region(labels, target_class=0, min_area=200)
+
+    assert picked is not None
+    representative, _ = picked
+    assert abs(float(representative.centroid[0]) - 100.0) < 10.0
+
+
+def test_bottom_band_segment_is_not_picked_over_a_central_one() -> None:
+    labels = np.ones((_H, _W), dtype=np.uint8)
+    yy, xx = np.ogrid[:_H, :_W]
+    labels[(xx - 100) ** 2 + (yy - 100) ** 2 <= 25**2] = np.uint8(0)  # central disc
+    labels[170:198, 10:190] = np.uint8(0)  # larger bar in the bottom band
+
+    picked = _pick_region(labels, target_class=0, min_area=200)
+
+    assert picked is not None
+    representative, _ = picked
+    assert abs(float(representative.centroid[0]) - 100.0) < 10.0
+
+
+def test_edge_band_preference_falls_back_when_every_segment_is_in_a_band() -> None:
+    # The band rule is a preference, not a hard filter: if the only segment sits
+    # in a band it is still measured rather than dropped.
+    labels = np.ones((_H, _W), dtype=np.uint8)
+    labels[2:30, 10:190] = np.uint8(0)  # sole segment, high in the top band
+
+    picked = _pick_region(labels, target_class=0, min_area=200)
+
+    assert picked is not None
+
+
 def test_single_dominant_region_is_still_picked_over_speckle() -> None:
     # One large trench plus a small comparable-but-not blob: the large one wins.
     labels = _trapezoid(center_x=100)

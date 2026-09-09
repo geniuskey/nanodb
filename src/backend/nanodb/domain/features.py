@@ -89,6 +89,15 @@ _MIN_TILT_PX = 1.0  # below this horizontal run a sidewall counts as vertical
 # representative -- rather than the largest, which is often a cropped edge unit.
 _PATTERN_AREA_FRAC = 0.5  # a unit this fraction of the largest counts as comparable
 
+# Segments whose centroid sits in the top or bottom band of the frame are usually
+# not the measurement target: info/scale bars, cropped structures and edge
+# artefacts live there, while the real subject is centrally placed. A stretched
+# view of the topmost/bottommost strip rarely shows something worth measuring.
+# Used only as a *preference* when picking the representative region -- if every
+# candidate falls in a band the whole pool is kept, so a subject that genuinely
+# sits high or low is never discarded.
+_EDGE_BAND_FRAC = 0.12  # top/bottom this fraction of image height is de-prioritised
+
 # Circle detection. A unit is treated as a full circle (round cell / contact
 # hole / ring / annulus) when its *outer* outline fits a circle tightly, that
 # outer circle is filled like a disc once interior holes are closed (so a hollow
@@ -181,12 +190,15 @@ def _pick_region(
     """Return the representative region and every kept region of the class.
 
     Preferring interior (non-clipped) components -- an interior structure
-    measures cleanly -- the representative is chosen so a repeated pattern is
-    handled well: when two or more comparably-sized units are present (a row of
-    cells, an N×M grid, a field of holes) the unit nearest the image centre is
-    measured, since edge units are often cropped or distorted. With a single
-    dominant structure the largest is used. If every component touches the
-    border the largest overall is used and flagged clipped by the caller.
+    measures cleanly -- and then components clear of the top/bottom bands (those
+    strips usually hold info/scale bars, not the subject), the representative is
+    chosen so a repeated pattern is handled well: when two or more comparably-
+    sized units are present (a row of cells, an N×M grid, a field of holes) the
+    unit nearest the image centre is measured, since edge units are often cropped
+    or distorted. With a single dominant structure the largest is used. Both the
+    interior and the central-band steps fall back to the wider set if they would
+    otherwise be empty, so a subject that touches the border or sits high/low is
+    still measured (and flagged clipped by the caller when it touches an edge).
     """
     mask = np.asarray(labels == target_class, dtype=np.int32)
     components = cc_label(mask, connectivity=2)
@@ -202,6 +214,13 @@ def _pick_region(
 
     interior = [r for r in kept if not clipped(r)]
     pool = interior or kept
+    # Prefer segments away from the top/bottom bands: those strips usually hold
+    # info/scale bars or cropped structures, not the subject. Fall back to the
+    # full pool when every candidate is in a band, so nothing is ever discarded
+    # outright -- this only breaks ties toward the centre.
+    band = _EDGE_BAND_FRAC * height
+    central = [r for r in pool if band <= float(r.centroid[0]) <= height - band]
+    pool = central or pool
     max_area = max(int(r.area) for r in pool)
     comparable = [r for r in pool if int(r.area) >= _PATTERN_AREA_FRAC * max_area]
     if len(comparable) >= 2:

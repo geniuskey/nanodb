@@ -82,7 +82,7 @@ AI-DLC v1.0.1 워크플로우로 INCEPTION → CONSTRUCTION을 단계별로 수�
   캡처 스크립트 `scripts/capture_screenshots.mjs`, 결과 `screenshots/`(및 사이트용 사본
   `docs/public/screenshots/`).
 
-  ![저장 후: overlay 복원과 컨텍스트 ZIP 내보내기 활성](/screenshots/05-measurement-saved.png)
+  ![자동 특징 추출 결과: 자동 측정값 overlay와 저장 목록(미검증 표기)](/screenshots/05-measurement-saved.png)
 
 - **빌드·실행·락파일**:
   - Backend 의존성·진입점: `pyproject.toml`/`uv.lock`, `nanodb.api.app:app`.
@@ -91,7 +91,7 @@ AI-DLC v1.0.1 워크플로우로 INCEPTION → CONSTRUCTION을 단계별로 수�
   - 컨테이너: `Dockerfile`, `compose.yaml`(db → migrate → app), `Makefile` 진입점.
   - CI: Evidence Site용 GitHub Actions Pages 배포 workflow(`.github/workflows/`).
 - **에러 핸들링**: FastAPI 전역 예외 처리와 검증 응답, frontend 로딩·오류·빈 상태 처리
-  (측정 없을 때 export 비활성 + 사유 표시 `context-export-disabled-reason`).
+  (세그멘테이션 미실행·측정 없음 빈 상태 안내, 자동 특징 추출 실패·건너뜀 사유 표시).
 - **스크린샷 ↔ README 정합**: README 시연 화면 절과 각 화면의 대응 기능을 일치시킴.
 - **핵심 경로 stub/TODO 없음**: 등록 → 측정 → 저장·복원 → 내보내기 경로가 구현됨.
 - **테스트·정적 게이트(이 저장소에서 실행)**:
@@ -120,10 +120,10 @@ AI-DLC v1.0.1 워크플로우로 INCEPTION → CONSTRUCTION을 단계별로 수�
 
   ![홈: 실제 집계와 시작 CTA](/screenshots/01-home.png)
 
-- **인터랙션 피드백**: 로딩·성공·오류·빈 상태 처리, 측정 preview, 저장 후 overlay 복원,
-  export 비활성 사유 표시.
+- **인터랙션 피드백**: 로딩·성공·오류·빈 상태 처리, 자동 분석 실행 상태 표시, 저장 후 overlay
+  복원, 자동 측정 기준점 보정 preview.
 
-  ![측정 뷰어: 두 점 선택 draft와 preview](/screenshots/04-measurement-draft.png)
+  ![자동 분석: 세그멘테이션 실행 결과와 클래스 통계](/screenshots/04-segmentation.png)
 
 - **핵심 시나리오 완결**: 이미지 등록 → 측정 → 저장·복원 → 컨텍스트 내보내기까지 한 흐름.
 - **상태**: `pass`.

@@ -16,31 +16,31 @@ NANoDB는 반도체 SEM/TEM 이미지와 측정 근거를 축적하고, 이를 A
 
 > 현재 저장소에는 MVP 요구사항, AI-DLC 워크플로우, 로고와 검증된 샘플 데이터에 더해 NANoDB Core 웹 애플리케이션(FastAPI backend, React frontend, PostgreSQL 스키마·migration, demo·검증 tooling)과 계층별 테스트가 생성되어 있습니다. 2026-09-08 기준 Docker/PostgreSQL 환경에서 컨테이너 스택 기동과 전체 게이트(backend 98 passed·skip 없음, frontend 66 passed, Playwright e2e 7 passed, lint·typecheck·preflight)를 실행해 통과했습니다.
 
-## MVP에서 보여줄 것
+> **후속 개발자를 위한 문서** — 아키텍처·백엔드·프론트엔드·데이터 모델·API·컨텍스트 내보내기·
+> 테스트/배포·확장 방법을 코드에 근거해 정리한 **[NANoDB 개발자 가이드](https://geniuskey.github.io/nanodb/guide/)** 가 있습니다.
+> 로컬 개발 환경 설정은 [개발 환경 설정](https://geniuskey.github.io/nanodb/guide/getting-started.html) 문서를 먼저 보세요.
 
-1. PNG/JPEG/TIFF 이미지를 제조 메타데이터(Product, Lot, Wafer와 선택 입력 공정 Step)와 함께 등록합니다. TIFF는 원본을 그대로 보존하고 화면 표시용 PNG 파생본을 자동으로 만듭니다.
-2. 등록된 이미지를 목록에서 검색어·SEM/TEM 필터로 찾아 다시 엽니다.
-3. 이미지 위에서 두 점을 선택하거나 원본 좌표를 직접 입력해 CD, Depth, Thickness를 측정합니다.
-4. `nm/pixel` 보정값으로 실제 길이를 계산합니다.
-5. 저장된 좌표와 측정값을 새로고침 후에도 같은 위치에 복원합니다.
-6. 측정에 이름(측정 항목 명)을 붙이면 그 측정선 옆에 캡션으로 표시됩니다. 확대·이동으로 원하는 위치를 크게 보며 점을 찍을 수 있고, 현재 배율에서 화면 1px이 원본 몇 px인지 표시됩니다.
-7. 홈에서 실제 이미지 수, 측정 수와 항목별 평균·최소·최대를 확인합니다.
-8. 선택 이미지의 명세·측정 데이터·측정 라벨·개발 요청·검증 기준을 담은 ZIP을 내보냅니다(계약 버전 2.0).
-9. 기존 AI 개발 도구에서 요약 CSV 생성 스크립트를 만들고 로컬에서 검증합니다. 이 단계는 앱 외부의 수동 개발 데모입니다.
+## 핵심 기능
 
-위 항목은 구현 목표입니다. 계측 기반을 먼저 검증한 후 개발 컨텍스트 기능을 구현하며, 두 게이트와 생성 코드 검증이 모두 통과해야 대회용 MVP 완료입니다. 수동 측정은 미검토 참고값이며 자동 계측의 정답으로 취급하지 않습니다.
+1. **이미지 등록** — PNG·JPEG·TIFF를 제조 메타데이터(Product·Lot·Wafer와 선택 입력 공정 Step)·`nm/pixel` 보정값과 함께 등록합니다. TIFF는 원본을 보존하고 화면 표시용 PNG 파생본을 만듭니다.
+2. **목록·검색** — 등록 이미지를 최신순 목록에서 키워드·종류(SEM/TEM)·Product로 찾아 다시 엽니다.
+3. **자동 분석** — 세그멘테이션(multi-Otsu)과 자동 특징 추출로 폭·높이·간격·반경·측벽각 등을 길이·각도·곡률 측정값으로 자동 생성합니다. 사람이 검증하지 않은 **미검토 참고값**으로 신뢰도와 함께 '자동'으로 구분 저장합니다.
+4. **보정·복원** — 자동 측정의 기준점을 이미지 위에서 직접 끌어 값을 재계산하고 라벨·메모를 편집합니다. 저장된 좌표·측정값은 새로고침 후에도 같은 위치에 overlay로 복원됩니다.
+5. **집계** — 홈에서 실제 이미지 수·측정 수와 항목별 표본 수·평균·최소·최대를 확인합니다.
+6. **개발 컨텍스트 내보내기** — 선택 이미지의 명세·측정·개발 과제·검증 정답을 담은 고정 네 파일 ZIP을 API로 내려받습니다(`GET /api/images/{id}/context-export`, `schema_version 3.1`).
+7. **외부 AI 검증 데모** — 내보낸 컨텍스트로 외부 AI 개발 도구에서 요약 CSV 생성 코드를 만들고 오프라인으로 검증합니다. 앱 외부의 수동 개발 데모입니다.
 
-단일 키워드 검색·종류 필터, 측정 삭제, 이미지 삭제, 항목별 표본 수·평균·최소·최대와 측정 라벨링은 P1으로 구현을 마쳤습니다.
+> 측정값은 자동 세그멘테이션·특징 추출로 생성되는 **미검토 참고값**이며, 자동 계측의 정답(ground truth)으로 취급하지 않습니다. 수동 두 점 측정 UI는 코드에 남아 있으나 현재 비활성(`MANUAL_MEASUREMENT_ENABLED = false`)이고, 저장된 자동 측정의 기준점 보정만 제공합니다.
 
 홈 최상단 소개 영상은 저장소에 포함된 로컬 파일(`assets/video/nanodb_intro.mp4`)을 재생합니다. 외부 임베드나 서드파티 스크립트를 쓰지 않으므로 **네트워크가 차단된 환경에서도 그대로 재생됩니다.** 영상은 보조 자료이므로 재생하지 않고 홈 내용만으로 진행해도 되며, 그 안내가 영상 아래에 항상 표시됩니다. 시스템에서 동작 줄이기(reduced motion)를 켠 환경에서는 자동 재생하지 않고 재생 버튼을 제공합니다.
 
-자유 윤곽(폴리곤) 라벨링과 라벨 검수, 피처 자동 추출, Tool 등록, Lineage, Report는 이번 3일 MVP의 후속 로드맵입니다.
+자유 윤곽(폴리곤) 라벨링과 라벨 검수, Tool 등록, Lineage, Report는 이번 3일 MVP의 후속 로드맵입니다.
 
 ## 시연 화면
 
 아래 화면은 로컬 PostgreSQL 16과 native uvicorn으로 앱을 실행한 뒤 승인된 demo 데이터로
-Playwright가 자동 캡처한 실제 동작 화면입니다(캡처 시각 2026-09-08, working tree
-`7a387cb`, 캡처 스크립트 [`scripts/capture_screenshots.mjs`](scripts/capture_screenshots.mjs)).
+Playwright가 자동 캡처한 실제 동작 화면입니다(캡처 시각 2026-09-09, commit
+`46b7f3a`, 캡처 스크립트 [`scripts/capture_screenshots.mjs`](scripts/capture_screenshots.mjs)).
 공개 배포된 서비스가 아니라 로컬 실행 결과이며, 비밀정보나 비공개 자료는 포함하지 않습니다.
 홈 최상단의 소개 영상은 보조 자료이며 앱 기능 근거가 아닙니다(HOM-040).
 캡처 스크립트는 `screenshots/`와 사이트용 사본 `docs/public/screenshots/`를 함께 갱신하므로
@@ -48,207 +48,62 @@ Playwright가 자동 캡처한 실제 동작 화면입니다(캡처 시각 2026-
 
 | 화면 | 대응 기능 |
 | --- | --- |
-| ![홈: 실제 이미지·측정 집계와 사용 흐름](screenshots/01-home.png) | 홈에서 실제 이미지 수·측정 수·파라미터 집계와 사용 흐름 끝의 등록·목록 CTA (MVP 7) |
-| ![이미지 목록: 최신순 카드와 측정 수](screenshots/02-catalog.png) | 등록된 이미지를 목록에서 최신순으로 찾아 다시 열기 (MVP 2) |
-| ![이미지 등록: 미리보기와 제조 메타데이터 폼](screenshots/03-register.png) | PNG/JPEG/TIFF를 제조 메타데이터·보정값과 함께 등록 (MVP 1, 4) |
-| ![측정 뷰어: 두 점 선택 draft와 실시간 preview](screenshots/04-measurement-draft.png) | 이미지 위 두 점 선택으로 CD/Depth/Thickness 측정과 preview (MVP 3, 4) |
-| ![저장 후: overlay 복원·저장 항목·context export 활성](screenshots/05-measurement-saved.png) | 저장 좌표·값의 overlay 복원과 측정이 있을 때 활성화되는 컨텍스트 ZIP 내보내기 (MVP 5, 8) |
+| ![홈: 실제 이미지·측정 집계와 사용 흐름](screenshots/01-home.png) | 홈에서 실제 이미지 수·측정 수·파라미터 집계와 사용 흐름 끝의 등록·목록 CTA (기능 5) |
+| ![이미지 목록: 최신순 카드와 측정 수](screenshots/02-catalog.png) | 등록된 이미지를 목록에서 최신순으로 찾아 다시 열기 (기능 2) |
+| ![이미지 등록: 미리보기와 제조 메타데이터 폼](screenshots/03-register.png) | PNG/JPEG/TIFF를 제조 메타데이터·보정값과 함께 등록 (기능 1) |
+| ![자동 분석: 세그멘테이션(multi-Otsu) 결과 — 클래스 맵·경계 오버레이·클래스 통계](screenshots/04-segmentation.png) | 세그멘테이션 실행 결과인 클래스 맵·경계 오버레이·클래스 통계 (기능 3) |
+| ![자동 특징 추출: 자동 측정값 overlay와 저장 목록(미검증 표기)](screenshots/05-measurement-saved.png) | 자동 특징 추출로 만든 측정값의 overlay 복원과 '자동(미검증)' 저장 목록 (기능 3, 4) |
 
-캡처는 미검토 참고값인 수동 측정을 자동 계측의 정답으로 표현하지 않습니다.
-
-## 사전 준비
-
-- Python 3.12.12 (`.python-version`으로 고정), 의존성 관리자 [`uv`](https://docs.astral.sh/uv/)
-- Node.js 22.17.1과 npm
-- PostgreSQL 16 (로컬 설치 또는 아래 Compose 스택)
-- 컨테이너 실행 시 Docker와 Docker Compose v2
-- `make`는 편의용입니다. 없으면 [5. `make` 없이 실행](#5-make-없이-실행-windows-powershell-등)의
-  대응 명령을 그대로 쓰면 되고, 별도로 설치하지 않아도 됩니다.
+캡처는 자동 세그멘테이션·특징 추출로 생성된 미검토 참고값을 자동 계측의 정답으로 표현하지 않습니다.
 
 ## 빠른 시작
 
-### 1. Clean setup과 locked install
+사전 요구사항(Python 3.12·`uv`·Node 22.17.1·PostgreSQL 16·Docker), `.env` 변수,
+네이티브·컨테이너 두 실행 경로, `make` 없이 실행(Windows PowerShell 대응표), 데모 데이터
+준비·초기화, 자주 쓰는 Makefile 타깃은 모두 코드 기준으로
+**[개발 환경 설정 가이드](https://geniuskey.github.io/nanodb/guide/getting-started.html)** 에
+정리되어 있습니다. 최단 경로만 요약하면 다음과 같습니다.
 
 ```bash
 git clone https://github.com/geniuskey/nanodb.git
 cd nanodb
-cp .env.example .env        # 필요 시 값 수정
-make install                # uv sync --frozen + npm ci
-make build-frontend         # dist/frontend 생성
+cp .env.example .env         # 필요 시 값 수정
+make install && make build-frontend
+make demo                    # 컨테이너 스택 + demo 데이터 (Docker 필요)
+# 또는 네이티브: make migrate && make dev  (로컬 PostgreSQL 16 필요)
 ```
 
-Windows PowerShell에는 `cp .env.example .env` 대신 `Copy-Item .env.example .env`를
-쓰고, `make` 대신 아래 [5. `make` 없이 실행](#5-make-없이-실행-windows-powershell-등)의
-명령을 씁니다.
-
-`.venv/`가 이미 있는데 `uv`가 `failed to remove file ... .venv\lib64`로 멈추면, 다른
-OS(컨테이너·WSL)에서 만들어진 venv가 작업 트리에 남은 것입니다. `.venv/`를 통째로 지우고
-`make install`을 다시 실행하면 됩니다. `.venv/`는 git·docker 양쪽에서 제외되므로 지워도
-안전합니다.
-
-### 2. 컨테이너 스택으로 실행 (권장)
-
-`db → migrate → app` 순서로 기동하고, migration이 성공한 뒤에만 앱이 시작됩니다.
-
-```bash
-make up                     # docker compose up --build --wait
-# 또는 demo 데이터까지 적재하고 URL 출력:
-make demo
-```
-
-`make`가 없는 환경(예: 기본 Windows)에서는 Makefile이 감싸는 명령을 그대로 실행하면
-됩니다. `make up`에 해당하는 명령은 다음 하나이고, 나머지 target은
-[5. `make` 없이 실행](#5-make-없이-실행-windows-powershell-등)의 대응표를 참고하세요.
-
-```bash
-docker compose up --build --wait
-```
-
-호스트의 5432 포트가 이미 사용 중이면 `.env`에서 `DB_PORT`를 비어 있는 포트로 바꾸고
-`DATABASE_URL`의 포트도 같이 맞춥니다. 컨테이너끼리는 Compose 네트워크의 `db:5432`로
-통신하므로 `DB_PORT` 변경은 host 쪽 접근에만 영향을 줍니다.
-
-앱은 `http://127.0.0.1:8000`(loopback)에서 제공됩니다. 이미지 바이너리는 host의
-`./var/uploads`에 bind mount되고, DB 데이터는 named volume에 유지됩니다. 스택 제어는
-`make stop`, `make down`, 파괴적 초기화는 `make clean`(DB volume 포함 제거)입니다.
-
-### 3. 네이티브로 실행
-
-로컬 PostgreSQL이 `DATABASE_URL`로 접근 가능해야 합니다.
-
-```bash
-make migrate                # alembic upgrade head
-make dev                    # uvicorn --reload on 127.0.0.1:8000
-```
-
-**주의:** 앱과 demo 스크립트는 `.env`를 읽지만(`Settings`의 `env_file`), alembic은
-`alembic/env.py`에서 프로세스 환경변수 `DATABASE_URL`만 봅니다. `.env`에만 값을 적어 두면
-alembic은 `alembic.ini`의 기본값 `127.0.0.1:5432`로 붙습니다. 위 2번 안내대로 `DB_PORT`를
-바꿨다면 migration에는 `DATABASE_URL`을 환경변수로 직접 넘겨야 합니다.
-
-```bash
-DATABASE_URL='postgresql+psycopg://nanodb:nanodb@127.0.0.1:5442/nanodb' uv run alembic upgrade head
-```
-
-컨테이너 스택의 `migrate` 서비스는 Compose가 환경변수를 직접 주입하므로 영향이 없습니다.
-
-### 4. 데모 샘플 준비·점검·안전 초기화
-
-승인된 TEM 원본에서 무리샘플 PNG 파생본을 만들고 무결성을 점검합니다. 원본
-`data/samples/`는 절대 수정하지 않습니다.
-
-```bash
-make prepare-demo           # data/demo/ 파생본·manifest 재생성 (오프라인)
-make preflight              # 파생본·manifest 오프라인 검증
-make seed-demo              # NANODB_PROFILE=demo, 실행 중 DB에 적재
-make reset                  # NANODB_PROFILE=demo, 전용 target guard 통과 시에만 초기화
-```
-
-`reset`은 `NANODB_PROFILE=demo`와 전용 `var/uploads` target guard를 통과해야만 demo DB
-행과 업로드를 known-empty 상태로 되돌리며, source sample을 대상으로 삼지 않습니다.
-저장된 측정을 먼저 지운 뒤 이미지를 지웁니다.
-
-`NANODB_PROFILE=demo cmd` 같은 앞머리 환경변수 문법은 sh 계열 셸(Git Bash, WSL, macOS,
-Linux) 전용입니다. PowerShell에서는 다음처럼 나눠서 실행합니다.
-
-```powershell
-$env:NANODB_PROFILE = 'demo'
-uv run python scripts/prepare_demo_samples.py --load
-uv run python scripts/reset_demo.py --yes
-```
-
-`prepare_demo_samples.py`는 실행할 때마다 `data/demo/manifest.csv`의 `converted_at`을
-현재 시각으로 다시 씁니다. 파생본 SHA-256은 그대로이므로, 커밋할 내용이 아니면
-`git checkout -- data/demo/manifest.csv`로 되돌립니다.
-
-### 5. `make` 없이 실행 (Windows PowerShell 등)
-
-`make`는 기본 Windows에 없습니다. 각 target은 Makefile이 감싸는 명령 그대로이므로 아래를
-직접 실행하면 결과가 같습니다. `$env:...` 줄은 PowerShell 문법이며, Git Bash/WSL/macOS/
-Linux에서는 `NANODB_PROFILE=demo <명령>`처럼 한 줄로 붙여 써도 됩니다.
-
-| `make` target | 직접 실행할 명령 |
-| --- | --- |
-| `install` | `uv sync --frozen` 그리고 `npm ci` |
-| `build-frontend` | `npm run build` |
-| `up` | `docker compose up --build --wait` |
-| `demo` | `docker compose up --build --wait` 후 아래 `seed-demo` |
-| `stop` / `down` / `clean` | `docker compose stop` / `docker compose down` / `docker compose down --volumes` |
-| `migrate` | `uv run alembic upgrade head` (위 3번의 `DATABASE_URL` 주의 참고) |
-| `dev` | `uv run uvicorn nanodb.api.app:app --reload --host 127.0.0.1 --port 8000` |
-| `prepare-demo` | `uv run python scripts/prepare_demo_samples.py` |
-| `preflight` | `uv run python scripts/preflight_demo.py` |
-| `seed-demo` | `$env:NANODB_PROFILE='demo'` 후 `uv run python scripts/prepare_demo_samples.py --load` |
-| `reset` | `$env:NANODB_PROFILE='demo'` 후 `uv run python scripts/reset_demo.py --yes` |
-| `test-backend` | `uv run pytest` |
-| `test-frontend` | `npm run test:frontend` |
-| `test-e2e` | `npm run test:e2e` |
-| `lint` | `uv run ruff check .` |
-| `typecheck` | `uv run mypy` 그리고 `npm run typecheck` |
-
-컨테이너 스택으로 demo까지 올리는 최단 경로는 다음과 같습니다.
-
-```powershell
-Copy-Item .env.example .env
-uv sync --frozen
-npm ci
-docker compose up --build --wait
-$env:NANODB_PROFILE = 'demo'
-uv run python scripts/prepare_demo_samples.py --load
-# http://127.0.0.1:8000
-```
-
-frontend는 컨테이너 이미지 안에서 build되므로 이 경로에서는 host의 `npm run build`가
-필요 없습니다. `npm ci`는 demo·테스트 tooling용입니다.
-
-이 절 전체를 2026-09-08에 Windows 11 + Docker Desktop + PowerShell/Git Bash에서 실행해
-확인했습니다: 스택 기동, demo 적재 3건, backend 98 passed, frontend 66 passed,
-Playwright e2e 7 passed, ruff·mypy·tsc green.
+앱은 `http://127.0.0.1:8000`(loopback)에서 제공됩니다. Windows(PowerShell)·`make` 없는
+환경·포트 충돌·alembic `DATABASE_URL` 주의·데모 시딩/초기화 가드 등 세부 사항은 위
+가이드에 있습니다.
 
 ## 테스트
 
 ```bash
 make test                   # backend(pytest) + frontend(vitest)
-make test-backend           # PostgreSQL integration test는 TEST_DATABASE_URL이 있을 때 실행
-make test-frontend
-make test-e2e               # Playwright 브라우저 시나리오
+make test-e2e               # Playwright 브라우저 시나리오 (실행 중인 앱 대상)
 make lint                   # ruff
 make typecheck              # mypy + tsc
 ```
 
-PostgreSQL 통합 테스트는 `TEST_DATABASE_URL`이 설정된 경우에만 실행되며, 없으면 명시적으로
-skip됩니다. 이때 **대상 데이터베이스 이름은 `_test`로 끝나야 합니다.** 통합 테스트는 스키마를
-만들고 지우므로, 이 guard가 운영·demo 데이터베이스를 실수로 겨냥하는 것을 막습니다. 이름이
-맞지 않으면 skip이 아니라 `TEST_DATABASE_URL must target a database ending in '_test'`로
-실패합니다.
-
-Compose 스택의 db에 전용 테스트 데이터베이스를 한 번 만들어 두고 씁니다.
-
-```bash
-docker compose exec db psql -U nanodb -d postgres -c "CREATE DATABASE nanodb_test"
-TEST_DATABASE_URL='postgresql+psycopg://nanodb:nanodb@127.0.0.1:5432/nanodb_test' uv run pytest
-```
-
-PowerShell에서는 `$env:TEST_DATABASE_URL`에 같은 값을 넣고 `uv run pytest`를 실행합니다.
-포트는 `.env`의 `DB_PORT`에 맞춥니다(기본 `5432`).
-
-`npm run test:e2e`는 이미 떠 있는 앱(`E2E_BASE_URL`, 기본 `http://127.0.0.1:8000`)을 대상으로
-실행되며 스택을 직접 띄우지 않습니다. e2e는 실제로 이미지와 측정을 등록하므로 실행 후
-demo 데이터가 늘어납니다. 깨끗한 시연 상태로 되돌리려면 위 4번의 `reset` 후 `seed-demo`를
-다시 실행합니다.
+PostgreSQL 통합 테스트 가드(`TEST_DATABASE_URL`, 대상 DB 이름이 `_test`로 끝나야 함)와 e2e
+대상 서버(`E2E_BASE_URL`, 기본 `http://127.0.0.1:8000`) 설정, e2e 실행 후 깨끗한 시연 상태로
+되돌리는 방법은 **[테스트·빌드·배포 가이드](https://geniuskey.github.io/nanodb/guide/testing-and-ci.html)** 를
+참고하세요.
 
 ## 컨텍스트 내보내기 (ZIP)
 
-이미지 상세에서 `GET /api/images/{id}/context-export`로 고정 네 파일 ZIP을 내려받습니다.
+`GET /api/images/{id}/context-export`로 고정 네 파일 ZIP을 내려받습니다(API 전용 — 프런트엔드
+다운로드 버튼은 없습니다).
 
 - `context.md` — 좌표계·계산 규칙·데이터 주의사항
-- `data.json` — 선택 이미지와 저장된 모든 측정. 각 측정은 자기 라벨(`label`)과 메모(`note`)를 함께 담습니다 (`schema_version` `2.0`)
+- `data.json` — 선택 이미지와 저장된 모든 측정. 각 측정은 자기 라벨(`label`)과 메모(`note`)를 함께 담습니다 (`schema_version` `3.1`)
 - `task.md` — 수행할 개발 과제
 - `checks.json` — 검증용 정답(ground truth)
 
-이미지 바이너리·절대 경로·secret은 포함하지 않으며, 자동 외부 전송도 하지 않습니다.
-측정이 하나 이상 있을 때만 export가 활성화됩니다. 상세 계약은
-[API Reference](aidlc-docs/construction/nanodb-core/code/api-reference.md)를 참고하세요.
+이미지 바이너리·절대 경로·secret은 포함하지 않으며, 자동 외부 전송도 하지 않습니다. 상세 계약은
+개발자 가이드의 [컨텍스트 내보내기](https://geniuskey.github.io/nanodb/guide/context-export.html)·[API 레퍼런스](https://geniuskey.github.io/nanodb/guide/api-reference.html)를
+참고하세요.
 
 ## 외부 AI 생성 코드 검토·실행·검증
 
@@ -280,15 +135,12 @@ CD·Depth는 같은 전사에도 우연히 일치했습니다.
 ## 알려진 제한
 
 - 인증·권한은 이번 범위 밖입니다.
-- 저장된 측정은 라벨과 메모 외에는 수정할 수 없습니다. 좌표·항목·값·보정값은 측정 근거이므로 불변이며, 잘못 찍은 측정은 삭제 후 다시 측정합니다.
-- 측정선은 이동·크기 조절할 수 없습니다. 삭제 후 다시 측정합니다. 측정과 분리된 화살표·원 도형은 제공하지 않습니다. 길이만 재는 도구가 반지름을 저장하는 도형을 그리게 하면 이 MVP가 계산하지 않는 곡률을 잰 것처럼 읽히기 때문입니다.
-- 이미지 위 클릭 외에 측정 화면의 `좌표로 직접 지정`으로 원본 좌표를 입력해 측정할 수 있습니다. 태블릿·모바일 터치 측정과 다크모드는 지원 범위가 아닙니다.
-- 자동 계측·윤곽 검출은 없습니다. 측정은 수동 두 점 방식의 미검토 참고값입니다.
+- 측정값은 자동 세그멘테이션(multi-Otsu)·특징 추출로 생성되는 **미검토 참고값**이며, 자동 계측의 정답(ground truth)으로 취급하지 않습니다. 수동 두 점 측정 UI는 코드에 남아 있으나 현재 비활성(`MANUAL_MEASUREMENT_ENABLED = false`)이고, 저장된 자동 측정의 기준점 보정만 제공합니다.
+- 저장된 측정은 라벨·메모와 자동 측정 기준점 보정 외에는 수정할 수 없습니다. 항목·값·보정값은 측정 근거이므로 불변이며, 잘못된 측정은 삭제 후 다시 분석합니다.
+- 태블릿·모바일 터치 조작과 다크모드는 지원 범위가 아닙니다.
 - 앱은 단일 호스트 로컬 파일 저장을 사용하며 multi-instance·객체 저장소·HA는 범위 밖입니다.
 - 앱 내부 AI 호출·코드 실행 기능은 없습니다.
-- 모든 게이트를 Docker/PostgreSQL 환경에서 실행·통과했습니다(2026-09-08): 컨테이너 스택 기동, backend 98 passed(PostgreSQL integration 포함, skip 없음), frontend 66 passed, Playwright e2e 7 passed, lint·typecheck green.
-- 배포·API 상세는 [deployment.md](aidlc-docs/construction/nanodb-core/code/deployment.md),
-  [api-reference.md](aidlc-docs/construction/nanodb-core/code/api-reference.md)를 참고하세요.
+- 배포·아키텍처·API 상세는 개발자 가이드의 [테스트·빌드·배포](https://geniuskey.github.io/nanodb/guide/testing-and-ci.html)·[아키텍처](https://geniuskey.github.io/nanodb/guide/architecture.html)·[API 레퍼런스](https://geniuskey.github.io/nanodb/guide/api-reference.html)를 참고하세요.
 
 ## 샘플 데이터
 
@@ -299,7 +151,7 @@ CD·Depth는 같은 전사에도 우연히 일치했습니다.
 
 각 manifest에는 안정적인 sample ID, 파일명, SHA-256, 도메인 메타데이터와 프로젝트 사용 승인 상태가 들어 있습니다. TIFF 파일은 일반 Git 바이너리로 함께 관리합니다.
 
-샘플 TIFF는 원본 데이터와 메타데이터 처리 검증용입니다. 브라우저 직접 등록 형식은 PNG/JPEG/TIFF이며, TIFF를 올리면 앱이 원본을 보존한 채 원본 픽셀 크기를 유지한 PNG 파생본을 만들어 화면에 표시합니다(리샘플링하지 않으므로 저장 좌표가 1:1로 맞습니다). 데모 사전 준비 단계에서 PNG 파생본을 미리 만들어 두는 절차도 그대로 유지하며, 리샘플링하지 않은 경우에만 manifest의 `length_nm_per_pixel`을 그대로 사용합니다. 파생본 준비·무결성 점검·데모 초기화 절차는 위 [빠른 시작](#빠른-시작)의 `make prepare-demo`, `make preflight`, `make seed-demo`, `make reset`로 실행합니다.
+샘플 TIFF는 원본 데이터와 메타데이터 처리 검증용입니다. 브라우저 직접 등록 형식은 PNG/JPEG/TIFF이며, TIFF를 올리면 앱이 원본을 보존한 채 원본 픽셀 크기를 유지한 PNG 파생본을 만들어 화면에 표시합니다(리샘플링하지 않으므로 저장 좌표가 1:1로 맞습니다). 데모 사전 준비 단계에서 PNG 파생본을 미리 만들어 두는 절차도 그대로 유지하며, 리샘플링하지 않은 경우에만 manifest의 `length_nm_per_pixel`을 그대로 사용합니다. 파생본 준비·무결성 점검·데모 초기화(`make prepare-demo`, `make preflight`, `make seed-demo`, `make reset`) 절차는 [개발 환경 설정 가이드의 데모 데이터 절](https://geniuskey.github.io/nanodb/guide/getting-started.html#데모-데이터)에 정리되어 있습니다.
 
 ### 샘플 검증
 

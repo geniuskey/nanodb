@@ -47,8 +47,8 @@ NANoDB는 이미지·측정·맥락 데이터가 담당자나 도구의 변화 �
 - 자동 측정값의 기준점을 이미지 위에서 직접 보정해 값 재계산, 라벨·메모 편집
 - 저장된 좌표·측정값을 새로고침 후에도 같은 위치에 overlay 복원
 - 홈에서 실제 이미지 수·측정 수 집계 확인
-- 측정이 하나 이상일 때 활성화되는 개발 컨텍스트 ZIP 내보내기(명세·측정·개발 과제·검증 정답,
-  `schema_version 3.1`)
+- 명세·측정·개발 과제·검증 정답을 담은 고정 네 파일 개발 컨텍스트 ZIP을 API로 내려받기
+  (`GET /api/images/{id}/context-export`, `schema_version 3.1`)
 
 ## Image → Measurement → Development Context 흐름
 
@@ -63,9 +63,9 @@ NANoDB는 이미지·측정·맥락 데이터가 담당자나 도구의 변화 �
 
 ![홈: 실제 이미지·측정 집계와 시작 CTA](/screenshots/01-home.png)
 
-![측정 뷰어: 두 점 선택 draft와 preview](/screenshots/04-measurement-draft.png)
+![자동 분석: 세그멘테이션(multi-Otsu) 결과 — 클래스 맵·경계 오버레이·클래스 통계](/screenshots/04-segmentation.png)
 
-![저장 후: overlay 복원과 컨텍스트 ZIP 내보내기 활성](/screenshots/05-measurement-saved.png)
+![자동 특징 추출: 폭·높이·측벽각 등 자동 측정값을 미검증 참고값으로 overlay·목록화](/screenshots/05-measurement-saved.png)
 
 전체 시연 화면(홈·목록·등록·측정·저장)은 저장소 README의 시연 화면 절과 `screenshots/`에
 있습니다. 화면은 로컬 native 실행을 승인된 demo 데이터로 캡처한 실제 동작 결과입니다.

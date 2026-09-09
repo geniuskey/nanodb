@@ -55,7 +55,7 @@ createRoot(document.getElementById("root")!).render(
 
 측정 화면(`MeasurementPage.tsx`)의 핵심은 이미지 위에 SVG로 도형을 그리는 `MeasurementOverlay`와, 원본 픽셀↔화면 픽셀 좌표를 오가는 `coordinates.ts`입니다. 여기가 프론트엔드에서 가장 까다로운 부분이므로 좌표 모델부터 설명합니다.
 
-![측정 화면 - 그리는 중](/screenshots/04-measurement-draft.png)
+![측정 화면 - 자동 분석(세그멘테이션) 결과 오버레이](/screenshots/04-segmentation.png)
 
 ### 좌표 모델: 원본 픽셀과 화면 픽셀
 

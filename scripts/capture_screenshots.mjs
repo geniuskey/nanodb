@@ -5,6 +5,10 @@
 // 비밀정보·비공개 자료를 포함하지 않는다. 앱 런타임에 자동 연결되는 도구가 아니라
 // 로컬 실행 화면을 한 번 캡처하는 오프라인 보조 script다.
 //
+// 현재 제품은 자동 분석(세그멘테이션·특징 추출)만 제공한다(수동 두 점 측정은
+// MANUAL_MEASUREMENT_ENABLED=false로 꺼져 있다). 그래서 측정 화면 캡처는 자동
+// 분석 흐름을 따라간다: 이미지 열기 → 세그멘테이션 실행 → 자동 특징 추출.
+//
 // 사용법: BASE_URL 기동 후
 //   node scripts/capture_screenshots.mjs
 // 환경변수 BASE_URL (기본 http://127.0.0.1:8000)로 대상 주소를,
@@ -26,9 +30,21 @@ const SAMPLE_IMAGE = fileURLToPath(
   new URL("../tests/e2e/fixtures/sample.png", import.meta.url),
 );
 
+// Pick the demo image the measurement screenshots run on. The DRAM sample has
+// the widest field and the richest auto features (CD, height, sidewall angle),
+// so it reads best; fall back to the first image if it is not present. Demo
+// image ids shift on every reseed, so this is resolved at run time.
+async function pickMeasurementImageId() {
+  const response = await fetch(`${BASE_URL}/api/images`);
+  const images = await response.json();
+  const dram = images.find((image) => (image.product_id ?? "").includes("DRAM"));
+  return (dram ?? images[0]).id;
+}
+
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
   await mkdir(SITE_DIR, { recursive: true });
+  const imageId = await pickMeasurementImageId();
   // CHROMIUM_PATH lets the script run where a browser is already installed but
   // Playwright's own download is unavailable (offline or restricted network).
   const executablePath = process.env.CHROMIUM_PATH || undefined;
@@ -58,31 +74,32 @@ async function main() {
   // 3) 이미지 등록: 미리보기와 메타데이터 폼(제출 전)
   await page.goto("/images/new");
   await page.getByTestId("registration-file").setInputFiles(SAMPLE_IMAGE);
+  await page.getByTestId("registration-image-type").fill("TEM");
   await page.getByTestId("registration-product").fill("DEMO-PRODUCT");
-  await page.locator('input[name="lot_id"]').fill("LOT-1");
-  await page.locator('input[name="wafer_id"]').fill("WAFER-1");
-  await page.locator('input[name="calibration_nm_per_pixel"]').fill("0.5");
+  await page.getByTestId("registration-lot").fill("LOT-1");
+  await page.getByTestId("registration-wafer").fill("WAFER-1");
   await page.getByTestId("registration-process-step").fill("Gate Etch");
+  await page.locator('input[name="calibration_nm_per_pixel"]').fill("0.5");
+  // Typing into the comboboxes leaves their suggestion lists open. Click a
+  // neutral spot so the outside-mousedown handler closes them all before the
+  // shot, leaving a clean filled form rather than stacked dropdowns.
+  await page.getByRole("heading", { name: "이미지 등록" }).click();
   await shot("03-register.png");
 
-  // 등록 제출 → 상세(측정) 페이지로 이동
-  await page.getByTestId("registration-submit").click();
-  await page.waitForURL(/\/images\/\d+$/);
+  // 자동 분석 흐름을 보여줄 demo 이미지 상세로 이동
+  await page.goto(`/images/${imageId}`);
+  await page.getByTestId("measurement-image").waitFor();
 
-  // 4) 측정 뷰어: 원본 좌표 두 점 draft와 preview
-  const image = page.getByTestId("measurement-image");
-  await image.waitFor();
-  const box = await image.boundingBox();
-  await image.click({ position: { x: box.width * 0.25, y: box.height * 0.3 } });
-  await image.click({ position: { x: box.width * 0.75, y: box.height * 0.7 } });
-  await page.getByTestId("measurement-preview").waitFor();
-  await page.getByTestId("measurement-label-input").fill("Gate CD");
-  await shot("04-measurement-draft.png");
+  // 4) 자동 분석: 세그멘테이션 실행 결과(클래스 맵·경계 오버레이·클래스 통계)
+  await page.getByTestId("run-segmentation").click();
+  await page.getByTestId("segmentation-result").waitFor();
+  await page.getByTestId("segmentation-map").waitFor();
+  await shot("04-segmentation.png");
 
-  // 5) 저장 후: overlay 복원·선택 항목·context export 활성
-  await page.getByTestId("measurement-save").click();
+  // 5) 자동 특징 추출: 자동 측정이 이미지 위에 overlay되고 '자동(미검증)'으로 목록에 남음
+  await page.getByTestId("run-features").click();
+  await page.getByTestId("feature-summary").waitFor();
   await page.getByTestId("saved-measurement-item").first().waitFor();
-  await page.getByTestId("context-export-button").waitFor();
   await shot("05-measurement-saved.png");
 
   await browser.close();

@@ -700,7 +700,6 @@ export function MeasurementPage() {
   return (
     <main>
       <Link to="/images">← 목록으로</Link>
-      <div className="page-heading"><div><p className="eyebrow">{detail.image_type} 측정</p><h1>{detail.original_filename}</h1></div><div className="heading-actions"><p>{detail.product_id} · {detail.lot_id} · {detail.wafer_id}{detail.process_step ? ` · ${detail.process_step}` : ""}</p><button type="button" className="heading-delete" data-testid="detail-image-delete" onClick={() => setPending({ kind: "image" })}>이미지 삭제</button></div></div>
       <StatusBanner message={status} />
       <div className="measurement-layout">
         <section className="viewer-panel" aria-label="측정 이미지">
@@ -743,6 +742,12 @@ export function MeasurementPage() {
           <section className="image-facts" aria-labelledby="image-facts-heading">
             <h2 id="image-facts-heading">이미지 정보</h2>
             <dl data-testid="image-facts">
+              {/* The identifying attributes used to sit in the page title bar;
+                  they belong with the rest of the image's facts. */}
+              <div><dt>종류</dt><dd data-testid="image-type">{detail.image_type}</dd></div>
+              <div><dt>Product</dt><dd>{detail.product_id}</dd></div>
+              <div><dt>Lot</dt><dd>{detail.lot_id}</dd></div>
+              <div><dt>Wafer</dt><dd>{detail.wafer_id}</dd></div>
               <div><dt>보정값</dt><dd>{detail.calibration_nm_per_pixel} nm/pixel</dd></div>
               <div><dt>원본 크기</dt><dd>{detail.pixel_width} × {detail.pixel_height} px</dd></div>
               {detail.process_step && <div><dt>공정 Step</dt><dd data-testid="image-process-step">{detail.process_step}</dd></div>}
@@ -1011,6 +1016,11 @@ export function MeasurementPage() {
         <button type="button" className="button" onClick={exportContext} disabled={detail.measurements.length === 0 || exporting} data-testid="context-export-button">
           {exporting ? "ZIP 생성 중…" : "Context ZIP 다운로드"}
         </button>
+      </section>
+      <section className="danger-zone table-panel" aria-labelledby="danger-zone-heading">
+        <h2 id="danger-zone-heading">이미지 삭제</h2>
+        <p>이 이미지와 저장된 측정을 모두 삭제합니다. 되돌릴 수 없습니다.</p>
+        <button type="button" className="heading-delete" data-testid="detail-image-delete" onClick={() => setPending({ kind: "image" })}>이미지 삭제</button>
       </section>
       {pending && copy && (
         <ConfirmDialog

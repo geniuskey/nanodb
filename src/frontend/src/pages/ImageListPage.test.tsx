@@ -10,6 +10,27 @@ function urlsOf(fetchMock: ReturnType<typeof vi.fn>): string[] {
   return fetchMock.mock.calls.map((call) => String(call[0]));
 }
 
+/** The image_type options the filter dropdown is built from. */
+const IMAGE_TYPE_OPTIONS = ["SEM", "TEM", "Layout"].map((value, index) => ({
+  id: index + 1,
+  category: "image_type",
+  value,
+  is_predefined: true,
+}));
+
+/**
+ * A fetch mock that answers the catalog call with image_type options (so the
+ * filter dropdown has choices) and every other call with `images`.
+ */
+function fetchMockFor(images: unknown[]) {
+  return vi.fn().mockImplementation((input: RequestInfo | URL) => {
+    if (String(input).includes("/api/catalog")) {
+      return Promise.resolve(jsonResponse(IMAGE_TYPE_OPTIONS));
+    }
+    return Promise.resolve(jsonResponse(images));
+  });
+}
+
 const sampleImage = {
   id: 9,
   original_filename: "tem-09.png",
@@ -27,7 +48,7 @@ const sampleImage = {
 
 describe("ImageListPage", () => {
   it("shows an explicit empty state and registration action", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([])));
+    vi.stubGlobal("fetch", fetchMockFor([]));
 
     renderWithRouter(<ImageListPage />);
 
@@ -36,21 +57,7 @@ describe("ImageListPage", () => {
   });
 
   it("shows image metadata and stored measurement count", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([{
-      id: 9,
-      original_filename: "tem-09.png",
-      image_type: "TEM",
-      product_id: "P9",
-      lot_id: "L9",
-      wafer_id: "W9",
-      note: "재촬영 필요",
-      calibration_nm_per_pixel: 0.2,
-      pixel_width: 1000,
-      pixel_height: 800,
-      created_at: "2026-09-08T04:00:00Z",
-      file_url: "/api/images/9/file",
-      measurement_count: 2,
-    }])));
+    vi.stubGlobal("fetch", fetchMockFor([{ ...sampleImage, note: "재촬영 필요" }]));
 
     renderWithRouter(<ImageListPage />);
 
@@ -66,7 +73,7 @@ describe("ImageListPage", () => {
   });
 
   it("omits the 비고 row when an image has no note", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([sampleImage])));
+    vi.stubGlobal("fetch", fetchMockFor([sampleImage]));
 
     renderWithRouter(<ImageListPage />);
 
@@ -100,19 +107,37 @@ describe("ImageListPage", () => {
   });
 
   it("narrows by image type via the image_type query parameter", async () => {
-    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse([])));
+    const fetchMock = fetchMockFor([]);
     vi.stubGlobal("fetch", fetchMock);
 
     renderWithRouter(<ImageListPage />);
-    fireEvent.click(await screen.findByTestId("filter-sem"));
+    // The dropdown is populated from the catalog, so wait for its options.
+    await screen.findByRole("option", { name: "SEM" });
+    fireEvent.change(screen.getByTestId("image-type-filter"), {
+      target: { value: "SEM" },
+    });
 
     await waitFor(() =>
       expect(urlsOf(fetchMock).some((url) => url.includes("image_type=SEM"))).toBe(true),
     );
   });
 
+  it("offers 전체 plus every registered image type in the filter", async () => {
+    vi.stubGlobal("fetch", fetchMockFor([]));
+
+    renderWithRouter(<ImageListPage />);
+
+    const filter = await screen.findByTestId("image-type-filter");
+    // Default is 전체 (no type filter).
+    expect(filter).toHaveValue("ALL");
+    await screen.findByRole("option", { name: "Layout" });
+    expect(screen.getByRole("option", { name: "전체" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "SEM" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "TEM" })).toBeInTheDocument();
+  });
+
   it("offers no delete control on a card; deletion lives on the image page", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([sampleImage])));
+    vi.stubGlobal("fetch", fetchMockFor([sampleImage]));
 
     renderWithRouter(<ImageListPage />);
 
@@ -123,7 +148,7 @@ describe("ImageListPage", () => {
   });
 
   it("shows the image type as a badge", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([sampleImage])));
+    vi.stubGlobal("fetch", fetchMockFor([sampleImage]));
 
     renderWithRouter(<ImageListPage />);
 
@@ -132,9 +157,7 @@ describe("ImageListPage", () => {
   });
 
   it("reports the result count and keeps results visible while refetching", async () => {
-    const fetchMock = vi.fn().mockImplementation(() =>
-      Promise.resolve(jsonResponse([sampleImage])),
-    );
+    const fetchMock = fetchMockFor([sampleImage]);
     vi.stubGlobal("fetch", fetchMock);
 
     renderWithRouter(<ImageListPage />);
@@ -142,7 +165,10 @@ describe("ImageListPage", () => {
       "등록된 이미지 1건",
     );
 
-    fireEvent.click(screen.getByTestId("filter-sem"));
+    await screen.findByRole("option", { name: "SEM" });
+    fireEvent.change(screen.getByTestId("image-type-filter"), {
+      target: { value: "SEM" },
+    });
 
     // The previous card stays on screen through the refetch instead of the
     // page blanking back to its loading state.
@@ -213,7 +239,7 @@ describe("ImageListPage", () => {
   });
 
   it("keeps the batch action disabled until an image is selected", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([sampleImage])));
+    vi.stubGlobal("fetch", fetchMockFor([sampleImage]));
 
     renderWithRouter(<ImageListPage />);
 
@@ -245,10 +271,13 @@ describe("ImageListPage", () => {
   });
 
   it("distinguishes a filtered empty result from an empty catalog", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => Promise.resolve(jsonResponse([]))));
+    vi.stubGlobal("fetch", fetchMockFor([]));
 
     renderWithRouter(<ImageListPage />);
-    fireEvent.click(await screen.findByTestId("filter-tem"));
+    await screen.findByRole("option", { name: "TEM" });
+    fireEvent.change(screen.getByTestId("image-type-filter"), {
+      target: { value: "TEM" },
+    });
 
     expect(await screen.findByText("조건에 맞는 이미지가 없습니다")).toBeInTheDocument();
   });

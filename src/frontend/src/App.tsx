@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, Route, Routes, useLocation } from "react-router-dom";
 
 import logo from "../../../assets/logo/nanodb_logo_horizontal.svg";
 import { SummaryContext, useSummary, useSummaryFetch } from "./api/summary-context";
 import { CatalogPage } from "./pages/CatalogPage";
+import { DemoRegisterPage } from "./pages/DemoRegisterPage";
 import { HomePage } from "./pages/HomePage";
 import { ImageListPage } from "./pages/ImageListPage";
 import { ImageRegisterPage } from "./pages/ImageRegisterPage";
@@ -11,13 +13,14 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import { ErrorBoundary } from "./ui/ErrorBoundary";
 
 const REAL_TABS = [
-  { to: "/", label: "홈", hint: "대의", end: true },
+  { to: "/", label: "홈", end: true },
   // `/images` stays non-exact so an image detail keeps the catalog tab lit,
   // but `/images/new` is its own tab: without this both would read as the
   // current location at once.
-  { to: "/images", label: "이미지DB", hint: "찾기", end: false, notOn: "/images/new" },
-  { to: "/images/new", label: "이미지 등록", hint: "작업", end: false },
-  { to: "/catalog", label: "목록 관리", hint: "설정", end: false },
+  { to: "/images", label: "이미지DB", end: false, notOn: "/images/new" },
+  { to: "/images/new", label: "이미지 등록", end: false },
+  { to: "/demo", label: "등록 데모", end: false },
+  { to: "/catalog", label: "목록 관리", end: false },
 ];
 
 function StatusPill() {
@@ -40,37 +43,46 @@ function StatusPill() {
 function Shell() {
   const summary = useSummaryFetch();
   const { pathname } = useLocation();
+  // On narrow screens the tabs collapse behind a disclosure button; navigating
+  // (or growing the viewport back to desktop) closes it again.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => setMenuOpen(false), [pathname]);
   return (
     <SummaryContext.Provider value={summary}>
     <div className="app-shell">
-      {/* The header and tab strip sit before the body; give keyboard
-          users one hop past them (UIX-005). */}
+      {/* The header sits before the body; give keyboard users one hop past
+          it (UIX-005). */}
       <a className="skip-link" href="#main-content">본문으로 건너뛰기</a>
-      <header className="app-header">
+      <header className={menuOpen ? "app-header menu-open" : "app-header"}>
         <NavLink className="brand" to="/" aria-label="NANoDB 홈">
           <img src={logo} alt="NANoDB" />
-          <span className="brand-text">
-            <span className="brand-ext">Nano Assets, Never orphaned Database</span>
-            <span className="brand-sub">데이터는 쌓이고, 툴은 이어진다.</span>
-          </span>
         </NavLink>
+        <button
+          type="button"
+          className="nav-toggle"
+          aria-expanded={menuOpen}
+          aria-controls="primary-nav"
+          aria-label="주요 메뉴 열기"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span className="nav-toggle-bars" aria-hidden="true" />
+        </button>
+        <nav className="tabbar" id="primary-nav" aria-label="주요 메뉴">
+          {REAL_TABS.map((tab) => (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              end={tab.end}
+              className={({ isActive }) =>
+                isActive && pathname !== tab.notOn ? "tab active" : "tab"
+              }
+            >
+              <span className="tab-label">{tab.label}</span>
+            </NavLink>
+          ))}
+        </nav>
         <StatusPill />
       </header>
-      <nav className="tabbar" aria-label="주요 메뉴">
-        {REAL_TABS.map((tab) => (
-          <NavLink
-            key={tab.to}
-            to={tab.to}
-            end={tab.end}
-            className={({ isActive }) =>
-              isActive && pathname !== tab.notOn ? "tab active" : "tab"
-            }
-          >
-            <span className="tab-label">{tab.label}</span>
-            <span className="tab-hint">{tab.hint}</span>
-          </NavLink>
-        ))}
-      </nav>
       <div id="main-content" tabIndex={-1}>
         <ErrorBoundary>
           <Outlet />
@@ -89,6 +101,7 @@ export function App() {
         <Route index element={<HomePage />} />
         <Route path="images" element={<ImageListPage />} />
         <Route path="images/new" element={<ImageRegisterPage />} />
+        <Route path="demo" element={<DemoRegisterPage />} />
         <Route path="catalog" element={<CatalogPage />} />
         <Route path="images/:imageId" element={<MeasurementPage />} />
         <Route path="*" element={<NotFoundPage />} />

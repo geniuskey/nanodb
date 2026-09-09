@@ -32,6 +32,7 @@ import {
   previewValue,
 } from "../measurement/geometry";
 import { MeasurementOverlay } from "../measurement/MeasurementOverlay";
+import { ImageInfoPanel } from "./ImageInfoPanel";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { StatusBanner } from "../ui/StatusBanner";
 import { useDocumentTitle } from "../ui/useDocumentTitle";
@@ -42,6 +43,12 @@ import { useDocumentTitle } from "../ui/useDocumentTitle";
 const ZOOM_STEPS = [1, 1.5, 2, 3, 4, 6, 8];
 
 const TYPES: MeasurementType[] = ["length", "angle", "curvature"];
+
+// Manual measurement drawing is built and tested but turned off for now: the
+// product ships auto extraction only. Flip this to re-enable the composer,
+// point placement on the image, and the "측정 저장" flow. Correcting an
+// existing (auto) measurement is a separate feature and stays available.
+const MANUAL_MEASUREMENT_ENABLED = false;
 
 /** What a pending confirmation would delete. */
 type PendingDelete =
@@ -101,8 +108,6 @@ export function MeasurementPage() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [pending, setPending] = useState<PendingDelete | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   // New-item form (per-product measurement item table below the image).
   const [newItem, setNewItem] = useState<{ name: string; type: MeasurementType }>({
@@ -125,7 +130,20 @@ export function MeasurementPage() {
   const [featRunning, setFeatRunning] = useState(false);
   const [featSummary, setFeatSummary] = useState<FeatureExtractionResultView | null>(null);
 
-  useDocumentTitle(detail?.original_filename ?? "측정");
+  // Identify the image in the tab by its manufacturing context rather than the
+  // raw filename, e.g. "[TEM] P1·L1·W1·Gate Etch".
+  useDocumentTitle(
+    detail
+      ? `[${detail.image_type}] ${[
+          detail.product_id,
+          detail.lot_id,
+          detail.wafer_id,
+          detail.process_step,
+        ]
+          .filter(Boolean)
+          .join("·")}`
+      : "측정",
+  );
 
   useEffect(() => {
     setError(null);
@@ -466,6 +484,7 @@ export function MeasurementPage() {
 
   /** Follow the pointer while drawing so the shape previews before it is placed. */
   function trackCursor(event: MouseEvent<HTMLImageElement>) {
+    if (!MANUAL_MEASUREMENT_ENABLED) return;
     if (!detail || adjustId !== null || draft.length >= needed) {
       if (cursor !== null) setCursor(null);
       return;
@@ -479,6 +498,8 @@ export function MeasurementPage() {
   }
 
   function placePoint(event: MouseEvent<HTMLImageElement>) {
+    // Manual drawing is off: the image is view/correct only, never a canvas.
+    if (!MANUAL_MEASUREMENT_ENABLED) return;
     // While a saved measurement is being corrected the image is the correction
     // surface, not a drawing surface: a stray click must not start a new draft.
     if (adjustId !== null) return;
@@ -634,23 +655,6 @@ export function MeasurementPage() {
     } finally { setDeleting(false); }
   }
 
-  async function exportContext() {
-    if (!detail || detail.measurements.length === 0 || exporting) return;
-    setExporting(true); setExportError(null);
-    try {
-      const archive = await api.downloadContext(imageId);
-      const url = URL.createObjectURL(archive);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `nanodb-image-${imageId}.zip`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setStatus("Context ZIP을 내려받았습니다.");
-    } catch (caught) {
-      setExportError(caught instanceof ApiError ? caught.message : "Context ZIP을 다운로드하지 못했습니다.");
-    } finally { setExporting(false); }
-  }
-
   async function runSegmentation() {
     if (segRunning) return;
     setSegRunning(true); setSegError(null); setStatus(null);
@@ -699,8 +703,6 @@ export function MeasurementPage() {
 
   return (
     <main>
-      <Link to="/images">← 목록으로</Link>
-      <div className="page-heading"><div><p className="eyebrow">{detail.image_type} 측정</p><h1>{detail.original_filename}</h1></div><div className="heading-actions"><p>{detail.product_id} · {detail.lot_id} · {detail.wafer_id}{detail.process_step ? ` · ${detail.process_step}` : ""}</p><button type="button" className="heading-delete" data-testid="detail-image-delete" onClick={() => setPending({ kind: "image" })}>이미지 삭제</button></div></div>
       <StatusBanner message={status} />
       <div className="measurement-layout">
         <section className="viewer-panel" aria-label="측정 이미지">
@@ -740,15 +742,12 @@ export function MeasurementPage() {
           </div>
         </section>
         <aside className="measurement-controls">
-          <section className="image-facts" aria-labelledby="image-facts-heading">
-            <h2 id="image-facts-heading">이미지 정보</h2>
-            <dl data-testid="image-facts">
-              <div><dt>보정값</dt><dd>{detail.calibration_nm_per_pixel} nm/pixel</dd></div>
-              <div><dt>원본 크기</dt><dd>{detail.pixel_width} × {detail.pixel_height} px</dd></div>
-              {detail.process_step && <div><dt>공정 Step</dt><dd data-testid="image-process-step">{detail.process_step}</dd></div>}
-              <div><dt>등록</dt><dd>{new Date(detail.created_at).toLocaleString()}</dd></div>
-            </dl>
-          </section>
+          <ImageInfoPanel
+            detail={detail}
+            onUpdated={(image) =>
+              setDetail((current) => (current ? { ...current, ...image } : current))
+            }
+          />
           {adjusting ? (
             <section className="adjust-panel" aria-labelledby="adjust-heading" data-testid="adjust-panel">
               <h2 id="adjust-heading">측정 보정</h2>
@@ -775,6 +774,19 @@ export function MeasurementPage() {
                 )}
                 <button type="button" className="primary" onClick={saveAdjust} disabled={adjustBusy || adjustPreview === null || !adjustMoved} data-testid="adjust-save">{adjustBusy ? "저장 중…" : "보정 저장"}</button>
               </div>
+            </section>
+          ) : !MANUAL_MEASUREMENT_ENABLED ? (
+            <section className="adjust-panel" aria-labelledby="manual-off-heading" data-testid="manual-measurement-disabled">
+              <h2 id="manual-off-heading">수동 측정 추가</h2>
+              <p className="note-hint">
+                지금은 자동 측정만 제공합니다. 아래 <strong>자동 분석</strong>에서 세그멘테이션과
+                특징 추출을 실행하면 측정값이 자동으로 만들어집니다. 자동 측정값은 이미지 위의 점을
+                끌어 직접 보정할 수 있습니다. 수동으로 새 측정을 그리는 기능은 추후 제공될 예정입니다.
+              </p>
+              {/* Errors from actions that live outside the composer (deleting a
+                  saved measurement) used to surface in the composer; keep a home
+                  for them now that it is hidden. */}
+              {error && <p role="alert">{error}</p>}
             </section>
           ) : (
           <>
@@ -971,20 +983,22 @@ export function MeasurementPage() {
               <figure><img src={segmentation.map_url} alt="클래스 맵" data-testid="segmentation-map" /><figcaption>클래스 맵</figcaption></figure>
               <figure><img src={segmentation.boundary_url} alt="경계 오버레이" data-testid="segmentation-boundary" /><figcaption>경계 오버레이</figcaption></figure>
             </div>
-            <table className="data-table">
-              <thead><tr><th scope="col">클래스</th><th scope="col">픽셀</th><th scope="col">면적 비율</th><th scope="col">평균 강도</th><th scope="col">면적(nm²)</th></tr></thead>
-              <tbody>
-                {segmentation.class_stats.map((stat) => (
-                  <tr key={stat.class_index} data-testid="segmentation-class-row">
-                    <td>{stat.class_index}</td>
-                    <td>{stat.pixels.toLocaleString()}</td>
-                    <td>{(stat.area_fraction * 100).toFixed(1)}%</td>
-                    <td>{stat.mean_intensity !== null ? stat.mean_intensity.toFixed(1) : "-"}</td>
-                    <td>{stat.area_nm2 !== null ? stat.area_nm2.toFixed(1) : "-"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="table-scroll">
+              <table className="data-table seg-class-table">
+                <thead><tr><th scope="col">클래스</th><th scope="col">픽셀</th><th scope="col">면적 비율</th><th scope="col">평균 강도</th><th scope="col">면적(nm²)</th></tr></thead>
+                <tbody>
+                  {segmentation.class_stats.map((stat) => (
+                    <tr key={stat.class_index} data-testid="segmentation-class-row">
+                      <td>{stat.class_index}</td>
+                      <td>{stat.pixels.toLocaleString()}</td>
+                      <td>{(stat.area_fraction * 100).toFixed(1)}%</td>
+                      <td>{stat.mean_intensity !== null ? stat.mean_intensity.toFixed(1) : "-"}</td>
+                      <td>{stat.area_nm2 !== null ? stat.area_nm2.toFixed(1) : "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {segmentation.has_tagged_tiff && (
               <p><a className="button" href={`/api/images/${imageId}/tagged`} download data-testid="tagged-download">태그된 TIFF 다운로드</a></p>
             )}
@@ -1001,16 +1015,10 @@ export function MeasurementPage() {
           </div>
         )}
       </section>
-      <section className="export-panel table-panel" aria-labelledby="context-export-heading">
-        <h2 id="context-export-heading">Context Export</h2>
-        <p>포함: Product ID, Lot ID, Wafer ID, 공정 Step, 원본 파일명, 저장된 측정과 측정별 라벨·메모</p>
-        <p>제외: 이미지 바이너리</p>
-        <p>다운로드한 ZIP은 사용자가 외부 AI 도구에 수동으로 전달합니다. NANoDB가 자동으로 외부에 전송하지 않습니다.</p>
-        {detail.measurements.length === 0 && <p data-testid="context-export-disabled-reason">저장된 측정이 하나 이상 있어야 내보낼 수 있습니다.</p>}
-        {exportError && <p role="alert">{exportError}</p>}
-        <button type="button" className="button" onClick={exportContext} disabled={detail.measurements.length === 0 || exporting} data-testid="context-export-button">
-          {exporting ? "ZIP 생성 중…" : "Context ZIP 다운로드"}
-        </button>
+      <section className="danger-zone table-panel" aria-labelledby="danger-zone-heading">
+        <h2 id="danger-zone-heading">이미지 삭제</h2>
+        <p>이 이미지와 저장된 측정을 모두 삭제합니다. 되돌릴 수 없습니다.</p>
+        <button type="button" className="heading-delete" data-testid="detail-image-delete" onClick={() => setPending({ kind: "image" })}>이미지 삭제</button>
       </section>
       {pending && copy && (
         <ConfirmDialog

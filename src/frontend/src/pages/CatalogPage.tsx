@@ -187,7 +187,7 @@ export function CatalogPage() {
                         </form>
                       ) : (
                         <>
-                          <span>{option.value}</span>
+                          <span className="catalog-value-text">{option.value}</span>
                           {option.is_predefined ? (
                             <span className="badge" title="기본값은 수정·삭제할 수 없습니다">기본</span>
                           ) : (

@@ -42,6 +42,7 @@ def image_view(image: Image) -> ImageView:
         lot_id=image.lot_id,
         wafer_id=image.wafer_id,
         process_step=image.process_step,
+        note=image.note,
         calibration_nm_per_pixel=image.calibration_nm_per_pixel,
         pixel_width=image.pixel_width,
         pixel_height=image.pixel_height,

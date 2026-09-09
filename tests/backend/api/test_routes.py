@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 from io import BytesIO
 from types import SimpleNamespace
@@ -46,6 +47,7 @@ def sample_image() -> Image:
 class FakeImageService:
     def __init__(self) -> None:
         self.registration = None
+        self.update_calls: list[tuple[int, object]] = []
         self.list_calls: list[tuple[str | None, str | None]] = []
         self.delete_calls: list[int] = []
 
@@ -59,14 +61,30 @@ class FakeImageService:
         *,
         query: str | None = None,
         image_type: str | None = None,
+        product_id: str | None = None,
     ) -> tuple[ImageListItem, ...]:
-        self.list_calls.append((query, image_type))
+        self.list_calls.append((query, image_type, product_id))
         return (ImageListItem(sample_image(), 0),)
 
     def get_image(self, image_id: int) -> Image:
         if image_id != 1:
             raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
         return sample_image()
+
+    def update(self, image_id: int, update: object) -> Image:
+        self.update_calls.append((image_id, update))
+        if image_id != 1:
+            raise DomainError("IMAGE_NOT_FOUND", "Image was not found.")
+        return replace(
+            sample_image(),
+            image_type=update.image_type,
+            product_id=update.product_id,
+            lot_id=update.lot_id,
+            wafer_id=update.wafer_id,
+            process_step=update.process_step,
+            note=update.note,
+            calibration_nm_per_pixel=update.calibration_nm_per_pixel,
+        )
 
     def delete(self, image_id: int) -> None:
         self.delete_calls.append(image_id)
@@ -275,10 +293,13 @@ def test_summary_and_catalog_do_not_expose_stored_filename() -> None:
 def test_catalog_forwards_search_and_type_filters_to_service() -> None:
     client = build_client()
 
-    response = client.get("/api/images", params={"q": "lot42", "image_type": "SEM"})
+    response = client.get(
+        "/api/images",
+        params={"q": "lot42", "image_type": "SEM", "product_id": "P1"},
+    )
 
     assert response.status_code == 200
-    assert client.app.state.image_service.list_calls == [("lot42", "SEM")]
+    assert client.app.state.image_service.list_calls == [("lot42", "SEM", "P1")]
 
 
 def test_catalog_without_filters_forwards_none() -> None:
@@ -286,7 +307,7 @@ def test_catalog_without_filters_forwards_none() -> None:
 
     client.get("/api/images")
 
-    assert client.app.state.image_service.list_calls == [(None, None)]
+    assert client.app.state.image_service.list_calls == [(None, None, None)]
 
 
 def test_multipart_registration_returns_safe_image_view() -> None:
@@ -410,6 +431,88 @@ def test_delete_image_returns_no_content_and_forwards_id() -> None:
 
 def test_delete_missing_image_uses_not_found_envelope() -> None:
     response = build_client().delete("/api/images/999")
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "IMAGE_NOT_FOUND"
+
+
+def test_update_image_forwards_fields_and_returns_safe_view() -> None:
+    client = build_client()
+
+    response = client.patch(
+        "/api/images/1",
+        json={
+            "image_type": "SEM",
+            "product_id": "P2",
+            "lot_id": "L2",
+            "wafer_id": "W2",
+            "process_step": "Poly Etch",
+            "note": "재보정 완료",
+            "calibration_nm_per_pixel": 0.35,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["image_type"] == "SEM"
+    assert body["product_id"] == "P2"
+    assert body["process_step"] == "Poly Etch"
+    assert body["note"] == "재보정 완료"
+    assert body["calibration_nm_per_pixel"] == 0.35
+    assert body["file_url"] == "/api/images/1/file"
+    assert "private-key.png" not in response.text
+    (image_id, update) = client.app.state.image_service.update_calls[0]
+    assert image_id == 1
+    assert update.image_type == "SEM"
+    assert update.calibration_nm_per_pixel == 0.35
+
+
+def test_update_image_allows_omitting_optional_fields() -> None:
+    client = build_client()
+
+    response = client.patch(
+        "/api/images/1",
+        json={
+            "image_type": "SEM",
+            "product_id": "P2",
+            "lot_id": "L2",
+            "wafer_id": "W2",
+            "calibration_nm_per_pixel": 0.4,
+        },
+    )
+
+    assert response.status_code == 200
+    (_, update) = client.app.state.image_service.update_calls[0]
+    assert update.process_step is None
+    assert update.note is None
+
+
+def test_update_image_rejects_a_non_positive_calibration() -> None:
+    response = build_client().patch(
+        "/api/images/1",
+        json={
+            "image_type": "SEM",
+            "product_id": "P2",
+            "lot_id": "L2",
+            "wafer_id": "W2",
+            "calibration_nm_per_pixel": 0,
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_update_missing_image_uses_not_found_envelope() -> None:
+    response = build_client().patch(
+        "/api/images/999",
+        json={
+            "image_type": "SEM",
+            "product_id": "P2",
+            "lot_id": "L2",
+            "wafer_id": "W2",
+            "calibration_nm_per_pixel": 0.4,
+        },
+    )
 
     assert response.status_code == 404
     assert response.json()["code"] == "IMAGE_NOT_FOUND"

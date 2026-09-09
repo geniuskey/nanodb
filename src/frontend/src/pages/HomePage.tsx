@@ -133,11 +133,6 @@ function dayKey(iso: string): string {
   return iso.slice(0, 10);
 }
 
-function topTypes(types: MeasurementTypeSummary[]): (MeasurementTypeSummary | null)[] {
-  const sorted = [...types].sort((a, b) => b.count - a.count).slice(0, 2);
-  return [sorted[0] ?? null, sorted[1] ?? null];
-}
-
 function KpiSection({ images, reloadImages }: { images: ImageListView[] | null; reloadImages: () => void }) {
   const { summary, state } = useSummary();
 
@@ -159,8 +154,8 @@ function KpiSection({ images, reloadImages }: { images: ImageListView[] | null; 
       {state === "loading" && (
         <>
           <p role="status">실제 데이터를 불러오는 중입니다.</p>
-          <div className="kpi-grid four" aria-hidden="true" data-testid="kpi-skeleton">
-            {[0, 1, 2, 3].map((slot) => (
+          <div className="kpi-grid two" aria-hidden="true" data-testid="kpi-skeleton">
+            {[0, 1].map((slot) => (
               <article className="kpi-card" key={slot}>
                 <span className="skeleton skeleton-value" />
                 <span className="skeleton skeleton-line short" />
@@ -180,7 +175,7 @@ function KpiSection({ images, reloadImages }: { images: ImageListView[] | null; 
 
       {state === "success" && summary && (
         <div data-testid="home-summary">
-          <div className="kpi-grid four">
+          <div className="kpi-grid two">
             <article className="kpi-card">
               <div className="kpi-value">{summary.image_count}</div>
               <div className="kpi-label">이미지</div>
@@ -193,67 +188,12 @@ function KpiSection({ images, reloadImages }: { images: ImageListView[] | null; 
               <div className="kpi-label">저장 측정</div>
               <div className="kpi-sub">n={summary.measurement_count} · manual</div>
             </article>
-            {topTypes(summary.types).map((type, index) => (
-              <article className="kpi-card" key={type ? type.measurement_type : `empty-${index}`}>
-                {type ? (
-                  <>
-                    <div className="kpi-value">
-                      {type.mean.toFixed(2)}{" "}
-                      <span className="kpi-unit">{type.unit === "deg" ? "°" : type.unit}</span>
-                    </div>
-                    <div className="kpi-label">{TYPE_LABEL[type.measurement_type]} 평균</div>
-                    <div className="kpi-sub">n={type.count}, 저장값만</div>
-                  </>
-                ) : (
-                  <>
-                    <div className="kpi-value muted">—</div>
-                    <div className="kpi-label">측정 종류 평균</div>
-                    <div className="kpi-sub">측정이 아직 없습니다 (n=0)</div>
-                  </>
-                )}
-              </article>
-            ))}
           </div>
 
           {images && <CompositionBars images={images} types={summary.types} />}
-
-          <TypeBreakdown types={summary.types} />
         </div>
       )}
     </section>
-  );
-}
-
-function TypeBreakdown({ types }: { types: MeasurementTypeSummary[] }) {
-  if (types.length === 0) {
-    return null;
-  }
-  return (
-    <table className="param-table" data-testid="type-breakdown">
-      <caption className="comp-heading">측정 종류별 요약 (저장값, 종류별 단위)</caption>
-      <thead>
-        <tr>
-          <th scope="col">종류</th>
-          <th scope="col">단위</th>
-          <th scope="col">n</th>
-          <th scope="col">평균</th>
-          <th scope="col">최소</th>
-          <th scope="col">최대</th>
-        </tr>
-      </thead>
-      <tbody>
-        {types.map((type) => (
-          <tr key={type.measurement_type}>
-            <th scope="row">{TYPE_LABEL[type.measurement_type]}</th>
-            <td>{type.unit === "deg" ? "°" : type.unit}</td>
-            <td>{type.count}</td>
-            <td>{type.mean.toFixed(2)}</td>
-            <td>{type.min.toFixed(2)}</td>
-            <td>{type.max.toFixed(2)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
   );
 }
 
@@ -435,7 +375,7 @@ export function HomePage() {
   // grid, so a retry re-arms all three at once.
   const imageList = useImages();
   return (
-    <main>
+    <main className="home-main">
       <IntroVideo />
 
       <section className="hero-card" aria-labelledby="home-title">

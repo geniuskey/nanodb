@@ -51,19 +51,18 @@ a, button, [role="button"], input, select, textarea, summary, [tabindex] {
 
 /* ---------- App shell: header + tab bar ---------- */
 .app-shell > .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 14px max(24px, calc((100vw - 1180px) / 2));
+  gap: 24px;
+  padding: 10px 32px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
-.brand { display: flex; align-items: center; gap: 16px; text-decoration: none; }
-.brand img { display: block; width: 190px; max-height: 44px; }
-.brand-text { display: grid; gap: 2px; }
-.brand-ext { font-weight: 800; font-size: 0.82rem; letter-spacing: 0.02em; color: var(--ink); }
-.brand-sub { font-size: 0.78rem; color: var(--ink-muted); }
+.brand { display: flex; align-items: center; text-decoration: none; }
+.brand img { display: block; width: 170px; max-height: 40px; }
 
 .status-pill {
   display: inline-flex;
@@ -80,31 +79,46 @@ a, button, [role="button"], input, select, textarea, summary, [tabindex] {
 }
 .status-pill strong { color: var(--accent); font-weight: 800; }
 
+/* Tabs live inline in the single header row now. */
 .tabbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 max(24px, calc((100vw - 1180px) / 2));
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
+  gap: 4px;
+  margin-right: auto;
 }
 .tab {
-  display: grid;
-  gap: 2px;
-  padding: 12px 14px 10px;
+  padding: 8px 12px;
   text-decoration: none;
-  border-bottom: 3px solid transparent;
+  border-radius: 8px;
   color: var(--ink);
 }
 .tab-label { font-weight: 800; font-size: 0.95rem; }
-.tab-hint { font-size: 0.72rem; color: var(--ink-muted); }
-.tab:hover:not(.active) { border-bottom-color: var(--accent-track); }
+.tab:hover:not(.active) { background: var(--accent-track); }
 .tab:hover .tab-label { color: var(--accent-strong); }
-.tab.active { border-bottom-color: var(--accent); }
+.tab.active { background: var(--accent-track); }
 .tab.active .tab-label { color: var(--accent); }
 
+/* The disclosure button only appears once the tabs no longer fit (see the
+   narrow-screen media query); on desktop the tabs are always inline. */
+.nav-toggle { display: none; }
+.nav-toggle-bars, .nav-toggle-bars::before, .nav-toggle-bars::after {
+  display: block; width: 18px; height: 2px; border-radius: 2px;
+  background: var(--ink); transition: transform 0.18s ease, top 0.18s ease;
+}
+.nav-toggle-bars { position: relative; }
+.nav-toggle-bars::before, .nav-toggle-bars::after { content: ""; position: absolute; left: 0; }
+.nav-toggle-bars::before { top: -6px; }
+.nav-toggle-bars::after { top: 6px; }
+.app-header.menu-open .nav-toggle-bars { background: transparent; }
+.app-header.menu-open .nav-toggle-bars::before { top: 0; transform: rotate(45deg); }
+.app-header.menu-open .nav-toggle-bars::after { top: 0; transform: rotate(-45deg); }
+
 /* ---------- Layout ---------- */
-main { width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 48px 0 64px; }
+main { width: 100%; margin: 0; padding: 48px 32px 64px; }
+/* The home page is a reading/intro page, not a tool screen: cap its content
+   width and center it so the copy has generous side gutters and is comfortable
+   to read on wide monitors, rather than stretching edge-to-edge. */
+.home-main { max-width: 1160px; margin-inline: auto; padding-left: 40px; padding-right: 40px; }
 section { margin-bottom: 56px; }
 h1 { font-size: clamp(2.2rem, 4.4vw, 3.6rem); line-height: 1.08; margin: 10px 0 18px; letter-spacing: -0.03em; }
 h2 { letter-spacing: -0.02em; font-size: 1.5rem; margin: 0 0 6px; }
@@ -161,6 +175,7 @@ h2 { letter-spacing: -0.02em; font-size: 1.5rem; margin: 0 0 6px; }
 /* ---------- Real KPI (지금 쌓인 데이터) ---------- */
 .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .kpi-grid.four { grid-template-columns: repeat(4, 1fr); }
+.kpi-grid.two { grid-template-columns: repeat(2, 1fr); }
 .kpi-card .kpi-label { color: var(--ink-muted); font-size: 0.9rem; }
 .kpi-card .kpi-value { font-size: 2.4rem; font-weight: 800; color: var(--accent); line-height: 1.1; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
 .kpi-card .kpi-value.muted { color: var(--p2); }
@@ -252,20 +267,17 @@ h2 { letter-spacing: -0.02em; font-size: 1.5rem; margin: 0 0 6px; }
 
 /* ---------- Image list / register / measurement ---------- */
 .page-heading { display: flex; justify-content: space-between; align-items: center; }
-.heading-actions { display: flex; align-items: center; gap: 16px; }
+.danger-zone { margin: 28px 0 0; }
+.danger-zone p { color: var(--ink-muted); line-height: 1.5; margin-bottom: 14px; }
 .heading-delete { padding: 9px 16px; border: 1px solid var(--danger); border-radius: 999px; background: var(--surface); color: var(--danger); font-weight: 700; cursor: pointer; }
 .heading-delete:hover:not(:disabled) { background: var(--danger); color: #fff; }
 .heading-delete:disabled { opacity: .5; cursor: wait; }
 .catalog-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 24px; }
 .catalog-search { flex: 1; min-width: 220px; padding: 12px 14px; border: 1px solid #b7bdc8; border-radius: 10px; font: inherit; }
-.type-filter { display: inline-flex; gap: 6px; }
-.chip { padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink-muted); font-weight: 700; cursor: pointer; }
-.chip.active { border-color: var(--accent); background: var(--accent-tint); color: var(--accent); }
-.image-grid { grid-template-columns: repeat(2, 1fr); }
+.type-filter { min-width: 160px; padding: 12px 14px; border: 1px solid #b7bdc8; border-radius: 10px; background: var(--surface); font: inherit; cursor: pointer; }
+/* Column count follows the viewport width: as many ~360px cards as fit. */
+.image-grid { grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr)); }
 .image-card-wrap { position: relative; }
-.delete-image { position: absolute; top: 14px; right: 14px; padding: 8px 14px; border: 1px solid var(--danger); border-radius: 999px; background: var(--surface); color: var(--danger); font-weight: 700; cursor: pointer; }
-.delete-image:hover:not(:disabled) { background: var(--danger); color: #fff; }
-.delete-image:disabled { opacity: .5; cursor: wait; }
 .card-select { position: absolute; top: 14px; left: 14px; z-index: 1; background: var(--surface); border-radius: 8px; padding: 4px; line-height: 0; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
 .card-select input { width: 20px; height: 20px; cursor: pointer; }
 .batch-bar { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin: 8px 0 4px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
@@ -282,10 +294,184 @@ h2 { letter-spacing: -0.02em; font-size: 1.5rem; margin: 0 0 6px; }
 .segmentation-views figure { margin: 0; }
 .segmentation-views img { width: 100%; border-radius: 10px; background: #101718; }
 .segmentation-views figcaption { margin-top: 6px; color: var(--ink-muted); font-size: 0.85rem; }
+
+/* ---------- Demo registration ---------- */
+.demo-pick { display: block; width: 100%; padding: 0; text-align: left; font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; cursor: pointer; }
+.demo-pick:hover:not(:disabled), .demo-pick:focus-visible { border-color: var(--accent); }
+.demo-pick:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.demo-pick[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.demo-pick:disabled { cursor: not-allowed; }
+.demo-pick img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #101718; }
+.demo-pick .recent-caption { display: grid; gap: 3px; padding: 10px; }
+.demo-props { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; margin: 0; }
+.demo-props div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.demo-props dt { color: var(--ink-muted); }
+.demo-props dd { margin: 0; font-weight: 700; text-align: right; }
+.demo-steps { list-style: none; padding: 0; margin: 0 0 16px; display: grid; gap: 8px; }
+.demo-step { display: flex; align-items: center; gap: 10px; }
+.demo-step .step-icon { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--line); font-size: 0.85rem; }
+.demo-step .step-name { flex: 1; }
+.demo-step .step-state { color: var(--ink-muted); font-size: 0.85rem; }
+.demo-step.done .step-icon { background: #dcfce7; color: #166534; border-color: #86efac; }
+.demo-step.done .step-state { color: #166534; }
+.demo-step.running .step-icon { background: #fef3c7; color: #92600a; border-color: #fcd34d; }
+.demo-step.failed .step-icon { background: #fee2e2; color: var(--danger); border-color: #fca5a5; }
+.demo-step.failed .step-state { color: var(--danger); }
+.demo-step.pending { opacity: 0.6; }
+
+/* ---------- Demo cinema: a scroll-free stage that plays the pipeline out ----------
+   The picker page scrolls like any other; once a photo is picked the demo turns
+   into a single fixed-height view so the whole sequence -- segmentation, then
+   each auto measurement drawn on one at a time -- reads without scrolling. */
+.demo-picker-page { max-width: 1160px; margin-inline: auto; }
+
+.demo-cinema {
+  /* Fill the space under the sticky header, leaving room for the footer, so the
+     stage never pushes the page tall enough to scroll. */
+  height: calc(100dvh - 152px);
+  min-height: 420px;
+  padding: 20px 32px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+.cinema-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.cinema-head h1 { margin: 2px 0 0; font-size: 1.5rem; }
+.cinema-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.cinema-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+}
+
+.cinema-stage {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #101718;
+  border-radius: 18px;
+  padding: 16px;
+}
+/* The frame shrink-wraps the fitted image so the SVG overlay, pinned to its
+   edges, lines up with what the viewer sees. */
+.cinema-frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.cinema-image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+/* The boundary map is aligned over the target image and fades in the moment
+   segmentation lands, so "the machine segmented it" is something you see. */
+.cinema-boundary {
+  position: absolute;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  animation: cinema-fade-in 600ms ease-out forwards;
+}
+.cinema-frame .measurement-overlay { position: absolute; inset: auto; pointer-events: none; }
+
+/* A scan line sweeping the frame while the pipeline is still loading or
+   segmenting: the wait looks like work, not a frozen picture. */
+.cinema-scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(72, 64, 224, 0) 42%,
+    rgba(120, 130, 255, 0.55) 50%,
+    rgba(72, 64, 224, 0) 58%,
+    transparent 100%
+  );
+  background-size: 100% 220%;
+  animation: cinema-scan 1.4s ease-in-out infinite;
+}
+@keyframes cinema-scan {
+  0% { background-position: 0 -110%; }
+  100% { background-position: 0 110%; }
+}
+
+.cinema-caption {
+  margin: 0;
+  text-align: center;
+  color: #e8e9ff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  min-height: 1.4em;
+}
+
+.cinema-side {
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cinema-steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.cinema-facts h2, .cinema-seg h2 { margin: 0 0 8px; font-size: 1rem; }
+.cinema-facts .demo-props { grid-template-columns: 1fr; gap: 0; }
+.cinema-facts .demo-props div { grid-template-columns: auto 1fr; }
+.cinema-seg figure { margin: 0; }
+.cinema-seg img { width: 100%; border-radius: 10px; background: #101718; }
+.cinema-seg figcaption { margin-top: 6px; color: var(--ink-muted); font-size: 0.8rem; }
+.cinema-summary { margin: 0; color: var(--ink-muted); font-size: 0.85rem; }
+
+/* Each auto measurement draws itself in as it is revealed. Only the newly
+   mounted <g> (a fresh React key) runs this, so shapes already on the image
+   hold still while the next one appears. */
+.cinema-frame .measurement-overlay > g[data-measurement-id] {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cinema-measure-in 500ms ease-out both;
+}
+@keyframes cinema-measure-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes cinema-fade-in {
+  to { opacity: 0.85; }
+}
+
+@media (max-width: 900px) {
+  .demo-cinema { height: auto; overflow: visible; }
+  .cinema-body { grid-template-columns: minmax(0, 1fr); }
+  .cinema-side { overflow: visible; }
+}
+
 .image-card { display: grid; grid-template-columns: 180px 1fr; gap: 22px; text-decoration: none; }
 .image-card img { width: 180px; height: 150px; object-fit: contain; background: #101718; border-radius: 10px; }
 .image-card h2 { overflow-wrap: anywhere; }
-.badge { color: var(--accent); font-weight: 800; }
+.badge { display: inline-block; padding: 3px 12px; border-radius: 999px; background: var(--accent-tint); color: var(--accent); font-weight: 800; font-size: 0.78rem; letter-spacing: 0.02em; }
+/* The type badge sits in the card's top-right corner, clear of the top-left
+   batch-select checkbox. */
+.image-card-wrap .badge { position: absolute; top: 14px; right: 14px; z-index: 1; }
 dl div { display: grid; grid-template-columns: 80px 1fr; }
 dt { color: var(--ink-muted); } dd { margin: 0; font-weight: 700; }
 footer { padding: 32px; text-align: center; color: var(--ink-muted); }
@@ -295,7 +481,8 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .preview-panel img { max-width: 100%; max-height: 520px; object-fit: contain; }
 .registration-form { display: grid; gap: 16px; align-content: start; padding: 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; }
 .registration-form label { display: grid; gap: 7px; font-weight: 700; }
-.registration-form input, .registration-form select { width: 100%; padding: 12px; border: 1px solid #b7bdc8; border-radius: 8px; font: inherit; }
+.registration-form input, .registration-form select, .registration-form textarea { width: 100%; padding: 12px; border: 1px solid #b7bdc8; border-radius: 8px; font: inherit; }
+.registration-form textarea { resize: vertical; min-height: 68px; }
 .registration-form button { border: 0; cursor: pointer; }
 .registration-form button:disabled { opacity: .6; cursor: wait; }
 .registration-form [role="alert"] { color: var(--danger); }
@@ -352,8 +539,6 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .button:hover { background: var(--accent-tint); }
 .button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .button.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
-.chip { transition: background-color 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out; }
-.chip:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
 .viewer-toolbar .tool-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .dialog-actions button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .dialog-actions button.danger:hover:not(:disabled) { background: var(--danger-strong); border-color: var(--danger-strong); color: #fff; }
@@ -391,6 +576,20 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .image-facts dl div { display: grid; grid-template-columns: 88px 1fr; gap: 8px; }
 .image-facts dt { color: var(--ink-muted); font-size: 0.85rem; }
 .image-facts dd { margin: 0; font-weight: 700; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.image-facts-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.image-facts-head h2 { margin: 0; }
+.image-facts-head .button { padding: 6px 12px; font-size: 0.82rem; }
+/* The edit form reuses the registration form's field styling but sits in the
+   narrow controls column, so it stacks tighter than the full register page. */
+.image-edit-form { gap: 12px; }
+.image-edit-form .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+
+/* The edit form opens in a modal: widen the dialog and let it scroll, and drop
+   the form's own card chrome so it doesn't nest a panel inside the dialog. */
+.dialog-form { width: min(540px, 100%); max-height: min(86vh, 760px); overflow-y: auto; }
+.dialog-form > h2 { margin: 0 0 16px; }
+.dialog-form .registration-form { padding: 0; border: 0; border-radius: 0; background: none; }
+.dialog-form .field-hint { margin: 0; }
 
 /* Success feedback (UIX-002). Failures keep role="alert" and the danger colour. */
 .status-banner {
@@ -514,6 +713,10 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .data-table th, .data-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
 .data-table th { font-size: 0.8rem; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.02em; }
 .data-table .table-empty { color: var(--ink-muted); text-align: center; }
+/* Keep the segmentation stats on one line each and let the whole table scroll
+   sideways on narrow screens rather than stacking "클래스" letter by letter. */
+.table-scroll { overflow-x: auto; }
+.seg-class-table th, .seg-class-table td { white-space: nowrap; }
 .data-table input, .data-table select { padding: 7px 8px; border: 1px solid #b7bdc8; border-radius: 8px; font: inherit; }
 .table-actions { display: flex; gap: 6px; white-space: nowrap; }
 .table-actions button { padding: 6px 12px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); color: var(--accent); font-weight: 700; font-size: 0.8rem; cursor: pointer; }
@@ -585,12 +788,27 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .viewer-toolbar .tool-button { padding: 6px 14px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); font-weight: 700; cursor: pointer; line-height: 1.2; }
 
 @media (max-width: 800px) {
-  .card-grid.three, .flow, .image-grid, .kpi-grid, .kpi-grid.four,
+  .card-grid.three, .flow, .kpi-grid, .kpi-grid.four,
   .comp-grid, .phase-grid, .hero-grid,
   .registration-layout, .measurement-layout, .measurement-tables { grid-template-columns: 1fr; }
+  /* Stack the image card's thumbnail above its text on narrow screens. */
+  .image-card { grid-template-columns: 1fr; }
   .recent-grid { grid-template-columns: repeat(2, 1fr); }
   .hero-card { padding: 24px; }
-  .app-shell > .app-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  /* Collapse the tabs behind a hamburger: the brand and the toggle share the
+     top row, the tabs and the status pill drop into the opened panel. */
+  .app-shell > .app-header { flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 12px 16px; }
+  .nav-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-left: auto; width: 44px; height: 40px;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--surface); cursor: pointer;
+  }
+  .tabbar { order: 3; flex-basis: 100%; flex-direction: column; gap: 4px; margin-right: 0; display: none; }
+  .app-header.menu-open .tabbar { display: flex; }
+  .tab { padding: 12px; border-radius: 10px; }
+  .status-pill { order: 4; display: none; }
+  .app-header.menu-open .status-pill { display: inline-flex; align-self: flex-start; }
+  main { padding: 32px 16px 48px; }
 }
 
 /* ---------- Combobox (type-to-search single select) ---------- */
@@ -609,14 +827,45 @@ footer { padding: 32px; text-align: center; color: var(--ink-muted); }
 .combobox-create-label { color: var(--accent); font-weight: 800; }
 
 /* ---------- Catalog management ---------- */
-.catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
-.catalog-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
-.catalog-card h2 { margin: 0 0 12px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
-.catalog-count { color: var(--ink-muted); font-weight: 700; font-size: 0.85rem; }
-.catalog-values { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 6px; max-height: 260px; overflow-y: auto; }
-.catalog-value { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+/* A narrower track lets all five categories share one row on a wide screen
+   instead of leaving the last card stranded on a line of its own. */
+.catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; align-items: stretch; }
+.catalog-card { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px; min-width: 0; }
+.catalog-card h2 { margin: 0 0 14px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
+.catalog-count { margin-left: auto; color: var(--ink-muted); font-weight: 700; font-size: 0.78rem; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
+/* Scroll shadows (Lea Verou's technique): the top/bottom shadow only shows
+   while there is more of the list to scroll to, hinting the hidden values. */
+.catalog-values {
+  list-style: none; margin: 0 0 14px; padding: 2px 0; display: grid; gap: 6px;
+  max-height: 300px; overflow-y: auto;
+  background:
+    linear-gradient(var(--surface) 30%, transparent) top / 100% 18px no-repeat,
+    linear-gradient(transparent, var(--surface) 70%) bottom / 100% 18px no-repeat,
+    radial-gradient(farthest-side at 50% 0, rgba(25, 26, 44, 0.12), transparent) top / 100% 7px no-repeat,
+    radial-gradient(farthest-side at 50% 100%, rgba(25, 26, 44, 0.12), transparent) bottom / 100% 7px no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
+.catalog-value { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+.catalog-value-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .catalog-empty { color: var(--ink-muted); font-size: 0.85rem; padding: 6px 2px; }
-.catalog-delete { border: 0; background: none; color: var(--danger); font-weight: 700; cursor: pointer; font-size: 0.82rem; }
-.catalog-add { display: flex; gap: 8px; }
-.catalog-add input { flex: 1; padding: 10px; border: 1px solid #b7bdc8; border-radius: 8px; font: inherit; }
+.catalog-value-actions { display: inline-flex; gap: 4px; flex-shrink: 0; }
+.catalog-edit, .catalog-delete { border: 0; background: none; font-weight: 700; font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+.catalog-edit { color: var(--accent); }
+.catalog-edit:hover { background: var(--accent-tint); }
+.catalog-delete { color: var(--danger); }
+.catalog-delete:hover { background: var(--accent-tint); }
+
+/* Inline rename fills the row and wraps so its controls never leave the card. */
+.catalog-rename { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; min-width: 0; }
+.catalog-rename input { flex: 1 1 100%; min-width: 0; padding: 8px 10px; border: 1px solid #b7bdc8; border-radius: 8px; font: inherit; }
+.catalog-save, .catalog-cancel { border: 1px solid var(--line); border-radius: 8px; padding: 6px 14px; font-weight: 700; font-size: 0.82rem; cursor: pointer; }
+.catalog-save { border-color: var(--accent); background: var(--accent); color: #fff; }
+.catalog-save:hover:not(:disabled) { background: var(--accent-strong); border-color: var(--accent-strong); }
+.catalog-save:disabled { opacity: .5; cursor: not-allowed; }
+.catalog-cancel { background: var(--surface); color: var(--ink); }
+.catalog-cancel:hover { background: var(--bg); }
+.catalog-rename .field-error { flex: 1 1 100%; }
+
+.catalog-add { display: flex; gap: 8px; margin-top: auto; }
+.catalog-add input { flex: 1; min-width: 0; padding: 10px; border: 1px solid #b7bdc8; border-radius: 8px; font: inherit; }
 .catalog-add .button { white-space: nowrap; }

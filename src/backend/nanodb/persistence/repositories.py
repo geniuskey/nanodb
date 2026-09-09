@@ -51,6 +51,7 @@ def _to_image(model: ImageModel) -> Image:
         lot_id=model.lot_id,
         wafer_id=model.wafer_id,
         process_step=model.process_step,
+        note=model.note,
         calibration_nm_per_pixel=model.calibration_nm_per_pixel,
         pixel_width=model.pixel_width,
         pixel_height=model.pixel_height,
@@ -270,6 +271,7 @@ class ImageRepository:
         pixel_height: int,
         display_filename: str | None = None,
         process_step: str | None = None,
+        note: str | None = None,
     ) -> Image:
         model = ImageModel(
             original_filename=original_filename,
@@ -280,6 +282,7 @@ class ImageRepository:
             lot_id=lot_id,
             wafer_id=wafer_id,
             process_step=process_step,
+            note=note,
             calibration_nm_per_pixel=calibration_nm_per_pixel,
             pixel_width=pixel_width,
             pixel_height=pixel_height,
@@ -292,6 +295,37 @@ class ImageRepository:
     def find(self, image_id: int) -> Image | None:
         model = self._session.get(ImageModel, image_id)
         return _to_image(model) if model else None
+
+    def update(
+        self,
+        image_id: int,
+        *,
+        image_type: str,
+        product_id: str,
+        lot_id: str,
+        wafer_id: str,
+        calibration_nm_per_pixel: float,
+        process_step: str | None,
+        note: str | None,
+    ) -> Image | None:
+        """Update an image's editable information.
+
+        The file, its stored keys and pixel dimensions are left untouched: only
+        the metadata a person supplied at registration is writable.
+        """
+        model = self._session.get(ImageModel, image_id)
+        if model is None:
+            return None
+        model.image_type = image_type
+        model.product_id = product_id
+        model.lot_id = lot_id
+        model.wafer_id = wafer_id
+        model.process_step = process_step
+        model.note = note
+        model.calibration_nm_per_pixel = calibration_nm_per_pixel
+        self._session.flush()
+        self._session.refresh(model)
+        return _to_image(model)
 
     def count(self) -> int:
         return self._session.scalar(select(func.count(ImageModel.id))) or 0
@@ -310,13 +344,14 @@ class ImageRepository:
         *,
         query: str | None = None,
         image_type: str | None = None,
+        product_id: str | None = None,
     ) -> tuple[ImageListItem, ...]:
         """List images newest-first, optionally filtered.
 
         ``query`` is a case-insensitive partial match against original filename,
-        product, lot, wafer and process step. ``image_type`` narrows to an exact
-        imaging modality. A blank query matches everything so the catalog stays
-        visible while typing.
+        product, lot, wafer and process step. ``image_type`` and ``product_id``
+        each narrow to an exact match on that field. A blank query matches
+        everything so the catalog stays visible while typing.
         """
         statement: Select[tuple[ImageModel, int]] = (
             select(ImageModel, func.count(MeasurementModel.id))
@@ -326,6 +361,8 @@ class ImageRepository:
         )
         if image_type is not None:
             statement = statement.where(ImageModel.image_type == image_type)
+        if product_id is not None:
+            statement = statement.where(ImageModel.product_id == product_id)
         if query and query.strip():
             pattern = f"%{query.strip()}%"
             statement = statement.where(

@@ -176,6 +176,20 @@ def test_two_regions_produce_spacing() -> None:
     assert FEATURE_SPACING in _keys(extraction)
 
 
+def test_spacing_ignores_border_clipped_noise() -> None:
+    # A single interior structure plus a large blob jammed into the bottom-right
+    # corner (touching both borders): the corner is a segmentation artefact, not
+    # a neighbouring structure, so spacing must not run a line out to it.
+    labels = _trapezoid(center_x=100)
+    labels[180:_H, 180:_W] = 0  # 20x20 corner blob, above min_area, border-clipped
+
+    extraction = extract_features(labels, target_class=0)
+
+    assert extraction is not None
+    assert FEATURE_SPACING not in _keys(extraction)
+    assert _skip_reason(extraction, FEATURE_SPACING) is not None
+
+
 def test_no_region_of_target_class_returns_none() -> None:
     labels = np.ones((_H, _W), dtype=np.uint8)  # all background, class 0 absent
     assert extract_features(labels, target_class=0) is None

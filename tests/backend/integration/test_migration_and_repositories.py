@@ -171,6 +171,17 @@ def test_list_filters_by_partial_text_and_image_type(db_session: Session) -> Non
     # Combined filters intersect (no SEM image matches LOT-B).
     assert images.list_with_measurement_count(query="LOT-B", image_type="SEM") == ()
 
+    # Product filter is an exact match, unlike the free-text query.
+    by_product_exact = images.list_with_measurement_count(product_id="PRODUCT-99")
+    assert [item.image.original_filename for item in by_product_exact] == ["beta.png"]
+    assert images.list_with_measurement_count(product_id="PRODUCT-4") == ()
+
+    # Product and type filters intersect (PRODUCT-42 is a SEM image, not TEM).
+    assert (
+        images.list_with_measurement_count(product_id="PRODUCT-42", image_type="TEM")
+        == ()
+    )
+
 
 def test_list_filters_by_process_step(db_session: Session) -> None:
     images = ImageRepository(db_session)

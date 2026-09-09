@@ -6,6 +6,7 @@ import type {
   ImageDetailView,
   ImageListView,
   ImageType,
+  ImageUpdateInput,
   ImageView,
   MeasurementAnnotationInput,
   MeasurementGeometryInput,
@@ -26,6 +27,7 @@ import type {
 export interface ImageListQuery {
   q?: string;
   imageType?: ImageType;
+  productId?: string;
 }
 
 export class ApiError extends Error {
@@ -78,43 +80,23 @@ async function requestVoid(path: string, init?: RequestInit): Promise<void> {
   // 204 No Content: nothing to parse.
 }
 
-async function contextDownload(imageId: number): Promise<Blob> {
-  const response = await fetch(`/api/images/${imageId}/context-export`, {
-    headers: { Accept: "application/zip" },
-  });
-  if (!response.ok) {
-    let error: ApiErrorEnvelope = {
-      code: "REQUEST_FAILED",
-      message: "Context ZIP을 생성하지 못했습니다. 다시 시도해 주세요.",
-    };
-    try {
-      error = (await response.json()) as ApiErrorEnvelope;
-    } catch {
-      // Keep the bounded fallback rather than downloading an error response.
-    }
-    throw new ApiError(error.code, error.message, error.detail?.field);
-  }
-
-  const contentType = response.headers.get("content-type")?.split(";", 1)[0].trim();
-  if (contentType !== "application/zip") {
-    throw new ApiError(
-      "INVALID_EXPORT_RESPONSE",
-      "서버가 올바른 Context ZIP을 반환하지 않았습니다.",
-    );
-  }
-  return response.blob();
-}
-
 export const api = {
   getSummary: () => request<SummaryView>("/api/summary"),
   listImages: (filter?: ImageListQuery) => {
     const search = new URLSearchParams();
     if (filter?.q?.trim()) search.set("q", filter.q.trim());
     if (filter?.imageType) search.set("image_type", filter.imageType);
+    if (filter?.productId) search.set("product_id", filter.productId);
     const qs = search.toString();
     return request<ImageListView[]>(`/api/images${qs ? `?${qs}` : ""}`);
   },
   getImage: (imageId: number) => request<ImageDetailView>(`/api/images/${imageId}`),
+  updateImage: (imageId: number, value: ImageUpdateInput) =>
+    request<ImageView>(`/api/images/${imageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    }),
   createMeasurement: (imageId: number, value: MeasurementCreateInput) =>
     request<MeasurementView>(`/api/images/${imageId}/measurements`, {
       method: "POST",
@@ -213,5 +195,4 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(value),
     }),
-  downloadContext: contextDownload,
 };

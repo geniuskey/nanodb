@@ -48,6 +48,7 @@ export interface ImageListView {
   lot_id: string;
   wafer_id: string;
   process_step: string | null;
+  note: string | null;
   calibration_nm_per_pixel: number;
   pixel_width: number;
   pixel_height: number;
@@ -57,6 +58,21 @@ export interface ImageListView {
 }
 
 export type ImageView = Omit<ImageListView, "measurement_count">;
+
+/**
+ * The editable information of a registered image. The file, its pixel size and
+ * the registration date are fixed; changing the calibration only affects
+ * measurements made afterwards, since each stored measurement keeps its own.
+ */
+export interface ImageUpdateInput {
+  image_type: string;
+  product_id: string;
+  lot_id: string;
+  wafer_id: string;
+  process_step: string | null;
+  note: string | null;
+  calibration_nm_per_pixel: number;
+}
 
 /**
  * How a measurement is drawn and what its value means:

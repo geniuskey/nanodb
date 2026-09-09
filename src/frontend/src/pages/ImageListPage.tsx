@@ -4,21 +4,15 @@ import { Link } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import type {
   ImageListView,
-  ImageType,
   SegmentationBatchResultView,
 } from "../api/types";
-import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { useDocumentTitle } from "../ui/useDocumentTitle";
 import { StatusBanner } from "../ui/StatusBanner";
 
 type State = "loading" | "success" | "failure";
-type TypeFilter = "ALL" | ImageType;
 
-const TYPE_FILTERS: { value: TypeFilter; label: string }[] = [
-  { value: "ALL", label: "전체" },
-  { value: "SEM", label: "SEM" },
-  { value: "TEM", label: "TEM" },
-];
+/** Sentinel for "no type filter"; every registered type is offered alongside. */
+const ALL_TYPES = "ALL";
 
 export function ImageListPage() {
   useDocumentTitle("이미지 목록");
@@ -26,9 +20,13 @@ export function ImageListPage() {
   const [state, setState] = useState<State>("loading");
   const [queryInput, setQueryInput] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
-  const [pending, setPending] = useState<ImageListView | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<string>(ALL_TYPES);
+  const [productFilter, setProductFilter] = useState<string>(ALL_TYPES);
+  // The image types and products to offer in the filters. Sourced from the
+  // catalog so they grow as new values are registered, rather than a hard-coded
+  // list.
+  const [imageTypes, setImageTypes] = useState<string[]>([]);
+  const [products, setProducts] = useState<string[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -46,6 +44,31 @@ export function ImageListPage() {
     return () => clearTimeout(handle);
   }, [queryInput]);
 
+  // Load the registered image types and products once for the filter
+  // dropdowns. A failed load is not fatal: the filters still offer "전체".
+  useEffect(() => {
+    let active = true;
+    api
+      .getCatalog()
+      .then((options) => {
+        if (!active) return;
+        setImageTypes(
+          options
+            .filter((option) => option.category === "image_type")
+            .map((option) => option.value),
+        );
+        setProducts(
+          options
+            .filter((option) => option.category === "product_id")
+            .map((option) => option.value),
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
+
   useEffect(() => {
     let active = true;
     // Only the first load blanks the page. A filter refetch keeps the previous
@@ -56,7 +79,8 @@ export function ImageListPage() {
     api
       .listImages({
         q: activeQuery || undefined,
-        imageType: typeFilter === "ALL" ? undefined : typeFilter,
+        imageType: typeFilter === ALL_TYPES ? undefined : typeFilter,
+        productId: productFilter === ALL_TYPES ? undefined : productFilter,
       })
       .then((value) => {
         if (active) {
@@ -71,20 +95,7 @@ export function ImageListPage() {
     return () => {
       active = false;
     };
-  }, [activeQuery, typeFilter, attempt]);
-
-  async function removeImage() {
-    const image = pending;
-    if (!image || deleting) return;
-    setDeleting(true); setActionError(null); setStatus(null);
-    try {
-      await api.deleteImage(image.id);
-      setImages((current) => current.filter((item) => item.id !== image.id));
-      setStatus(`이미지 '${image.original_filename}'를 삭제했습니다.`);
-    } catch (caught) {
-      setActionError(caught instanceof ApiError ? caught.message : "이미지를 삭제하지 못했습니다.");
-    } finally { setDeleting(false); setPending(null); }
-  }
+  }, [activeQuery, typeFilter, productFilter, attempt]);
 
   function toggleSelect(id: number) {
     setSelected((current) => {
@@ -117,7 +128,10 @@ export function ImageListPage() {
     } finally { setBatchRunning(false); }
   }
 
-  const isFiltered = activeQuery.trim() !== "" || typeFilter !== "ALL";
+  const isFiltered =
+    activeQuery.trim() !== "" ||
+    typeFilter !== ALL_TYPES ||
+    productFilter !== ALL_TYPES;
 
   return (
     <main>
@@ -141,20 +155,34 @@ export function ImageListPage() {
           value={queryInput}
           onChange={(event) => setQueryInput(event.target.value)}
         />
-        <div className="type-filter" role="group" aria-label="이미지 종류 필터">
-          {TYPE_FILTERS.map((filter) => (
-            <button
-              type="button"
-              key={filter.value}
-              data-testid={`filter-${filter.value.toLowerCase()}`}
-              className={typeFilter === filter.value ? "chip active" : "chip"}
-              aria-pressed={typeFilter === filter.value}
-              onClick={() => setTypeFilter(filter.value)}
-            >
-              {filter.label}
-            </button>
+        <select
+          className="type-filter"
+          data-testid="image-type-filter"
+          aria-label="이미지 종류 필터"
+          value={typeFilter}
+          onChange={(event) => setTypeFilter(event.target.value)}
+        >
+          <option value={ALL_TYPES}>전체</option>
+          {imageTypes.map((type) => (
+            <option key={type} value={type}>
+              {type}
+            </option>
           ))}
-        </div>
+        </select>
+        <select
+          className="type-filter"
+          data-testid="product-filter"
+          aria-label="Product 필터"
+          value={productFilter}
+          onChange={(event) => setProductFilter(event.target.value)}
+        >
+          <option value={ALL_TYPES}>전체 Product</option>
+          {products.map((product) => (
+            <option key={product} value={product}>
+              {product}
+            </option>
+          ))}
+        </select>
       </div>
 
       {state === "success" && images.length > 0 && (
@@ -267,39 +295,20 @@ export function ImageListPage() {
                 <img src={image.file_url} alt={`${image.original_filename} 미리보기`} width={180} height={150} loading="lazy" />
                 <div>
                   <span className="badge">{image.image_type}</span>
-                  <h2>{image.original_filename}</h2>
                   <dl>
                     <div><dt>Product</dt><dd>{image.product_id}</dd></div>
                     <div><dt>Lot</dt><dd>{image.lot_id}</dd></div>
                     <div><dt>Wafer</dt><dd>{image.wafer_id}</dd></div>
+                    {image.note && (
+                      <div><dt>비고</dt><dd data-testid="catalog-image-note">{image.note}</dd></div>
+                    )}
                   </dl>
                   <p>{image.measurement_count}개 측정</p>
                 </div>
               </Link>
-              <button
-                type="button"
-                className="delete-image"
-                data-testid="catalog-image-delete"
-                aria-label={`${image.original_filename} 삭제`}
-                onClick={() => setPending(image)}
-              >
-                삭제
-              </button>
             </article>
           ))}
         </div>
-      )}
-      {pending && (
-        <ConfirmDialog
-          title={`'${pending.original_filename}'를 삭제할까요?`}
-          body={pending.measurement_count > 0
-            ? `저장된 측정 ${pending.measurement_count}개가 함께 삭제됩니다. 되돌릴 수 없습니다.`
-            : "되돌릴 수 없습니다."}
-          confirmLabel="이미지 삭제"
-          busy={deleting}
-          onConfirm={removeImage}
-          onCancel={() => setPending(null)}
-        />
       )}
     </main>
   );

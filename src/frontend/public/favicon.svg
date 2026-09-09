@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="312" height="310" viewBox="0 0 312 310" role="img" aria-label="NANoDB logo, white on purple">
+  <defs>
+    <mask id="dot-cutout">
+      <rect width="312" height="310" fill="white"/>
+      <circle cx="226.5" cy="71.5" r="29.5" fill="black"/>
+    </mask>
+  </defs>
+  <rect width="312" height="310" fill="#4D45DC"/>
+  <g fill="none" stroke="#FFFFFF">
+    <circle cx="157.5" cy="141.5" r="97.5" stroke-width="24" mask="url(#dot-cutout)"/>
+    <circle cx="157.5" cy="141.5" r="54.5" stroke-width="20"/>
+  </g>
+  <circle cx="157.5" cy="141.5" r="15" fill="#FFFFFF"/>
+  <circle cx="226.5" cy="71.5" r="18.5" fill="#FFFFFF"/>
+</svg>

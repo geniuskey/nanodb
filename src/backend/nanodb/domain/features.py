@@ -226,14 +226,37 @@ def _height_feature(
 
 
 def _spacing_feature(
-    representative: _Region, kept: list[_Region]
+    representative: _Region,
+    kept: list[_Region],
+    width: int,
+    height: int,
+    min_area_frac: float = 0.3,
 ) -> tuple[FeaturePrimitive | None, str | None]:
-    if len(kept) < 2:
-        return None, "needs two or more regions"
-    rcx, rcy = float(representative.centroid[1]), float(representative.centroid[0])
     others = [r for r in kept if r is not representative]
+    if not others:
+        return None, "needs two or more regions"
+
+    def clipped(region: _Region) -> bool:
+        min_row, min_col, max_row, max_col = region.bbox
+        return min_row == 0 or min_col == 0 or max_row == height or max_col == width
+
+    # Pitch is only meaningful between two comparable, fully-visible structures.
+    # Drop border-clipped fragments (a partly-visible neighbour has an unreliable
+    # centroid) and speckle far smaller than the subject, so a stray noise blob
+    # in a corner cannot hijack the measurement -- as it did on synthetic TEM #10,
+    # where the spacing line ran off to the image edge.
+    rep_area = float(representative.area)
+    candidates = [
+        r
+        for r in others
+        if not clipped(r) and float(r.area) >= min_area_frac * rep_area
+    ]
+    if not candidates:
+        return None, "no comparable interior neighbour"
+
+    rcx, rcy = float(representative.centroid[1]), float(representative.centroid[0])
     nearest = min(
-        others,
+        candidates,
         key=lambda r: (float(r.centroid[1]) - rcx) ** 2
         + (float(r.centroid[0]) - rcy) ** 2,
     )
@@ -392,7 +415,7 @@ def extract_features(
     builders: list[tuple[FeaturePrimitive | None, str | None]] = [
         _width_feature(representative),
         _height_feature(representative, width, height),
-        _spacing_feature(representative, kept),
+        _spacing_feature(representative, kept, width, height),
         _curvature_feature(representative, curvature_frac, max_radius_factor),
         _sidewall_feature(representative, sidewall_band, "left"),
         _sidewall_feature(representative, sidewall_band, "right"),

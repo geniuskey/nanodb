@@ -130,11 +130,30 @@ class ImageView(BaseModel):
     lot_id: str
     wafer_id: str
     process_step: str | None
+    note: str | None
     calibration_nm_per_pixel: float
     pixel_width: int
     pixel_height: int
     created_at: datetime
     file_url: str
+
+
+class ImageUpdateSchema(BaseModel):
+    """Editable image information.
+
+    The uploaded file, its pixel dimensions and the registration date are fixed;
+    everything a person typed at registration can be corrected here. Changing the
+    calibration only affects measurements made after the edit -- each stored
+    measurement keeps the calibration it was computed with.
+    """
+
+    image_type: str = Field(min_length=1, max_length=64)
+    product_id: str = Field(min_length=1, max_length=255)
+    lot_id: str = Field(min_length=1, max_length=255)
+    wafer_id: str = Field(min_length=1, max_length=255)
+    process_step: str | None = Field(default=None, max_length=255)
+    note: str | None = Field(default=None, max_length=4000)
+    calibration_nm_per_pixel: FiniteFloat = Field(gt=0)
 
 
 class ImageListView(ImageView):

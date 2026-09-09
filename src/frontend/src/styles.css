@@ -303,6 +303,153 @@ h2 { letter-spacing: -0.02em; font-size: 1.5rem; margin: 0 0 6px; }
 .demo-step.failed .step-icon { background: #fee2e2; color: var(--danger); border-color: #fca5a5; }
 .demo-step.failed .step-state { color: var(--danger); }
 .demo-step.pending { opacity: 0.6; }
+
+/* ---------- Demo cinema: a scroll-free stage that plays the pipeline out ----------
+   The picker page scrolls like any other; once a photo is picked the demo turns
+   into a single fixed-height view so the whole sequence -- segmentation, then
+   each auto measurement drawn on one at a time -- reads without scrolling. */
+.demo-picker-page { max-width: 1160px; margin-inline: auto; }
+
+.demo-cinema {
+  /* Fill the space under the sticky header, leaving room for the footer, so the
+     stage never pushes the page tall enough to scroll. */
+  height: calc(100dvh - 152px);
+  min-height: 420px;
+  padding: 20px 32px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+.cinema-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.cinema-head h1 { margin: 2px 0 0; font-size: 1.5rem; }
+.cinema-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.cinema-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+}
+
+.cinema-stage {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #101718;
+  border-radius: 18px;
+  padding: 16px;
+}
+/* The frame shrink-wraps the fitted image so the SVG overlay, pinned to its
+   edges, lines up with what the viewer sees. */
+.cinema-frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.cinema-image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+/* The boundary map is aligned over the target image and fades in the moment
+   segmentation lands, so "the machine segmented it" is something you see. */
+.cinema-boundary {
+  position: absolute;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  animation: cinema-fade-in 600ms ease-out forwards;
+}
+.cinema-frame .measurement-overlay { position: absolute; inset: auto; pointer-events: none; }
+
+/* A scan line sweeping the frame while the pipeline is still loading or
+   segmenting: the wait looks like work, not a frozen picture. */
+.cinema-scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(72, 64, 224, 0) 42%,
+    rgba(120, 130, 255, 0.55) 50%,
+    rgba(72, 64, 224, 0) 58%,
+    transparent 100%
+  );
+  background-size: 100% 220%;
+  animation: cinema-scan 1.4s ease-in-out infinite;
+}
+@keyframes cinema-scan {
+  0% { background-position: 0 -110%; }
+  100% { background-position: 0 110%; }
+}
+
+.cinema-caption {
+  margin: 0;
+  text-align: center;
+  color: #e8e9ff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  min-height: 1.4em;
+}
+
+.cinema-side {
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cinema-steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.cinema-facts h2, .cinema-seg h2 { margin: 0 0 8px; font-size: 1rem; }
+.cinema-facts .demo-props { grid-template-columns: 1fr; gap: 0; }
+.cinema-facts .demo-props div { grid-template-columns: auto 1fr; }
+.cinema-seg figure { margin: 0; }
+.cinema-seg img { width: 100%; border-radius: 10px; background: #101718; }
+.cinema-seg figcaption { margin-top: 6px; color: var(--ink-muted); font-size: 0.8rem; }
+.cinema-summary { margin: 0; color: var(--ink-muted); font-size: 0.85rem; }
+
+/* Each auto measurement draws itself in as it is revealed. Only the newly
+   mounted <g> (a fresh React key) runs this, so shapes already on the image
+   hold still while the next one appears. */
+.cinema-frame .measurement-overlay > g[data-measurement-id] {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cinema-measure-in 500ms ease-out both;
+}
+@keyframes cinema-measure-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes cinema-fade-in {
+  to { opacity: 0.85; }
+}
+
+@media (max-width: 900px) {
+  .demo-cinema { height: auto; overflow: visible; }
+  .cinema-body { grid-template-columns: minmax(0, 1fr); }
+  .cinema-side { overflow: visible; }
+}
+
 .image-card { display: grid; grid-template-columns: 180px 1fr; gap: 22px; text-decoration: none; }
 .image-card img { width: 180px; height: 150px; object-fit: contain; background: #101718; border-radius: 10px; }
 .image-card h2 { overflow-wrap: anywhere; }

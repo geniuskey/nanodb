@@ -10,6 +10,7 @@ import { ImageListPage } from "./pages/ImageListPage";
 import { ImageRegisterPage } from "./pages/ImageRegisterPage";
 import { MeasurementPage } from "./pages/MeasurementPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { UsagePage } from "./pages/UsagePage";
 import { ErrorBoundary } from "./ui/ErrorBoundary";
 
 const REAL_TABS: {
@@ -28,6 +29,8 @@ const REAL_TABS: {
   { to: "/images", label: "이미지DB", end: false, notOn: "/images/new" },
   { to: "/images/new", label: "이미지 등록", end: false },
   { to: "/demo", label: "데모 시연", end: false, cta: true },
+  // 데모까지 본 사람이 다음으로 묻는 것이 "누가 어디에 쓰나"라서 데모 바로 뒤에 둔다.
+  { to: "/usage", label: "활용", end: false },
   { to: "/catalog", label: "카테고리", end: false },
 ];
 
@@ -113,6 +116,7 @@ export function App() {
         <Route path="images" element={<ImageListPage />} />
         <Route path="images/new" element={<ImageRegisterPage />} />
         <Route path="demo" element={<DemoRegisterPage />} />
+        <Route path="usage" element={<UsagePage />} />
         <Route path="catalog" element={<CatalogPage />} />
         <Route path="images/:imageId" element={<MeasurementPage />} />
         <Route path="*" element={<NotFoundPage />} />

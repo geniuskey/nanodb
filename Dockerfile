@@ -22,6 +22,8 @@ COPY src/frontend ./src/frontend
 # both must be present at the same relative depth to resolve.
 COPY assets/logo ./assets/logo
 COPY assets/video ./assets/video
+# UsagePage.tsx imports the captured screens from assets/usage/.
+COPY assets/usage ./assets/usage
 # vite root is src/frontend and outDir is ../../dist/frontend -> /build/dist/frontend
 RUN npm run build
 

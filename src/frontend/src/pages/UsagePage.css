@@ -1,0 +1,404 @@
+/* 활용(/usage) 페이지 전용 스타일.
+   색은 styles.css의 기존 토큰만 쓰고, 완료 상태에만 필요한 초록 두 개를 여기서 더한다.
+   한글이 단어 중간에서 끊기지 않도록 이 페이지 전체에 word-break: keep-all 을 건다. */
+
+.usage-main {
+  --usage-done: #0f7a48;
+  --usage-done-tint: #e6f3ec;
+
+  display: flex;
+  flex-direction: column;
+  gap: 46px;
+  word-break: keep-all;
+}
+
+/* ---------- 히어로 ---------- */
+.usage-hero h1 {
+  margin: 10px 0 0;
+  font-size: clamp(26px, 3.4vw, 38px);
+  line-height: 1.24;
+  letter-spacing: -0.035em;
+  max-width: 21ch;
+  text-wrap: balance;
+}
+
+.usage-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+}
+
+.usage-lead {
+  margin: 12px 0 0;
+  font-size: 16px;
+  color: var(--ink-muted);
+  max-width: 58ch;
+}
+
+/* ---------- 섹션 머리 ---------- */
+.usage-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 9px;
+}
+
+.usage-section-head h2 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.025em;
+}
+
+.usage-section-head span {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+/* ---------- 누가 쓰는가 ---------- */
+.usage-roles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.usage-role {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  padding: 19px 21px;
+}
+
+.usage-role-icon {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.usage-role-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.usage-role-name {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--accent-strong);
+}
+
+.usage-role h3 {
+  margin: 5px 0 0;
+  font-size: 16.5px;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+}
+
+.usage-role-body {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+/* ---------- 이렇게 쓰세요 ---------- */
+.usage-steps {
+  list-style: none;
+  margin: 20px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.usage-step {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.usage-step-art {
+  height: 186px;
+  background: #0e0f20;
+  overflow: hidden;
+  display: flex;
+}
+
+.usage-step-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.usage-step-body {
+  padding: 15px 17px 17px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.usage-step-stage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  color: var(--accent);
+}
+
+.usage-step-no {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+.usage-step h3 {
+  margin: 9px 0 0;
+  font-size: 16.5px;
+  letter-spacing: -0.025em;
+  line-height: 1.35;
+}
+
+.usage-step-text {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.usage-step-fact {
+  margin: 12px 0 0;
+  padding-top: 11px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-step-fact b {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* 내보내기 데이터 카드. white-space: pre 가 없으면 줄이 접혀 깨진다. */
+.usage-contract {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 14px 15px;
+  background: #0e0f20;
+  color: #cfd0e4;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  line-height: 1.75;
+  white-space: pre;
+  overflow: auto;
+}
+
+.usage-contract .k {
+  color: #9d9bf5;
+}
+.usage-contract .s {
+  color: #7fd6a8;
+}
+.usage-contract .n {
+  color: #f2b880;
+}
+.usage-contract .c {
+  color: #6c6e8c;
+}
+
+/* ---------- 어디까지 왔나 ---------- */
+.usage-track {
+  position: relative;
+  margin-top: 24px;
+}
+
+.usage-rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 11px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent-track);
+}
+
+/* Phase 3 자리까지 채운다. 노드가 4열 그리드의 각 칸 왼쪽에 놓이므로 62.5%다. */
+.usage-rail i {
+  display: block;
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 62.5%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--usage-done), var(--accent) 30%, #9a94f2);
+}
+
+.usage-nodes {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.usage-node {
+  padding-right: 18px;
+}
+
+.usage-dot {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 3px solid var(--accent-track);
+  color: var(--p2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.usage-node.usage-done .usage-dot {
+  background: var(--usage-done);
+  border-color: var(--usage-done);
+  color: #fff;
+}
+
+.usage-node.usage-wip .usage-dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.usage-phase-name {
+  margin: 9px 0 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  color: var(--p2);
+}
+
+.usage-node.usage-done .usage-phase-name,
+.usage-node.usage-wip .usage-phase-name {
+  color: var(--accent);
+}
+
+.usage-phase-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--p2);
+}
+
+.usage-node.usage-done .usage-phase-title,
+.usage-node.usage-wip .usage-phase-title {
+  color: var(--ink);
+}
+
+.usage-phase-badge {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--p2);
+}
+
+.usage-node.usage-done .usage-phase-badge {
+  color: var(--usage-done);
+}
+
+.usage-node.usage-wip .usage-phase-badge {
+  color: var(--accent-strong);
+}
+
+.usage-phase-body {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+
+/* ---------- 마무리 ---------- */
+.usage-close {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding-top: 24px;
+  border-top: 2px solid var(--ink);
+}
+
+.usage-close b {
+  font-size: 22px;
+  letter-spacing: -0.03em;
+  max-width: 24ch;
+}
+
+.usage-close p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-muted);
+  max-width: 40ch;
+}
+
+.usage-foot {
+  margin: -26px 0 0;
+  font-size: 12.5px;
+  color: var(--p2);
+  max-width: 78ch;
+}
+
+/* ---------- 좁은 화면 ---------- */
+@media (max-width: 1080px) {
+  .usage-steps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 860px) {
+  .usage-roles,
+  .usage-steps,
+  .usage-nodes {
+    grid-template-columns: 1fr;
+  }
+
+  /* 세로로 쌓이면 가로 레일은 뜻을 잃는다. */
+  .usage-rail {
+    display: none;
+  }
+
+  .usage-node {
+    padding: 0 0 18px;
+  }
+}

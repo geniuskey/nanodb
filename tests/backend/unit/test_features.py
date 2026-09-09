@@ -14,6 +14,7 @@ from nanodb.domain.calculations import calculate_measurement
 from nanodb.domain.entities import UNIT_BY_TYPE, MeasurementType
 from nanodb.domain.features import (
     FEATURE_BOTTOM_CURVATURE,
+    FEATURE_CIRCLE_DIAMETER,
     FEATURE_CIRCLE_RADIUS,
     FEATURE_HEIGHT,
     FEATURE_SIDEWALL_LEFT,
@@ -99,6 +100,31 @@ def _disc_grid(
             labels[
                 (xx - center_x) ** 2 + (yy - center_y) ** 2 <= radius**2
             ] = np.uint8(0)
+    return labels
+
+
+def _ring(
+    center_x: int, center_y: int, outer_radius: int, inner_radius: int
+) -> np.ndarray:
+    """A hollow ring/annulus of class 0 on a class-1 background.
+
+    The dark rim of contact holes, droplets and vesicles reads like this: a round
+    outer edge with a same-class hole punched through the middle.
+    """
+    labels = np.ones((_H, _W), dtype=np.uint8)
+    yy, xx = np.ogrid[:_H, :_W]
+    dist2 = (xx - center_x) ** 2 + (yy - center_y) ** 2
+    labels[(dist2 <= outer_radius**2) & (dist2 >= inner_radius**2)] = np.uint8(0)
+    return labels
+
+
+def _arc(center_x: int, center_y: int, radius: int) -> np.ndarray:
+    """A bare open arc: the lower rim of a ring, with no closed footprint."""
+    labels = np.ones((_H, _W), dtype=np.uint8)
+    yy, xx = np.ogrid[:_H, :_W]
+    dist2 = (xx - center_x) ** 2 + (yy - center_y) ** 2
+    band = (dist2 <= radius**2) & (dist2 >= (radius - 6) ** 2)
+    labels[band & (yy >= center_y)] = np.uint8(0)
     return labels
 
 
@@ -285,6 +311,70 @@ def test_circle_unit_yields_circle_radius_recovering_the_radius() -> None:
         pixel_height=_H,
     )
     assert abs(result.value - 40 * _CALIB) < 40 * _CALIB * 0.15
+
+
+def test_ring_yields_circle_radius_and_diameter_recovering_the_outer_edge() -> None:
+    # A hollow ring must be measured from its outer rim, not rejected as "not a
+    # filled disc" -- the diameter and curvature are what matter here.
+    extraction = extract_features(
+        _ring(100, 100, outer_radius=50, inner_radius=30), target_class=0
+    )
+
+    assert extraction is not None
+    assert {FEATURE_CIRCLE_RADIUS, FEATURE_CIRCLE_DIAMETER} <= _keys(extraction)
+    by_key = {p.key: p for p in extraction.primitives}
+    assert by_key[FEATURE_CIRCLE_RADIUS].measurement_type is MeasurementType.CURVATURE
+    assert by_key[FEATURE_CIRCLE_DIAMETER].measurement_type is MeasurementType.LENGTH
+
+    radius = calculate_measurement(
+        MeasurementType.CURVATURE,
+        by_key[FEATURE_CIRCLE_RADIUS].points,
+        _CALIB,
+        pixel_width=_W,
+        pixel_height=_H,
+    )
+    diameter = calculate_measurement(
+        MeasurementType.LENGTH,
+        by_key[FEATURE_CIRCLE_DIAMETER].points,
+        _CALIB,
+        pixel_width=_W,
+        pixel_height=_H,
+    )
+    # Outer radius is 50 px; the fit and the 2r diameter recover it.
+    assert abs(radius.value - 50 * _CALIB) < 50 * _CALIB * 0.15
+    assert abs(diameter.value - 100 * _CALIB) < 100 * _CALIB * 0.15
+
+
+def test_ring_skips_bottom_curvature_and_sidewalls() -> None:
+    extraction = extract_features(
+        _ring(100, 100, outer_radius=50, inner_radius=30), target_class=0
+    )
+
+    assert extraction is not None
+    assert FEATURE_BOTTOM_CURVATURE not in _keys(extraction)
+    assert FEATURE_SIDEWALL_LEFT not in _keys(extraction)
+    assert FEATURE_SIDEWALL_RIGHT not in _keys(extraction)
+
+
+def test_ring_round_trips() -> None:
+    extraction = extract_features(
+        _ring(100, 100, outer_radius=45, inner_radius=25), target_class=0
+    )
+    assert extraction is not None
+    assert extraction.primitives
+    _assert_round_trips(extraction)
+
+
+def test_open_arc_is_not_treated_as_a_full_circle() -> None:
+    # A bare arc fills only a slice of its circle, so it must not become a
+    # full-circle radius/diameter even though its edge is curved.
+    extraction = extract_features(_arc(100, 100, radius=50), target_class=0)
+
+    assert extraction is not None
+    assert FEATURE_CIRCLE_RADIUS not in _keys(extraction)
+    assert FEATURE_CIRCLE_DIAMETER not in _keys(extraction)
+    reason = _skip_reason(extraction, FEATURE_CIRCLE_RADIUS)
+    assert reason is not None
 
 
 def test_circle_unit_skips_bottom_curvature_and_sidewalls() -> None:

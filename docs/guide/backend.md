@@ -177,15 +177,18 @@ multi-Otsu 파이프라인입니다(`METHOD = "multi-otsu"`). 결정적이라 �
 | `width_cd` | length | 중앙값 scan-line 폭(`auto: 폭(CD)`) |
 | `height` | length | bbox 높이(중심 열의 위–아래) |
 | `spacing` | length | 대표 영역과 가장 가까운 비교 가능 이웃의 centroid 간격(pitch) |
-| `circle_radius` | curvature | 둥근 단위(원형 셀/컨택홀)의 외접원 반경 |
+| `circle_radius` | curvature | 둥근 단위(원형 셀/컨택홀/링·환형)의 외접원 반경 |
+| `circle_diameter` | length | 같은 원형 단위의 지름(2r, 위·아래 최외곽 점 사이) |
 | `bottom_curvature` | curvature | 트렌치/돔 바닥 호의 곡률 반경 |
 | `sidewall_angle_left` / `sidewall_angle_right` | angle | 좌/우 측벽의 수직 대비 기울기 |
 
 각 특징은 degenerate하면 값을 지어내지 않고 이유와 함께 **건너뜁니다**(`SkippedFeature`). 주요 게이트:
 
-- **원형 판정**(`_circle_feature`) — 경계에 닿지 않고(clipped 아님), 외접원 fit이 타이트하며
-  (`_CIRCLE_MAX_RMS_FRAC = 0.14`), 채움 비율이 disc 범위(`_CIRCLE_FILL_RANGE = (0.72, 1.28)`,
-  얇은 호/링 배제), bbox 종횡비가 정사각형에 가까울 때(`_CIRCLE_ASPECT_RANGE`)만 원으로 인정. 원형이면
+- **원형 판정**(`_circle_feature`) — 경계에 닿지 않고(clipped 아님), 내부 구멍을 채운 뒤 **최외곽**
+  윤곽의 외접원 fit이 타이트하며(`_CIRCLE_MAX_RMS_FRAC = 0.14`), 그 외접원을 채운 면적이 disc 범위
+  (`_CIRCLE_FILL_RANGE = (0.72, 1.28)`, 열린 호는 배제하되 속이 빈 링·환형은 포함), bbox 종횡비가
+  정사각형에 가까울 때(`_CIRCLE_ASPECT_RANGE`)만 원으로 인정. 구멍을 먼저 메우므로 링/환형(컨택홀 테두리
+  등)도 rim 원으로 측정되어 `circle_radius`(반경)와 `circle_diameter`(지름 2r)를 함께 emit. 원형이면
   바닥 호·측벽은 "원형 단위라 없음"으로 건너뜀.
 - **바닥 곡률**(`_curvature_feature`) — `curvature_frac`이 정하는 중앙 프레임 폭에서 바닥 경계점을
   뽑아, 최소 sagitta(`_MIN_ARC_SAGITTA_PX = 2.0`)만큼 휘고 원호 fit이 충분히 좋을 때

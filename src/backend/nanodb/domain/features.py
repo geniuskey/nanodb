@@ -22,6 +22,7 @@ from typing import Protocol, cast
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy import ndimage as ndi
 from skimage.measure import label as cc_label
 from skimage.measure import regionprops
 from skimage.segmentation import find_boundaries
@@ -52,6 +53,7 @@ FEATURE_WIDTH = "width_cd"
 FEATURE_HEIGHT = "height"
 FEATURE_SPACING = "spacing"
 FEATURE_CIRCLE_RADIUS = "circle_radius"
+FEATURE_CIRCLE_DIAMETER = "circle_diameter"
 FEATURE_BOTTOM_CURVATURE = "bottom_curvature"
 FEATURE_SIDEWALL_LEFT = "sidewall_angle_left"
 FEATURE_SIDEWALL_RIGHT = "sidewall_angle_right"
@@ -61,6 +63,7 @@ _LABELS: dict[str, str] = {
     FEATURE_HEIGHT: "auto: 높이",
     FEATURE_SPACING: "auto: 간격",
     FEATURE_CIRCLE_RADIUS: "auto: 원 반경",
+    FEATURE_CIRCLE_DIAMETER: "auto: 원 지름",
     FEATURE_BOTTOM_CURVATURE: "auto: 바닥 곡률 반경",
     FEATURE_SIDEWALL_LEFT: "auto: 좌측 측벽 각도",
     FEATURE_SIDEWALL_RIGHT: "auto: 우측 측벽 각도",
@@ -72,6 +75,7 @@ FEATURE_ORDER: tuple[str, ...] = (
     FEATURE_HEIGHT,
     FEATURE_SPACING,
     FEATURE_CIRCLE_RADIUS,
+    FEATURE_CIRCLE_DIAMETER,
     FEATURE_BOTTOM_CURVATURE,
     FEATURE_SIDEWALL_LEFT,
     FEATURE_SIDEWALL_RIGHT,
@@ -86,11 +90,14 @@ _MIN_TILT_PX = 1.0  # below this horizontal run a sidewall counts as vertical
 _PATTERN_AREA_FRAC = 0.5  # a unit this fraction of the largest counts as comparable
 
 # Circle detection. A unit is treated as a full circle (round cell / contact
-# hole) only when its outline fits a circle tightly, it fills that circle like a
-# disc (not a thin arc or ring), and its bounding box is roughly square. Curvature
-# is then the fitted radius -- "곡률은 원형이 보이면 그때만".
-_CIRCLE_MAX_RMS_FRAC = 0.14  # outline points must sit within this fraction of r
-_CIRCLE_FILL_RANGE = (0.72, 1.28)  # area / (π r²): a filled disc, not an arc/ring
+# hole / ring / annulus) when its *outer* outline fits a circle tightly, that
+# outer circle is filled like a disc once interior holes are closed (so a hollow
+# ring counts, but a bare open arc does not), and its bounding box is roughly
+# square. Curvature is then the fitted radius and the diameter is 2r --
+# "곡률은 원형이 보이면 그때만". Holes are filled before fitting so a ring is
+# measured from its rim, not rejected as "not a filled disc".
+_CIRCLE_MAX_RMS_FRAC = 0.14  # outer outline points must sit within this fraction of r
+_CIRCLE_FILL_RANGE = (0.72, 1.28)  # filled area / (π r²): a full circle, not an arc
 _CIRCLE_ASPECT_RANGE = (0.72, 1.39)  # bbox width / height near 1
 
 # Bottom-arc curvature (trench / dome bottom) is emitted only when the sampled
@@ -333,6 +340,26 @@ def _region_outline(
     return xs, ys
 
 
+def _outer_outline(
+    region: _Region,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Outline of the region's solid footprint (interior holes filled), in image
+    pixels.
+
+    Filling holes first means the outline traces only the *outer* perimeter, so a
+    hollow ring yields its rim circle rather than both the inner and outer edges.
+    For a solid disc this equals :func:`_region_outline`.
+    """
+    local = np.asarray(region.image, dtype=np.bool_)
+    filled = np.asarray(ndi.binary_fill_holes(local), dtype=np.bool_)
+    outline = np.asarray(find_boundaries(filled, mode="inner"), dtype=np.bool_)
+    rows, cols = np.where(outline)
+    min_row, min_col = region.bbox[0], region.bbox[1]
+    xs = np.asarray(cols, dtype=np.float64) + float(min_col)
+    ys = np.asarray(rows, dtype=np.float64) + float(min_row)
+    return xs, ys
+
+
 def _extreme_points(region: _Region) -> tuple[Point, Point, Point]:
     """Topmost, rightmost and bottommost foreground pixels, in image pixels.
 
@@ -354,52 +381,66 @@ def _extreme_points(region: _Region) -> tuple[Point, Point, Point]:
 
 def _circle_feature(
     region: _Region, clipped: bool
-) -> tuple[FeaturePrimitive | None, str | None]:
-    """Emit a full-circle radius when the unit reads as a round disc, else skip.
+) -> tuple[FeaturePrimitive | None, FeaturePrimitive | None, str | None]:
+    """Emit full-circle radius and diameter when the unit reads as a round disc
+    or ring, else skip both with a shared reason.
 
     A clipped unit is never trusted as a circle (a cropped fragment is not round).
-    The gate combines a tight least-squares circle fit on the outline, a disc-like
-    fill ratio (rejecting thin arcs and rings) and a near-square bounding box.
+    The gate fills interior holes first, then combines a tight least-squares fit
+    on the resulting *outer* outline, a disc-like fill of that outer circle, and a
+    near-square bounding box. Filling holes is what lets a hollow ring/annulus
+    (contact-hole rim, droplet edge) be measured from its rim circle instead of
+    being rejected as "not a filled disc"; a bare open arc still fails the fill
+    gate. The radius is the fitted curvature; the diameter is 2r, read from the
+    topmost and bottommost outer pixels (the vertical extremes ``c ± r``).
     """
     if clipped:
-        return None, "unit is clipped at the image border"
+        return None, None, "unit is clipped at the image border"
     local = np.asarray(region.image, dtype=np.bool_)
     box_h, box_w = local.shape
     if box_h < 3 or box_w < 3:
-        return None, "unit too small for a circle fit"
+        return None, None, "unit too small for a circle fit"
     aspect = box_w / box_h
     aspect_lo, aspect_hi = _CIRCLE_ASPECT_RANGE
     if not aspect_lo <= aspect <= aspect_hi:
-        return None, "unit is not circular (elongated)"
-    xs, ys = _region_outline(region)
+        return None, None, "unit is not circular (elongated)"
+    xs, ys = _outer_outline(region)
     fit = _fit_circle(xs, ys)
     if fit is None or fit[2] <= 0:
-        return None, "unit is not circular (no circle fit)"
+        return None, None, "unit is not circular (no circle fit)"
     cx, cy, radius = fit
-    if _circle_rms(xs, ys, cx, cy, radius) / radius > _CIRCLE_MAX_RMS_FRAC:
-        return None, "unit is not circular (edge deviates from a circle)"
-    fill = float(region.area) / (math.pi * radius**2)
+    rms = _circle_rms(xs, ys, cx, cy, radius)
+    if rms / radius > _CIRCLE_MAX_RMS_FRAC:
+        return None, None, "unit is not circular (edge deviates from a circle)"
+    # Fill of the fitted *outer* circle by the solid footprint (holes closed): a
+    # disc and a ring both fill it, an open arc does not.
+    filled_area = float(np.asarray(ndi.binary_fill_holes(local)).sum())
+    fill = filled_area / (math.pi * radius**2)
     fill_lo, fill_hi = _CIRCLE_FILL_RANGE
     if not fill_lo <= fill <= fill_hi:
-        return None, "unit is not a filled circle (arc or ring)"
+        return None, None, "unit is not a full circle (open arc)"
     p_top, p_right, p_bottom = _extreme_points(region)
     area2 = (p_right.x - p_top.x) * (p_bottom.y - p_top.y) - (
         p_right.y - p_top.y
     ) * (p_bottom.x - p_top.x)
     if abs(area2) <= 1e-6:
-        return None, "unit outline is degenerate"
-    rms = _circle_rms(xs, ys, cx, cy, radius)
+        return None, None, "unit outline is degenerate"
     confidence = _clamp01(1.0 - rms / max(radius, 1.0))
-    return (
-        FeaturePrimitive(
-            key=FEATURE_CIRCLE_RADIUS,
-            label=_LABELS[FEATURE_CIRCLE_RADIUS],
-            measurement_type=MeasurementType.CURVATURE,
-            points=(p_top, p_right, p_bottom),
-            confidence=confidence,
-        ),
-        None,
+    radius_primitive = FeaturePrimitive(
+        key=FEATURE_CIRCLE_RADIUS,
+        label=_LABELS[FEATURE_CIRCLE_RADIUS],
+        measurement_type=MeasurementType.CURVATURE,
+        points=(p_top, p_right, p_bottom),
+        confidence=confidence,
     )
+    diameter_primitive = FeaturePrimitive(
+        key=FEATURE_CIRCLE_DIAMETER,
+        label=_LABELS[FEATURE_CIRCLE_DIAMETER],
+        measurement_type=MeasurementType.LENGTH,
+        points=(p_top, p_bottom),
+        confidence=confidence,
+    )
+    return radius_primitive, diameter_primitive, None
 
 
 def _bottom_points(
@@ -546,11 +587,16 @@ def extract_features(
         min_row == 0 or min_col == 0 or max_row == height or max_col == width
     )
 
-    # A round unit (contact hole / circular cell) is measured as a full circle:
-    # its radius is the curvature, and it has no bottom arc or vertical sidewalls
-    # to measure. A trench-like unit keeps the bottom-arc + sidewall features.
-    circle = _circle_feature(representative, clipped)
-    is_circular = circle[0] is not None
+    # A round unit (contact hole / circular cell / ring) is measured as a full
+    # circle: its radius is the curvature and 2r the diameter, and it has no
+    # bottom arc or vertical sidewalls to measure. A trench-like unit keeps the
+    # bottom-arc + sidewall features.
+    radius_primitive, diameter_primitive, circle_reason = _circle_feature(
+        representative, clipped
+    )
+    circle_radius = (radius_primitive, circle_reason)
+    circle_diameter = (diameter_primitive, circle_reason)
+    is_circular = radius_primitive is not None
     if is_circular:
         curvature: tuple[FeaturePrimitive | None, str | None] = (
             None,
@@ -575,7 +621,8 @@ def extract_features(
         FEATURE_WIDTH: _width_feature(representative),
         FEATURE_HEIGHT: _height_feature(representative, width, height),
         FEATURE_SPACING: _spacing_feature(representative, kept, width, height),
-        FEATURE_CIRCLE_RADIUS: circle,
+        FEATURE_CIRCLE_RADIUS: circle_radius,
+        FEATURE_CIRCLE_DIAMETER: circle_diameter,
         FEATURE_BOTTOM_CURVATURE: curvature,
         FEATURE_SIDEWALL_LEFT: sidewall_left,
         FEATURE_SIDEWALL_RIGHT: sidewall_right,

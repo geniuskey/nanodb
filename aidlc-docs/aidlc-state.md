@@ -349,3 +349,19 @@ The user's one correction to the plan is why `label` exists at all: the review h
 Requirement documents amended: `requirements/nanodb-mvp-requirements.md` (section 3.7 rewritten as 측정 라벨링, ANN-006~008 withdrawn, the API table replaced with the 13 endpoints that actually exist, IMG-002/004, CAT-006/007, MEA-009, RES-002/007, CTX-004/005/012, UIX-001, the data model and the screen sections), `requirements/home-tab-requirements.md` (HOM-005/006/008/011/023/029/030/037/040, HOM-024~027 withdrawn, acceptance criteria and the v1/v2 table), `requirements/constraints.md`, and the consolidated `aidlc-docs/inception/requirements/requirements.md`. Design and code documents amended: the frontend design and summary, and `api-reference.md`, which was still describing `schema_version` 1.0 and was missing every delete and patch endpoint.
 
 Historical evidence was deliberately left alone. The US-07 run artefacts under `validation/external-ai/exports/` and `results/run-*.md` still carry `schema_version` 1.1, the contract in force when those runs were recorded; rewriting them would falsify the evidence. Only the forward-looking contract files moved to 2.0, and the validation README explains the gap.
+
+## Evidence Site Intro Video (2026-09-10)
+
+The Pages home (`docs/index.md`) now plays the intro video. The repository's
+original `assets/video/nanodb_intro.mp4` is HEVC, which Safari plays and most
+other browsers do not, so a H.264 copy (`nanodb_intro_h264.mp4`) plus a poster
+frame (`nanodb_intro_poster.jpg`) were added beside it and the site serves
+those. `docs/scripts/copy-public-assets.mjs` copies them into
+`docs/public/video/` before every `docs:build`/`docs:dev` so the binaries are
+not committed twice; the copies are gitignored and the deploy workflow now also
+triggers on `assets/video/**`. Verified: `npm run docs:build`, base-prefixed
+`src` in the built HTML, `vitepress preview` serving the video with range
+requests, and Chromium screenshots at 1280px and 390px. Actual playback could
+not be exercised here — this environment's Chromium is built without
+proprietary codecs. **Still HEVC**: the app home (`HomePage.tsx`) imports the
+original and was left untouched.

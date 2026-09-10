@@ -5,8 +5,9 @@
   "description": "NANoDB hackathon evidence site (VitePress static)",
   "type": "module",
   "scripts": {
-    "docs:dev": "vitepress dev",
-    "docs:build": "vitepress build",
+    "copy:assets": "node scripts/copy-public-assets.mjs",
+    "docs:dev": "npm run copy:assets && vitepress dev",
+    "docs:build": "npm run copy:assets && vitepress build",
     "docs:preview": "vitepress preview"
   },
   "devDependencies": {

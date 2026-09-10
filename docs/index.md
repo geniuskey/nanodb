@@ -1,8 +1,38 @@
+<script setup>
+// base(/nanodb/)가 붙은 경로를 만든다. raw HTML의 src는 VitePress가 자동으로
+// base를 붙여주지 않으므로 withBase를 거쳐야 프로젝트 사이트에서 404가 나지 않는다.
+import { withBase } from 'vitepress'
+</script>
+
 # NANoDB — 소개
 
 **NANoDB: Nano Assets, Never orphaned Database.** 반도체 SEM/TEM 이미지와 측정 근거를
 축적하고, 이를 AI 기반 분석 소프트웨어 개발에 필요한 컨텍스트·검증 데이터로 재사용하는
 경량 웹 애플리케이션입니다.
+
+<div class="intro-video-block">
+  <!-- div로 감싸는 이유: markdown-it의 HTML block 목록에 video가 없어 <video>로 시작하면
+       문단 안에 끼워져 Vue 컴파일이 깨진다. div로 시작하면 전체가 raw HTML block이 된다. -->
+  <video
+    class="intro-video"
+    controls
+    muted
+    loop
+    playsinline
+    preload="metadata"
+    :poster="withBase('/video/nanodb_intro_poster.jpg')"
+  >
+    <!-- H.264 사본을 쓴다. 저장소 원본(nanodb_intro.mp4)은 HEVC라 Safari 밖에서는
+         재생하지 못하는 브라우저가 많다. assets/video/README.md 참고. -->
+    <source :src="withBase('/video/nanodb_intro_h264.mp4')" type="video/mp4" />
+    이 브라우저는 내장 영상 재생을 지원하지 않습니다.
+    <a :href="withBase('/video/nanodb_intro_h264.mp4')">소개 영상 내려받기(MP4)</a>
+  </video>
+  <p class="intro-video-caption">
+    NANoDB 소개 영상(35초, 소리 없음). 앱 홈에서 재생되는 것과 같은 영상이며, 영상 없이도
+    아래 내용만으로 NANoDB를 확인할 수 있습니다.
+  </p>
+</div>
 
 > 이 사이트는 해커톤 평가용 근거 자료입니다. 실제 앱은 로컬에서 실행하며, 여기 실린 화면은
 > 로컬 native 실행을 승인된 demo 데이터로 캡처한 결과입니다. 공개된 서비스가 아니며
@@ -99,3 +129,23 @@ NANoDB는 이미지·측정·맥락 데이터가 담당자나 도구의 변화 �
 
 대회 주제·취지와 도메인 관련성은 공식 배점 항목이 아닙니다. 심사 항목별 산출물·상태 연결은
 [심사 근거](/evidence) 페이지에서 확인할 수 있습니다.
+
+<style>
+/* 홈 소개 영상. 앱 홈(.intro-video)과 같은 비율·라운드로 맞추고, 색은 VitePress
+   테마 변수를 써서 라이트·다크 모두에서 경계가 보이게 한다. */
+.intro-video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 24px 0 8px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: #000;
+  object-fit: contain;
+}
+.intro-video-caption {
+  margin: 0 0 24px;
+  color: var(--vp-c-text-2);
+  font-size: 0.9rem;
+}
+</style>

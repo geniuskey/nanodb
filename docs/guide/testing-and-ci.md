@@ -195,10 +195,11 @@ make clean                 # 컨테이너 + DB 볼륨 제거 (파괴적)
 
 CI 워크플로우는 `.github/workflows/deploy-evidence-site.yml` **하나**뿐이며, **VitePress 문서 사이트(`docs/`)만** 빌드·배포합니다. 앱 런타임(백엔드·프론트엔드·컨테이너)은 배포하지 않습니다.
 
-- **트리거**: `main` 브랜치 push 중 `docs/**`, `screenshots/**`, `.nvmrc`, 워크플로우 파일 자체가 바뀔 때만. 수동 `workflow_dispatch`도 가능.
+- **트리거**: `main` 브랜치 push 중 `docs/**`, `screenshots/**`, `assets/video/**`, `.nvmrc`, 워크플로우 파일 자체가 바뀔 때만. 수동 `workflow_dispatch`도 가능.
 - **권한(최소)**: `contents: read`, `pages: write`, `id-token: write`.
 - **동시성**: `group: pages`, `cancel-in-progress: false` (진행 중 배포는 취소하지 않음).
 - **build job**: `actions/setup-node`가 `.nvmrc`(22.17.1)로 Node를 고정하고 `docs/package-lock.json`으로 캐시. `docs`에서 `npm ci` → `npm run docs:build` → `docs/.vitepress/dist`를 Pages artifact로 업로드.
+- **자산 복사**: `npm run docs:build`(및 `docs:dev`)는 vitepress 실행 전에 `docs/scripts/copy-public-assets.mjs`를 돌려 홈 소개 영상 `assets/video/nanodb_intro.mp4`를 `docs/public/video/`로 복사합니다. 같은 5MB대 파일을 `docs/` 아래에 다시 커밋하지 않으려는 것이라, 사본은 `.gitignore` 대상이고 원본은 `assets/video/` 하나뿐입니다. 원본이 없으면 스크립트가 build를 실패시킵니다.
 - **deploy job**: `needs: build`, `if: github.ref == 'refs/heads/main'`. build 성공 후에만 `actions/deploy-pages`로 배포. `github-pages` environment 사용.
 
 > [!NOTE]

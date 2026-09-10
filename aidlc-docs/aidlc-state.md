@@ -365,3 +365,8 @@ requests, and Chromium screenshots at 1280px and 390px. Actual playback could
 not be exercised here — this environment's Chromium is built without
 proprietary codecs. **Still HEVC**: the app home (`HomePage.tsx`) imports the
 original and was left untouched.
+
+**Update (2026-09-10)**: the app home was switched to the same H.264 copy and
+given the poster frame, so the HEVC original is now only the source the copies
+are generated from and is bundled nowhere. `npm run typecheck`, `npm run
+test:frontend` (132 passed, 8 skipped) and `npm run build` are green.

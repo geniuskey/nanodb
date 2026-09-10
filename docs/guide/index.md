@@ -34,7 +34,7 @@ NANoDB는 반도체 SEM/TEM 이미지와 측정 근거를 축적하고, 이를 A
 | `aidlc-docs` | AI-DLC 워크플로우 산출물(요구사항·설계·상태·감사 로그). 앱 코드는 없음 |
 | `validation` | 외부 AI 개발 도구 검증 자산(`external-ai/`: 프롬프트·생성물·결과·스키마 버전) |
 | `var` | 런타임 산출물. `uploads/`(등록 이미지), `review/`, uvicorn·vite 로그. 버전 관리 대상 아님 |
-| `assets` | 로고·소개 영상 등 정적 자산(`assets/video/nanodb_intro.mp4` 포함) |
+| `assets` | 로고·소개 영상 등 정적 자산. 영상은 원본 HEVC(`nanodb_intro.mp4`)와 앱·사이트가 실제로 쓰는 H.264 사본·poster(`nanodb_intro_h264.mp4`, `nanodb_intro_poster.jpg`) — `assets/video/README.md` 참고 |
 
 > [!TIP]
 > 개발에 필요한 진입점: `Makefile`(작업 명령), `compose.yaml`·`Dockerfile`(컨테이너),

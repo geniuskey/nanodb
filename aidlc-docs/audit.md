@@ -2010,3 +2010,11 @@ UIX-009: 목록과 홈 KPI의 첫 조회에 결과와 같은 모양의 자리 �
 **Context**: CONSTRUCTION - Evidence Site(US-08) 홈에 소개 영상 추가. 적응형 깊이 최소(minimal): 기존 사이트 범위 내 문서 페이지 변경이므로 전체 inception 승인 절차 대신 직접 구현하고, 필수 audit 로깅으로 남김.
 
 ---
+
+## 앱 홈 소개 영상도 H.264로 교체
+**Timestamp**: 2026-09-10T03:25:00Z
+**User Input**: "원해. 다 하면 pr 만들어 머지"
+**AI Response**: "앱 홈(`src/frontend/src/pages/HomePage.tsx`)의 import를 HEVC 원본에서 H.264 사본(`assets/video/nanodb_intro_h264.mp4`)으로 바꾸고, `poster={introPoster}`를 붙였습니다. poster는 자동재생을 끄는 동작 줄이기(reduced motion) 환경과 재생이 안 되는 브라우저에서 검은 상자 대신 실제 화면을 보여줍니다. `HomePage.test.tsx`의 기존 영상 테스트에 `src`가 h264 사본인지와 `poster` 존재를 확인하는 단언을 추가했습니다. 문서: README 홈 영상 설명, `docs/guide/index.md` 자산 표, `docs/guide/testing-and-ci.md`의 컨테이너 build·자산 복사 설명, `assets/video/README.md`(원본은 이제 사본 생성용 소스이며 번들되지 않음)를 실제 상태에 맞췄습니다. 검증: `npm run typecheck` clean, `npm run test:frontend` 132 passed·8 skipped, `npm run build` 성공 — 번들에 `nanodb_intro_h264-*.mp4`(5.08MB)와 `nanodb_intro_poster-*.jpg`(81KB)가 들어가고 HEVC 원본은 더 이상 번들되지 않습니다. `vite preview`로 띄운 빌드 결과를 Chromium으로 열어 `src`/`poster`가 해시된 번들 자산을 가리키고 홈에 poster 프레임이 그려지는 것을 스크린샷으로 확인했습니다(로드된 4xx/5xx는 백엔드를 띄우지 않아 발생한 `/api/*` 502뿐). 이 환경의 Chromium은 독점 코덱 없는 빌드라 실제 재생은 여전히 검증 불가입니다."
+**Context**: CONSTRUCTION - 앱 홈 영상 코덱 교체(사용자 요청). 이어서 PR 생성·머지 요청 수행.
+
+---

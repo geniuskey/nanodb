@@ -77,6 +77,11 @@ describe("HomePage", () => {
     expect(document.querySelector("iframe")).toBeNull();
     expect(video).toHaveAttribute("src");
     expect(video.getAttribute("src")).not.toContain("http");
+    // The bundled copy is H.264: the original recording is HEVC, which Chrome
+    // and Firefox often refuse, so a demo machine would have shown a black box.
+    expect(video.getAttribute("src")).toContain("h264");
+    // A still frame for the reduced-motion viewer, who gets no autoplay.
+    expect(video).toHaveAttribute("poster");
     expect(video).toHaveAttribute("controls");
     expect(video).toHaveAttribute("autoplay");
     expect(screen.getByTestId("video-caption")).toHaveTextContent(

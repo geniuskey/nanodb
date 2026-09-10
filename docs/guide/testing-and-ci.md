@@ -166,7 +166,7 @@ make test-e2e              # npm run test:e2e -> playwright test
 
 `Dockerfile`은 세 단계로 단일 런타임 이미지를 만듭니다.
 
-1. **frontend** (`node:22.17.1-bookworm-slim`): `npm ci` 후 `npm run build`로 React 앱을 `/build/dist/frontend`에 컴파일. 로고(`assets/logo/`)·인트로 영상(`assets/video/`)만 재포함.
+1. **frontend** (`node:22.17.1-bookworm-slim`): `npm ci` 후 `npm run build`로 React 앱을 `/build/dist/frontend`에 컴파일. 로고(`assets/logo/`)·인트로 영상(`assets/video/`)만 재포함. 앱이 번들하는 것은 H.264 사본과 poster이며 HEVC 원본은 번들되지 않습니다.
 2. **backend-deps** (`python:3.12.12-slim-bookworm` + `uv:0.9.5`): `uv sync --frozen --no-dev --no-editable`로 잠긴 의존성을 `/opt/venv`에 설치.
 3. **runtime** (`python:3.12.12-slim-bookworm`): venv와 빌드된 프론트엔드, alembic 설정만 복사. **비루트 사용자 `nanodb`**로 `uvicorn nanodb.api.app:app`을 `0.0.0.0:8000`에서 실행.
 
@@ -199,7 +199,7 @@ CI 워크플로우는 `.github/workflows/deploy-evidence-site.yml` **하나**뿐
 - **권한(최소)**: `contents: read`, `pages: write`, `id-token: write`.
 - **동시성**: `group: pages`, `cancel-in-progress: false` (진행 중 배포는 취소하지 않음).
 - **build job**: `actions/setup-node`가 `.nvmrc`(22.17.1)로 Node를 고정하고 `docs/package-lock.json`으로 캐시. `docs`에서 `npm ci` → `npm run docs:build` → `docs/.vitepress/dist`를 Pages artifact로 업로드.
-- **자산 복사**: `npm run docs:build`(및 `docs:dev`)는 vitepress 실행 전에 `docs/scripts/copy-public-assets.mjs`를 돌려 홈 소개 영상 `assets/video/nanodb_intro.mp4`를 `docs/public/video/`로 복사합니다. 같은 5MB대 파일을 `docs/` 아래에 다시 커밋하지 않으려는 것이라, 사본은 `.gitignore` 대상이고 원본은 `assets/video/` 하나뿐입니다. 원본이 없으면 스크립트가 build를 실패시킵니다.
+- **자산 복사**: `npm run docs:build`(및 `docs:dev`)는 vitepress 실행 전에 `docs/scripts/copy-public-assets.mjs`를 돌려 홈 소개 영상의 H.264 사본과 poster(`assets/video/nanodb_intro_h264.mp4`, `nanodb_intro_poster.jpg`)를 `docs/public/video/`로 복사합니다. 같은 5MB대 파일을 `docs/` 아래에 다시 커밋하지 않으려는 것이라, 사본은 `.gitignore` 대상이고 자산 원본은 `assets/video/` 한 곳뿐입니다. 원본이 없으면 스크립트가 build를 실패시킵니다.
 - **deploy job**: `needs: build`, `if: github.ref == 'refs/heads/main'`. build 성공 후에만 `actions/deploy-pages`로 배포. `github-pages` environment 사용.
 
 > [!NOTE]

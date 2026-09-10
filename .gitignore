@@ -35,3 +35,6 @@ var/
 storage/uploads/
 data/raw/
 data/generated/
+
+# Evidence site: build 시 assets/에서 복사되는 사본 (docs/scripts/copy-public-assets.mjs)
+docs/public/video/

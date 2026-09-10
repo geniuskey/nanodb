@@ -2002,3 +2002,19 @@ UIX-009: 목록과 홈 KPI의 첫 조회에 결과와 같은 모양의 자리 �
 **Context**: Construction — UI polish. src/frontend/src/styles.css .tab.tab-cta .tab-label.
 
 ---
+
+## Evidence Site — 홈에 소개 영상 게재 (GitHub Pages)
+**Timestamp**: 2026-09-10T02:45:00Z
+**User Input**: "asset 에 있는 비디오를 github pages 의 홈에서도 볼 수 있게 해줘"
+**AI Response**: "GitHub Pages 근거 사이트 홈(`docs/index.md`)에서 `assets/video/`의 소개 영상을 재생하도록 했습니다. (1) 코덱 문제 발견: 원본 `nanodb_intro.mp4`는 HEVC(`hvc1`, 1920x1080, 35초, 무음)라 Safari 밖에서는 재생하지 못하는 브라우저가 많습니다(Chrome/Edge는 플랫폼 하드웨어 디코더가 있을 때만, Firefox는 대부분 불가). 실제로 이 환경의 Chromium에서 `The element has no supported sources`로 재생이 거부됐습니다. 그래서 같은 영상의 H.264(High, yuv420p, `+faststart`) 사본 `assets/video/nanodb_intro_h264.mp4`(5.08MB, 원본 5.66MB보다 작음)를 만들어 사이트가 이것을 재생하게 했고, 영상 4초 지점 프레임으로 만든 `nanodb_intro_poster.jpg`(81KB)를 `poster`로 붙여 로드 전·재생 불가 시에도 화면이 보이게 했습니다. 원본 HEVC 파일과 앱(`HomePage.tsx`)은 건드리지 않았습니다. (2) 중복 커밋 회피: 5MB대 파일을 `docs/` 아래에 또 커밋하지 않도록 `docs/scripts/copy-public-assets.mjs`를 추가하고 `docs:build`/`docs:dev`가 vitepress 실행 전에 `assets/video/` -> `docs/public/video/`로 복사하게 했습니다. 원본이 없으면 build를 실패시킵니다. 사본은 `.gitignore` 대상입니다. (3) 마크업: `docs/index.md` 첫 문단 아래에 `<video controls muted loop playsinline preload=metadata poster=...>` + `<source type=video/mp4>`와 캡션·내려받기 대체 링크를 넣었습니다. `base`가 `/nanodb/`이고 raw HTML의 `src`에는 base가 자동으로 붙지 않으므로 `withBase()`로 감쌌습니다. `<video>`는 markdown-it의 HTML block 목록에 없어 그대로 쓰면 문단 안에 끼어 Vue 컴파일이 `Invalid end tag`로 깨지므로 `<div>`로 감쌌습니다(실제로 한 번 재현 후 수정). (4) 워크플로우 트리거에 `assets/video/**`를 추가해 영상 교체가 재배포로 이어지게 했고, 개발자 가이드(`testing-and-ci.md`, `guide/index.md`)와 `assets/video/README.md`에 두 파일의 용도·재생성 ffmpeg 명령을 적었습니다. 검증: `npm ci` 후 `npm run docs:build` 성공, `dist/index.html`의 `src`가 `/nanodb/video/nanodb_intro_h264.mp4`로 base 적용 확인, `vitepress preview`에서 홈 200·영상 206(`video/mp4`, Range 지원)·poster 200, 서버가 내보낸 바이트가 자산 파일과 바이트 단위로 동일함을 확인, 그 스트림에서 프레임을 디코드해 화질 확인, Chromium(1280x1280 및 390px 폭) 스크린샷으로 16:9 배치·poster·컨트롤·4xx 요청 없음 확인. 다만 이 환경의 Playwright Chromium은 독점 코덱이 없는 빌드(`canPlayType`이 H.264·HEVC 모두 빈 문자열, VP9만 지원)여서 **브라우저 실제 재생은 이 환경에서 검증할 수 없었습니다**. H.264 선택은 그 한계와 무관하게 표준적으로 안전한 선택입니다. 참고로 앱 홈(`src/frontend/src/pages/HomePage.tsx`)은 여전히 HEVC 원본을 import하므로 Chrome/Windows·Firefox 등에서 재생되지 않을 수 있습니다 — 사용자에게 보고하고 요청 시 같은 H.264 사본으로 교체 가능합니다."
+**Context**: CONSTRUCTION - Evidence Site(US-08) 홈에 소개 영상 추가. 적응형 깊이 최소(minimal): 기존 사이트 범위 내 문서 페이지 변경이므로 전체 inception 승인 절차 대신 직접 구현하고, 필수 audit 로깅으로 남김.
+
+---
+
+## 앱 홈 소개 영상도 H.264로 교체
+**Timestamp**: 2026-09-10T03:25:00Z
+**User Input**: "원해. 다 하면 pr 만들어 머지"
+**AI Response**: "앱 홈(`src/frontend/src/pages/HomePage.tsx`)의 import를 HEVC 원본에서 H.264 사본(`assets/video/nanodb_intro_h264.mp4`)으로 바꾸고, `poster={introPoster}`를 붙였습니다. poster는 자동재생을 끄는 동작 줄이기(reduced motion) 환경과 재생이 안 되는 브라우저에서 검은 상자 대신 실제 화면을 보여줍니다. `HomePage.test.tsx`의 기존 영상 테스트에 `src`가 h264 사본인지와 `poster` 존재를 확인하는 단언을 추가했습니다. 문서: README 홈 영상 설명, `docs/guide/index.md` 자산 표, `docs/guide/testing-and-ci.md`의 컨테이너 build·자산 복사 설명, `assets/video/README.md`(원본은 이제 사본 생성용 소스이며 번들되지 않음)를 실제 상태에 맞췄습니다. 검증: `npm run typecheck` clean, `npm run test:frontend` 132 passed·8 skipped, `npm run build` 성공 — 번들에 `nanodb_intro_h264-*.mp4`(5.08MB)와 `nanodb_intro_poster-*.jpg`(81KB)가 들어가고 HEVC 원본은 더 이상 번들되지 않습니다. `vite preview`로 띄운 빌드 결과를 Chromium으로 열어 `src`/`poster`가 해시된 번들 자산을 가리키고 홈에 poster 프레임이 그려지는 것을 스크린샷으로 확인했습니다(로드된 4xx/5xx는 백엔드를 띄우지 않아 발생한 `/api/*` 502뿐). 이 환경의 Chromium은 독점 코덱 없는 빌드라 실제 재생은 여전히 검증 불가입니다."
+**Context**: CONSTRUCTION - 앱 홈 영상 코덱 교체(사용자 요청). 이어서 PR 생성·머지 요청 수행.
+
+---

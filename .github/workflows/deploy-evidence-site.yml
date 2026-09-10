@@ -10,6 +10,8 @@ on:
     paths:
       - 'docs/**'
       - 'screenshots/**'
+      # 홈 소개 영상. build 전에 docs/public/video/로 복사되므로 원본이 바뀌면 재배포한다.
+      - 'assets/video/**'
       - '.nvmrc'
       - '.github/workflows/deploy-evidence-site.yml'
   workflow_dispatch:

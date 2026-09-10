@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import logo from "../../../../assets/logo/nanodb_logo_horizontal.png";
-import introVideo from "../../../../assets/video/nanodb_intro.mp4";
+import introVideo from "../../../../assets/video/nanodb_intro_h264.mp4";
+import introPoster from "../../../../assets/video/nanodb_intro_poster.jpg";
 import { api } from "../api/client";
 import { useSummary } from "../api/summary-context";
 import type { ImageListView, MeasurementTypeSummary } from "../api/types";
@@ -344,6 +345,12 @@ function prefersReducedMotion(): boolean {
  * no external runtime dependency and works on an air-gapped demo machine.
  * Autoplay is skipped for a reduced-motion viewer, who presses play instead,
  * and the page reads fine for anyone whose browser plays nothing at all.
+ *
+ * The H.264 copy is the one that ships: the original recording is HEVC, which
+ * Safari plays and Chrome/Edge only play with a hardware decoder — a demo on a
+ * Windows or Linux machine would have shown a black box. The poster frame
+ * gives that reduced-motion viewer (and anyone whose browser plays nothing)
+ * something to look at instead of black. See assets/video/README.md.
  */
 function IntroVideo() {
   const [reduced] = useState(prefersReducedMotion);
@@ -355,6 +362,7 @@ function IntroVideo() {
         className="intro-video"
         data-testid="intro-video"
         src={introVideo}
+        poster={introPoster}
         controls
         muted
         loop
